@@ -36,7 +36,8 @@
     "publish": {
       "provider": "github",
       "owner": "NguyenTomat",
-      "repo": "price-app"
+      "repo": "price-app",
+      "releaseType": "release"
     },
     "win": {
       "target": "nsis",

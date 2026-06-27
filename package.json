@@ -30,7 +30,7 @@
     "appId": "com.tandt.pricemanager",
     "productName": "Bảng Giá T&T",
     "directories": {
-      "output": "dist-electron"
+      "output": "C:\\Users\\Acer\\Desktop\\price-app-build"
     },
     "artifactName": "BangGia-TT-Setup-${version}.${ext}",
     "publish": {

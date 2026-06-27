@@ -9,7 +9,7 @@ import {
   writeBatch, onSnapshot, query, orderBy, where, limit,
 } from 'firebase/firestore'
 import {
-  getStorage, ref, uploadString, getDownloadURL, deleteObject,
+  getStorage, ref, uploadString, uploadBytes, getDownloadURL, deleteObject,
 } from 'firebase/storage'
 import { sanitizeFirestoreId } from '../utils/excelParse'
 
@@ -292,4 +292,44 @@ export const getDashboardStats = async () => {
       cancelled: orders.filter(o => o.status === 'cancelled').length,
     },
   }
+}
+
+// ── CATALOGS ───────────────────────────────────────────────────────────────
+export const subscribeCatalogs = (cb) => {
+  const q = query(collection(db, 'catalogs'), orderBy('createdAt', 'desc'))
+  return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+}
+
+export const addCatalogLink = ({ name, brand, note, linkUrl }) =>
+  addDoc(collection(db, 'catalogs'), {
+    name, brand: brand || '', note: note || '',
+    url: linkUrl,
+    isExternalLink: true,
+    fileSize: null,
+    storagePath: null,
+    createdAt: serverTimestamp(),
+  })
+
+export const uploadCatalog = async ({ file, name, brand, note }) => {
+  const storageRef = ref(storage, `catalogs/${Date.now()}_${file.name}`)
+  const snap = await uploadBytes(storageRef, file, { contentType: 'application/pdf' })
+  const url = await getDownloadURL(snap.ref)
+  await addDoc(collection(db, 'catalogs'), {
+    name: name || file.name,
+    brand: brand || '',
+    note: note || '',
+    fileName: file.name,
+    fileSize: file.size,
+    storagePath: snap.ref.fullPath,
+    url,
+    createdAt: serverTimestamp(),
+  })
+  return url
+}
+
+export const deleteCatalog = async (catalog) => {
+  if (catalog.storagePath) {
+    try { await deleteObject(ref(storage, catalog.storagePath)) } catch {}
+  }
+  await deleteDoc(doc(db, 'catalogs', catalog.id))
 }

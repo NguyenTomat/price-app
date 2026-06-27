@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { subscribePriceLists, subscribeProducts, updateProduct, updateProductImages, deletePriceList } from '../firebase/firebase'
+import { subscribePriceLists, subscribeProducts, updateProduct, updateProductImages, addProduct, deleteProduct, deletePriceList } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import ProductModal from '../components/ProductModal'
@@ -22,6 +22,9 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addForm, setAddForm] = useState({ name: '', group: '', spec1: '', spec2: '', price: '' })
+  const [addSaving, setAddSaving] = useState(false)
 
   // Realtime price lists
   useEffect(() => {
@@ -96,6 +99,38 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
       setSelectedProduct(null)
       toast(isAdmin ? 'Đã lưu sản phẩm' : 'Đã lưu ảnh', 'success')
     } catch { toast('Lỗi lưu sản phẩm', 'error') }
+  }
+
+  const handleAddProduct = async () => {
+    if (!addForm.name.trim()) { toast('Nhập tên sản phẩm', 'error'); return }
+    const price = parseFloat(addForm.price) || 0
+    if (!price) { toast('Nhập đơn giá', 'error'); return }
+    setAddSaving(true)
+    try {
+      const groups = [...new Set(products.map(p => p.group).filter(Boolean))]
+      const order = products.length
+      await addProduct(selectedList.id, {
+        name: addForm.name.trim(),
+        group: addForm.group.trim() || (groups[0] ?? ''),
+        spec1: addForm.spec1.trim(),
+        spec2: addForm.spec2.trim(),
+        price,
+        order,
+        images: [],
+      })
+      setAddForm({ name: '', group: '', spec1: '', spec2: '', price: '' })
+      setShowAddForm(false)
+      toast('Đã thêm sản phẩm', 'success')
+    } catch (e) { toast('Lỗi: ' + e.message, 'error') }
+    finally { setAddSaving(false) }
+  }
+
+  const handleDeleteProduct = async (product) => {
+    if (!confirm(`Xóa sản phẩm "${product.name}"?`)) return
+    try {
+      await deleteProduct(selectedList.id, product.id)
+      toast('Đã xóa sản phẩm', 'success')
+    } catch { toast('Lỗi xóa sản phẩm', 'error') }
   }
 
   const handleDeleteList = async () => {
@@ -177,9 +212,57 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
               </select>
               <span className="text-muted text-sm" style={{ whiteSpace: 'nowrap' }}>{filtered.length}/{products.length} SP</span>
               {isAdmin && (
-                <button className="btn sm danger" onClick={handleDeleteList} title="Xóa bảng giá này">🗑</button>
+                <>
+                  <button className="btn sm primary" onClick={() => { setShowAddForm(s => !s); setAddForm({ name: '', group: '', spec1: '', spec2: '', price: '' }) }}>
+                    {showAddForm ? '✕ Đóng' : '+ Thêm SP'}
+                  </button>
+                  <button className="btn sm danger" onClick={handleDeleteList} title="Xóa bảng giá này">🗑</button>
+                </>
               )}
             </div>
+
+            {/* Add product form */}
+            {isAdmin && showAddForm && (
+              <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 10 }}>
+                  <div className="field" style={{ marginBottom: 0, gridColumn: '1 / span 2' }}>
+                    <label className="field-label">Tên / Mã sản phẩm *</label>
+                    <input className="input" placeholder="VD: MHI-202EA-220V-0.37KW"
+                      value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}/>
+                  </div>
+                  <div className="field" style={{ marginBottom: 0 }}>
+                    <label className="field-label">Nhóm (group)</label>
+                    <input className="input" placeholder="VD: BƠM TĂNG ÁP BIẾN TẦN"
+                      value={addForm.group} onChange={e => setAddForm(f => ({ ...f, group: e.target.value }))}
+                      list="group-list"/>
+                    <datalist id="group-list">
+                      {[...new Set(products.map(p => p.group).filter(Boolean))].map(g => <option key={g} value={g}/>)}
+                    </datalist>
+                  </div>
+                  <div className="field" style={{ marginBottom: 0 }}>
+                    <label className="field-label">Công suất (kW)</label>
+                    <input className="input" placeholder="VD: 0.37"
+                      value={addForm.spec1} onChange={e => setAddForm(f => ({ ...f, spec1: e.target.value }))}/>
+                  </div>
+                  <div className="field" style={{ marginBottom: 0 }}>
+                    <label className="field-label">Lưu lượng / Thông số</label>
+                    <input className="input" placeholder="VD: Hmax 27m - Qmax 4.0"
+                      value={addForm.spec2} onChange={e => setAddForm(f => ({ ...f, spec2: e.target.value }))}/>
+                  </div>
+                  <div className="field" style={{ marginBottom: 0 }}>
+                    <label className="field-label">Đơn giá (₫) *</label>
+                    <input className="input" type="number" min="0" placeholder="VD: 4000000"
+                      value={addForm.price} onChange={e => setAddForm(f => ({ ...f, price: e.target.value }))}/>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn sm" onClick={() => setShowAddForm(false)}>Hủy</button>
+                  <button className="btn sm primary" onClick={handleAddProduct} disabled={addSaving}>
+                    {addSaving ? '...' : '✓ Lưu sản phẩm'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div style={{ flex: 1, overflow: 'auto', padding: '14px 18px' }}>
               {loadingList ? (
@@ -189,18 +272,19 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                   <table>
                     <thead>
                       <tr>
-                        <th style={{ width: '36%' }}>Tên / Mã sản phẩm</th>
+                        <th style={{ width: '34%' }}>Tên / Mã sản phẩm</th>
                         <th>Công suất</th>
                         <th>Lưu lượng / Thông số</th>
                         <th style={{ textAlign: 'right' }}>Đơn giá</th>
                         <th style={{ width: 56, textAlign: 'center' }}>Ảnh</th>
+                        {isAdmin && <th style={{ width: 40 }}></th>}
                       </tr>
                     </thead>
                     <tbody>
                       {rows.map((row, i) =>
                         row.type === 'group' ? (
                           <tr key={'g-' + i} className="group-row">
-                            <td colSpan={5} style={{ fontWeight: 600, fontSize: 12, color: 'var(--accent)', padding: '7px 14px' }}>
+                            <td colSpan={isAdmin ? 6 : 5} style={{ fontWeight: 600, fontSize: 12, color: 'var(--accent)', padding: '7px 14px' }}>
                               📁 {row.label}
                             </td>
                           </tr>
@@ -213,11 +297,21 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                             <td style={{ textAlign: 'center', fontSize: 12 }}>
                               {(row.data.images?.length > 0) ? `📷 ${row.data.images.length}` : '—'}
                             </td>
+                            {isAdmin && (
+                              <td onClick={e => e.stopPropagation()} style={{ textAlign: 'center' }}>
+                                <button
+                                  className="btn xs ghost"
+                                  style={{ color: 'var(--danger)', padding: '2px 6px' }}
+                                  onClick={() => handleDeleteProduct(row.data)}
+                                  title="Xóa sản phẩm"
+                                >🗑</button>
+                              </td>
+                            )}
                           </tr>
                         )
                       )}
                       {rows.length === 0 && (
-                        <tr><td colSpan={5} className="empty" style={{ padding: '36px 0' }}>Không tìm thấy sản phẩm</td></tr>
+                        <tr><td colSpan={isAdmin ? 6 : 5} className="empty" style={{ padding: '36px 0' }}>Không tìm thấy sản phẩm</td></tr>
                       )}
                     </tbody>
                   </table>

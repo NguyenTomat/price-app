@@ -116,6 +116,14 @@ export const saveProducts = async (listId, products) => {
   }
 }
 
+export const addProduct = (listId, data) => {
+  const { id: _id, ...rest } = data
+  return addDoc(collection(db, 'priceLists', listId, 'products'), rest)
+}
+
+export const deleteProduct = (listId, productId) =>
+  deleteDoc(doc(db, 'priceLists', listId, 'products', productId))
+
 export const updateProduct = (listId, productId, data) => {
   const { id: _id, ...rest } = data
   return updateDoc(doc(db, 'priceLists', listId, 'products', productId), rest)

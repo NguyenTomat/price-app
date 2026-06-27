@@ -35,7 +35,7 @@
     "artifactName": "BangGia-TT-Setup-${version}.${ext}",
     "publish": {
       "provider": "github",
-      "owner": "GITHUB_USERNAME",
+      "owner": "NguyenTomat",
       "repo": "price-app"
     },
     "win": {

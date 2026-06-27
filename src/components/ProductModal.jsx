@@ -15,11 +15,12 @@ export default function ProductModal({ product, onClose, onSave, readOnly = fals
   const canEditImages = !readOnly
 
   const [tab, setTab] = useState(canEditImages && !canEditInfo ? 'images' : 'info')
-  const [name,   setName]   = useState(product.name  || '')
-  const [group,  setGroup]  = useState(product.group || '')
-  const [spec1,  setSpec1]  = useState(product.spec1 || '')
-  const [spec2,  setSpec2]  = useState(product.spec2 || '')
-  const [price,  setPrice]  = useState(product.price != null ? String(product.price) : '')
+  const [name,     setName]     = useState(product.name     || '')
+  const [group,    setGroup]    = useState(product.group    || '')
+  const [spec1,    setSpec1]    = useState(product.spec1    || '')
+  const [spec2,    setSpec2]    = useState(product.spec2    || '')
+  const [phiHocng, setPhiHocng] = useState(product.phiHocng || '')
+  const [price,    setPrice]    = useState(product.price != null ? String(product.price) : '')
   const [images, setImages] = useState(product.images || [])
 
   const [disc,   setDisc]   = useState('0')
@@ -37,11 +38,12 @@ export default function ProductModal({ product, onClose, onSave, readOnly = fals
       if (!name.trim()) return
       onSave({
         ...product,
-        name:   name.trim(),
-        group:  group.trim(),
-        spec1:  spec1.trim(),
-        spec2:  spec2.trim(),
-        price:  price !== '' && !isNaN(parseFloat(price)) ? parseFloat(price) : null,
+        name:     name.trim(),
+        group:    group.trim(),
+        spec1:    spec1.trim(),
+        spec2:    spec2.trim(),
+        phiHocng: phiHocng.trim(),
+        price:    price !== '' && !isNaN(parseFloat(price)) ? parseFloat(price) : null,
         images,
       })
       return
@@ -99,6 +101,10 @@ export default function ProductModal({ product, onClose, onSave, readOnly = fals
                     <input className="input" value={spec2} onChange={e => setSpec2(e.target.value)} placeholder="Hmax 11.5 - Qmax 17m3/h"/>
                   </div>
                   <div className="field">
+                    <label className="field-label">Phi họng (mm)</label>
+                    <input className="input" value={phiHocng} onChange={e => setPhiHocng(e.target.value)} placeholder="VD: 65"/>
+                  </div>
+                  <div className="field">
                     <label className="field-label">Đơn giá gốc (VNĐ, chưa VAT)</label>
                     <input className="input" type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0" min="0"/>
                   </div>
@@ -110,7 +116,8 @@ export default function ProductModal({ product, onClose, onSave, readOnly = fals
                     ['Nhóm', product.group],
                     ['Công suất', product.spec1 ? product.spec1 + ' kW' : '—'],
                     ['Thông số', product.spec2 || '—'],
-                  ].map(([label, val]) => (
+                    product.phiHocng ? ['Phi họng', 'φ' + product.phiHocng + ' mm'] : null,
+                  ].filter(Boolean).map(([label, val]) => (
                     <div key={label} style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
                       <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 3 }}>{label}</div>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{val || '—'}</div>

@@ -23,7 +23,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
   const [groupFilter, setGroupFilter] = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [addForm, setAddForm] = useState({ name: '', group: '', spec1: '', spec2: '', price: '' })
+  const [addForm, setAddForm] = useState({ name: '', group: '', spec1: '', spec2: '', phiHocng: '', price: '' })
   const [addSaving, setAddSaving] = useState(false)
 
   // Realtime price lists
@@ -114,11 +114,12 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
         group: addForm.group.trim() || (groups[0] ?? ''),
         spec1: addForm.spec1.trim(),
         spec2: addForm.spec2.trim(),
+        phiHocng: addForm.phiHocng.trim(),
         price,
         order,
         images: [],
       })
-      setAddForm({ name: '', group: '', spec1: '', spec2: '', price: '' })
+      setAddForm({ name: '', group: '', spec1: '', spec2: '', phiHocng: '', price: '' })
       setShowAddForm(false)
       toast('Đã thêm sản phẩm', 'success')
     } catch (e) { toast('Lỗi: ' + e.message, 'error') }
@@ -250,6 +251,11 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                       value={addForm.spec2} onChange={e => setAddForm(f => ({ ...f, spec2: e.target.value }))}/>
                   </div>
                   <div className="field" style={{ marginBottom: 0 }}>
+                    <label className="field-label">Phi họng (mm)</label>
+                    <input className="input" placeholder="VD: 65"
+                      value={addForm.phiHocng} onChange={e => setAddForm(f => ({ ...f, phiHocng: e.target.value }))}/>
+                  </div>
+                  <div className="field" style={{ marginBottom: 0 }}>
                     <label className="field-label">Đơn giá (₫) *</label>
                     <input className="input" type="number" min="0" placeholder="VD: 4000000"
                       value={addForm.price} onChange={e => setAddForm(f => ({ ...f, price: e.target.value }))}/>
@@ -272,9 +278,10 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                   <table>
                     <thead>
                       <tr>
-                        <th style={{ width: '34%' }}>Tên / Mã sản phẩm</th>
+                        <th style={{ width: '30%' }}>Tên / Mã sản phẩm</th>
                         <th>Công suất</th>
                         <th>Lưu lượng / Thông số</th>
+                        <th>Phi họng</th>
                         <th style={{ textAlign: 'right' }}>Đơn giá</th>
                         <th style={{ width: 56, textAlign: 'center' }}>Ảnh</th>
                         {isAdmin && <th style={{ width: 40 }}></th>}
@@ -284,7 +291,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                       {rows.map((row, i) =>
                         row.type === 'group' ? (
                           <tr key={'g-' + i} className="group-row">
-                            <td colSpan={isAdmin ? 6 : 5} style={{ fontWeight: 600, fontSize: 12, color: 'var(--accent)', padding: '7px 14px' }}>
+                            <td colSpan={isAdmin ? 7 : 6} style={{ fontWeight: 600, fontSize: 12, color: 'var(--accent)', padding: '7px 14px' }}>
                               📁 {row.label}
                             </td>
                           </tr>
@@ -293,6 +300,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                             <td className="td-mono">{row.data.name || '—'}</td>
                             <td className="td-spec">{row.data.spec1 ? row.data.spec1 + ' kW' : '—'}</td>
                             <td className="td-spec">{row.data.spec2 || '—'}</td>
+                            <td className="td-spec">{row.data.phiHocng ? 'φ' + row.data.phiHocng : '—'}</td>
                             <td className="td-price" style={{ textAlign: 'right' }}>{fmt(row.data.price)}</td>
                             <td style={{ textAlign: 'center', fontSize: 12 }}>
                               {(row.data.images?.length > 0) ? `📷 ${row.data.images.length}` : '—'}
@@ -311,7 +319,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                         )
                       )}
                       {rows.length === 0 && (
-                        <tr><td colSpan={isAdmin ? 6 : 5} className="empty" style={{ padding: '36px 0' }}>Không tìm thấy sản phẩm</td></tr>
+                        <tr><td colSpan={isAdmin ? 7 : 6} className="empty" style={{ padding: '36px 0' }}>Không tìm thấy sản phẩm</td></tr>
                       )}
                     </tbody>
                   </table>

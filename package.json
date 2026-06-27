@@ -1,0 +1,64 @@
+{
+  "name": "price-manager",
+  "version": "1.0.0",
+  "description": "Hệ thống quản lý bảng giá sản phẩm",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "vite build",
+    "dist": "npm run build && electron-builder --win nsis",
+    "dist:portable": "npm run build && electron-builder --win portable",
+    "release": "npm run build && electron-builder --win nsis --publish always",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "firebase": "^10.12.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
+    "concurrently": "^8.2.2",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "vite": "^5.3.1",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.tandt.pricemanager",
+    "productName": "Bảng Giá T&T",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "artifactName": "BangGia-TT-Setup-${version}.${ext}",
+    "publish": {
+      "provider": "github",
+      "owner": "GITHUB_USERNAME",
+      "repo": "price-app"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Bảng Giá T&T",
+      "installerLanguages": ["vi_VN", "en_US"],
+      "language": "1066"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "electron/main.js"
+    }
+  }
+}

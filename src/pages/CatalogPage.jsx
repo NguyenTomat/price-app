@@ -147,8 +147,8 @@ export default function CatalogPage() {
                 <button key={m} onClick={() => setAddMode(m)} style={{
                   padding: '8px 14px', fontSize: 12, fontWeight: addMode === m ? 700 : 400,
                   color: addMode === m ? 'var(--accent)' : 'var(--text2)',
+                  background: 'none', border: 'none',
                   borderBottom: addMode === m ? '2px solid var(--accent)' : '2px solid transparent',
-                  background: 'none', border: 'none', borderBottom: addMode === m ? '2px solid var(--accent)' : '2px solid transparent',
                   cursor: 'pointer', marginBottom: -1,
                 }}>{label}</button>
               ))}

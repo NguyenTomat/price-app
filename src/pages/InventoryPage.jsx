@@ -38,11 +38,11 @@ export default function InventoryPage() {
     )
   }, [inventory, search])
 
-  const stockClass = (i) => {
-    if (i.qty == null) return ''
-    if (i.qty === 0) return 'stock-zero'
-    if (i.lowStockAlert != null && i.qty <= i.lowStockAlert) return 'stock-low'
-    return 'stock-ok'
+  const stockLevel = (qty) => {
+    if (qty == null) return null
+    if (qty <= 5)  return { color: 'var(--danger)',  bg: 'rgba(192,57,43,0.10)', label: 'Thấp' }
+    if (qty <= 20) return { color: 'var(--warning)', bg: 'rgba(230,126,34,0.10)', label: 'Trung bình' }
+    return               { color: 'var(--success)', bg: 'rgba(26,125,81,0.10)',  label: 'Tốt' }
   }
 
   const startEdit = (item) => {
@@ -143,9 +143,10 @@ export default function InventoryPage() {
     reader.readAsBinaryString(file)
   }
 
-  const totalValue = inventory.reduce((sum, i) => sum + (i.qty || 0) * (i.price || 0), 0)
-  const lowCount = inventory.filter(i => i.qty != null && i.lowStockAlert != null && i.qty <= i.lowStockAlert).length
-  const zeroCount = inventory.filter(i => (i.qty ?? 0) === 0).length
+  const totalValue  = inventory.reduce((sum, i) => sum + (i.qty || 0) * (i.price || 0), 0)
+  const redCount    = inventory.filter(i => i.qty != null && i.qty <= 5).length
+  const yellowCount = inventory.filter(i => i.qty != null && i.qty > 5 && i.qty <= 20).length
+  const zeroCount   = inventory.filter(i => (i.qty ?? 0) === 0).length
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -181,12 +182,12 @@ export default function InventoryPage() {
             <div className="stat-value">{inventory.length}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Tồn kho thấp</div>
-            <div className="stat-value" style={{ color: lowCount > 0 ? 'var(--warning)' : 'var(--success)' }}>{lowCount}</div>
+            <div className="stat-label">Tồn thấp (≤5)</div>
+            <div className="stat-value" style={{ color: redCount > 0 ? 'var(--danger)' : 'var(--success)' }}>{redCount}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Hết hàng</div>
-            <div className="stat-value" style={{ color: zeroCount > 0 ? 'var(--danger)' : 'var(--success)' }}>{zeroCount}</div>
+            <div className="stat-label">Trung bình (6–20)</div>
+            <div className="stat-value" style={{ color: yellowCount > 0 ? 'var(--warning)' : 'var(--success)' }}>{yellowCount}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Tổng giá trị tồn</div>
@@ -258,9 +259,20 @@ export default function InventoryPage() {
                       <td style={{ textAlign: 'center' }}>
                         {editId === item.id
                           ? <input className="input" type="number" style={{ width: 80, textAlign: 'center', padding: '4px 6px' }} value={editForm.qty} onChange={e => setEditForm(f => ({ ...f, qty: e.target.value }))}/>
-                          : <span className={stockClass(item)} style={{ fontFamily: 'var(--mono)', fontSize: 13 }}>
-                              {item.qty ?? '—'}
-                            </span>
+                          : (() => {
+                              const lv = stockLevel(item.qty)
+                              if (!lv) return <span style={{ color: 'var(--text2)' }}>—</span>
+                              return (
+                                <span style={{
+                                  display: 'inline-block',
+                                  padding: '2px 10px', borderRadius: 20,
+                                  background: lv.bg, color: lv.color,
+                                  fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 13,
+                                }}>
+                                  {item.qty}
+                                </span>
+                              )
+                            })()
                         }
                       </td>
                       <td style={{ textAlign: 'center' }}>

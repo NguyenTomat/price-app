@@ -3,6 +3,9 @@ import { subscribeOrders, createOrder, updateOrderStatus, deleteOrder, subscribe
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import { calcOrderLine, calcShippingChenhExtra, CHENH_TIER_LABELS } from '../utils/orderCalc'
+import { exportQuoteExcel } from '../utils/quoteExport'
+import { parseMoney } from '../utils/moneyFormat'
+import MoneyInput from '../components/MoneyInput'
 
 const fmt  = n => (n != null && !isNaN(Number(n))) ? Number(n).toLocaleString('vi-VN') + ' ₫' : '—'
 const fmtN = n => (n != null && !isNaN(Number(n))) ? Number(n).toLocaleString('vi-VN') : '0'
@@ -130,10 +133,10 @@ function OrderDetailModal({ order, onClose }) {
   )
 }
 
-// ── Dòng sản phẩm ───────────────────────────────────────────────────────────
+// ── Dòng sản phẩm (compact) ─────────────────────────────────────────────────
 function OrderLineRow({ line, costPrices, onChange, onRemove, canRemove, includeVat }) {
   const cost = costPrices.find(c => c.id === line.costId)
-  const sell = parseFloat(line.sellPrice) || 0
+  const sell = parseMoney(line.sellPrice)
   const calc = calcOrderLine({ sellPrice: sell, costPrice: cost?.avgPrice ?? 0, qty: line.qty, includeVat })
 
   const [query, setQuery] = useState(cost ? cost.code : '')
@@ -141,11 +144,11 @@ function OrderLineRow({ line, costPrices, onChange, onRemove, canRemove, include
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return costPrices.slice(0, 30)
+    if (!q) return costPrices.slice(0, 25)
     return costPrices.filter(c =>
       (c.code || '').toLowerCase().includes(q) ||
       (c.name || '').toLowerCase().includes(q)
-    ).slice(0, 30)
+    ).slice(0, 25)
   }, [costPrices, query])
 
   const pick = (item) => {
@@ -155,98 +158,80 @@ function OrderLineRow({ line, costPrices, onChange, onRemove, canRemove, include
   }
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 12, marginBottom: 8, background: 'var(--surface)', position: 'relative' }}>
-      {/* Row 1: cost picker + name */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-        {/* Cost picker */}
-        <div style={{ position: 'relative' }}>
-          <label className="field-label">Giá gốc tính chênh</label>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input
-              className="input"
-              value={query}
-              placeholder="Gõ mã hoặc tên..."
-              onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange({ ...line, costId: '' }) }}
-              onFocus={() => setOpen(true)}
-              onBlur={() => setTimeout(() => setOpen(false), 150)}
-            />
-            {cost && <button type="button" className="btn sm" onClick={() => { onChange({ ...line, costId: '' }); setQuery('') }} title="Bỏ chọn">✕</button>}
+    <div className="order-line">
+      <div style={{ position: 'relative' }}>
+        <input
+          className="input"
+          style={{ padding: '6px 8px', fontSize: 12 }}
+          value={query}
+          placeholder="Mã giá gốc..."
+          onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange({ ...line, costId: '' }) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+        />
+        {open && (
+          <div className="order-cost-dropdown">
+            {filtered.map(item => (
+              <div
+                key={item.id}
+                onMouseDown={() => pick(item)}
+                style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--border)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                onMouseLeave={e => e.currentTarget.style.background = ''}
+              >
+                <span style={{ fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{item.code}</span>
+                <span style={{ color: 'var(--text2)', marginLeft: 6 }}>{fmt(item.avgPrice)}</span>
+              </div>
+            ))}
+            {filtered.length === 0 && <div style={{ padding: 8, color: 'var(--text2)', fontSize: 11 }}>Không tìm thấy</div>}
           </div>
-          {open && (
-            <div style={{
-              position: 'absolute', zIndex: 60, top: '100%', left: 0, right: 0, marginTop: 2,
-              maxHeight: 220, overflowY: 'auto', background: 'var(--surface)',
-              border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-              boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
-            }}>
-              {filtered.map(item => (
-                <div
-                  key={item.id}
-                  onMouseDown={() => pick(item)}
-                  style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--border)' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
-                  onMouseLeave={e => e.currentTarget.style.background = ''}
-                >
-                  <span style={{ fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{item.code}</span>
-                  <span style={{ color: 'var(--text2)', marginLeft: 8 }}>{item.name?.slice(0, 36)}</span>
-                  <span style={{ float: 'right', fontWeight: 600 }}>{fmt(item.avgPrice)}</span>
-                </div>
-              ))}
-              {filtered.length === 0 && <div style={{ padding: 10, color: 'var(--text2)', fontSize: 12 }}>Không tìm thấy</div>}
-            </div>
-          )}
-          {cost && (
-            <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {cost.name} · Giá vốn: <strong>{fmt(cost.avgPrice)}</strong>
-            </div>
-          )}
-        </div>
-
-        {/* Name */}
-        <div>
-          <label className="field-label">Tên / mô tả sản phẩm</label>
-          <input className="input" value={line.name} onChange={e => onChange({ ...line, name: e.target.value })} placeholder="Tên sản phẩm"/>
-        </div>
+        )}
       </div>
 
-      {/* Row 2: sell price + qty + cost readonly */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-        <div>
-          <label className="field-label">Giá bán (₫) *</label>
-          <input className="input" type="number" min="0" value={line.sellPrice}
-            onChange={e => onChange({ ...line, sellPrice: e.target.value })} placeholder="Nhập giá bán"/>
-        </div>
-        <div>
-          <label className="field-label">Số lượng</label>
-          <input className="input" type="number" min="1" value={line.qty}
-            onChange={e => onChange({ ...line, qty: Math.max(1, parseInt(e.target.value, 10) || 1) })}/>
-        </div>
-        <div>
-          <label className="field-label">Giá gốc (tự động)</label>
-          <input className="input" readOnly value={cost ? fmt(cost.avgPrice) : '—'} style={{ background: 'var(--surface2)', color: 'var(--text2)' }}/>
-        </div>
+      <input
+        className="input"
+        style={{ padding: '6px 8px', fontSize: 12 }}
+        value={line.name}
+        onChange={e => onChange({ ...line, name: e.target.value })}
+        placeholder="Tên / mô tả SP"
+      />
+
+      <MoneyInput
+        value={line.sellPrice}
+        onChange={v => onChange({ ...line, sellPrice: v })}
+        placeholder="Giá bán"
+        style={{ padding: '6px 8px', fontSize: 12 }}
+      />
+
+      <input
+        className="input"
+        type="number"
+        min="1"
+        style={{ padding: '6px 8px', fontSize: 12, textAlign: 'center' }}
+        value={line.qty}
+        onChange={e => onChange({ ...line, qty: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+      />
+
+      <div className="order-line-total">
+        {sell > 0 ? fmt(calc.sellTotal) : '—'}
       </div>
 
-      {/* Summary row */}
-      {sell > 0 && cost && (
-        <div style={{
-          marginTop: 8, padding: '6px 10px', background: 'var(--surface2)',
-          borderRadius: 'var(--radius-sm)', fontSize: 12, display: 'flex', flexWrap: 'wrap', gap: '6px 14px',
-        }}>
-          <span>Chênh: <strong>{fmt(calc.rawChenh)}</strong></span>
-          {includeVat ? (
-            calc.chenhPct > 0
-              ? <span style={{ color: 'var(--success)' }}>Bậc {calc.chenhPct}% → <strong>{fmt(calc.chenhApplied)}</strong></span>
-              : <span className="text-muted">Chênh &lt; 3tr → 0%</span>
-          ) : (
-            <span className="text-muted" style={{ fontStyle: 'italic' }}>Bật VAT để tính chênh</span>
-          )}
-          <span>Thành tiền: <strong style={{ color: 'var(--accent)' }}>{fmt(calc.sellTotal)}</strong></span>
-        </div>
-      )}
+      {canRemove ? (
+        <button type="button" className="btn xs ghost" style={{ color: 'var(--danger)', padding: '4px 6px' }} onClick={onRemove} title="Xóa dòng">✕</button>
+      ) : <span />}
 
-      {canRemove && (
-        <button className="btn xs" style={{ position: 'absolute', top: 8, right: 8, color: 'var(--danger)' }} onClick={onRemove}>✕</button>
+      {(cost || sell > 0) && (
+        <div className="order-line-meta">
+          {cost && <span>Gốc: <strong>{fmt(cost.avgPrice)}</strong></span>}
+          {sell > 0 && cost && (
+            <>
+              <span>Chênh: <strong>{fmt(calc.rawChenh)}</strong></span>
+              {includeVat && calc.chenhPct > 0 && (
+                <span style={{ color: 'var(--success)' }}>Bậc {calc.chenhPct}%: <strong>{fmt(calc.chenhApplied)}</strong></span>
+              )}
+            </>
+          )}
+        </div>
       )}
     </div>
   )
@@ -323,6 +308,20 @@ function QuickSelectPanel({ costPrices, onAdd, onClose }) {
   )
 }
 
+// ── Section helper ───────────────────────────────────────────────────────────
+function OrderSection({ num, title, action, children }) {
+  return (
+    <div className="order-section">
+      <div className="order-section-head">
+        <span className="order-section-num">{num}</span>
+        <h4>{title}</h4>
+        {action}
+      </div>
+      <div className="order-section-body">{children}</div>
+    </div>
+  )
+}
+
 // ── Form tạo đơn ─────────────────────────────────────────────────────────────
 function CreateOrderPanel({ onCreated, onCancel }) {
   const { user, profile } = useAuth()
@@ -331,6 +330,11 @@ function CreateOrderPanel({ onCreated, onCancel }) {
   const [costPrices, setCostPrices]         = useState([])
   const [lines, setLines]                   = useState([emptyLine()])
   const [customerName, setCustomerName]     = useState('')
+  const [customerAddress, setCustomerAddress] = useState('')
+  const [contactPerson, setContactPerson]   = useState('')
+  const [contactPhone, setContactPhone]     = useState('')
+  const [pumpType, setPumpType]             = useState('')
+  const [quoterPhone, setQuoterPhone]       = useState('')
   const [note, setNote]                     = useState('')
   const [shipping, setShipping]             = useState('')
   const [shippingPaidBy, setShippingPaidBy] = useState('customer')
@@ -356,7 +360,7 @@ function CreateOrderPanel({ onCreated, onCancel }) {
     })
   }
 
-  const ship = parseFloat(shipping) || 0
+  const ship = parseMoney(shipping)
 
   const orderCalc = useMemo(() => {
     const itemCalcs = lines.map(line => {
@@ -364,7 +368,7 @@ function CreateOrderPanel({ onCreated, onCancel }) {
       return {
         line, cost,
         calc: calcOrderLine({
-          sellPrice: parseFloat(line.sellPrice) || 0,
+          sellPrice: parseMoney(line.sellPrice),
           costPrice: cost?.avgPrice ?? 0,
           qty: line.qty,
           includeVat,
@@ -388,8 +392,43 @@ function CreateOrderPanel({ onCreated, onCancel }) {
     return { itemCalcs, sellTotal, costTotal, rawChenhTotal, chenhAppliedTotal, chenhBase, shippingChenhExtra, vatAmount, grandTotal, recommendedProfit, companyShipping, customerShipping }
   }, [lines, costPrices, shipping, shippingPaidBy, shippingHasVat, includeVat])
 
+  const handleExportQuote = async () => {
+    const valid = orderCalc.itemCalcs.filter(x =>
+      x.line.name.trim() && parseMoney(x.line.sellPrice) > 0
+    )
+    if (!valid.length) {
+      toast('Nhập tên và giá bán cho ít nhất 1 sản phẩm', 'error')
+      return
+    }
+    try {
+      await exportQuoteExcel({
+        customerName: customerName.trim() || 'Khách hàng',
+        customerAddress: customerAddress.trim(),
+        contactPerson: contactPerson.trim(),
+        contactPhone: contactPhone.trim(),
+        pumpType: pumpType.trim(),
+        quoterName: profile?.displayName || profile?.email || '',
+        quoterPhone: quoterPhone.trim(),
+        note: note.trim(),
+        includeVat,
+        shipping: orderCalc.customerShipping,
+        items: valid.map(({ line }) => ({
+          name: line.name.trim(),
+          qty: line.qty,
+          sellPrice: parseMoney(line.sellPrice),
+        })),
+        sellTotal: orderCalc.sellTotal,
+        vatAmount: orderCalc.vatAmount,
+        grandTotal: orderCalc.grandTotal,
+      })
+      toast('Đã xuất báo giá Excel', 'success')
+    } catch (e) {
+      toast('Lỗi xuất Excel: ' + e.message, 'error')
+    }
+  }
+
   const handleCreate = async () => {
-    const valid = orderCalc.itemCalcs.filter(x => x.line.name.trim() && parseFloat(x.line.sellPrice) > 0 && x.cost)
+    const valid = orderCalc.itemCalcs.filter(x => x.line.name.trim() && parseMoney(x.line.sellPrice) > 0 && x.cost)
     if (!valid.length) {
       toast('Nhập giá bán và chọn giá gốc tính chênh cho ít nhất 1 sản phẩm', 'error')
       return
@@ -401,9 +440,9 @@ function CreateOrderPanel({ onCreated, onCancel }) {
         costCode: cost.code,
         costId: cost.id,
         qty: line.qty,
-        sellPrice: parseFloat(line.sellPrice),
+        sellPrice: parseMoney(line.sellPrice),
         costPrice: cost.avgPrice,
-        myPrice: parseFloat(line.sellPrice),
+        myPrice: parseMoney(line.sellPrice),
         price: cost.avgPrice,
         rawChenh: calc.rawChenh,
         chenhPct: includeVat ? calc.chenhPct : 0,
@@ -427,7 +466,7 @@ function CreateOrderPanel({ onCreated, onCancel }) {
         vatPct: includeVat ? 8 : 0,
         vatAmount: orderCalc.vatAmount,
         grandTotal: orderCalc.grandTotal,
-        profit: parseFloat(userProfit) || null,
+        profit: parseMoney(userProfit) || null,
         recommendedProfit: orderCalc.recommendedProfit,
         note: note.trim(),
       })
@@ -440,153 +479,189 @@ function CreateOrderPanel({ onCreated, onCancel }) {
     }
   }
 
+  const summaryRows = [
+    ['Tiền hàng', fmt(orderCalc.sellTotal)],
+    includeVat ? ['Chênh lệch gốc', fmt(orderCalc.rawChenhTotal)] : null,
+    includeVat ? ['Chênh bậc %', fmt(orderCalc.chenhBase)] : null,
+    includeVat && orderCalc.shippingChenhExtra > 0 ? ['Chênh thêm VC 20%', `+${fmt(orderCalc.shippingChenhExtra)}`] : null,
+    includeVat ? ['Tổng chênh áp dụng', fmt(orderCalc.chenhAppliedTotal)] : null,
+    includeVat ? ['VAT 8%', fmt(orderCalc.vatAmount)] : null,
+    orderCalc.customerShipping > 0 ? ['VC (khách trả)', fmt(orderCalc.customerShipping)] : null,
+    orderCalc.companyShipping > 0 ? ['VC (mình trả)', `−${fmt(orderCalc.companyShipping)}`] : null,
+  ].filter(Boolean)
+
   return (
-    <div className="card" style={{ marginBottom: 20 }}>
-      <h3 style={{ marginBottom: 16 }}>Tạo đơn hàng mới</h3>
-
-      {/* Header fields */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <div className="field" style={{ marginBottom: 0 }}>
-          <label className="field-label">Tên khách hàng</label>
-          <input className="input" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nguyễn Văn A"/>
-        </div>
-        <div className="field" style={{ marginBottom: 0 }}>
-          <label className="field-label">VAT trên giá bán</label>
-          <select className="input select" value={includeVat ? '8' : '0'} onChange={e => setIncludeVat(e.target.value === '8')}>
-            <option value="0">Không tính VAT</option>
-            <option value="8">Có VAT 8%</option>
-          </select>
-        </div>
+    <div className="card order-create">
+      <div className="order-create-header">
+        <h3>Tạo đơn / báo giá mới</h3>
+        <button className="btn sm ghost" onClick={onCancel}>✕ Đóng</button>
       </div>
 
-      {/* Shipping */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16, padding: '12px 14px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)' }}>
-        <div className="field" style={{ marginBottom: 0 }}>
-          <label className="field-label">🚚 Phí vận chuyển (₫)</label>
-          <input className="input" type="number" min="0" value={shipping} onChange={e => setShipping(e.target.value)} placeholder="0"/>
+      <div className="order-create-body">
+        {/* ── Cột trái: form ── */}
+        <div className="order-create-main">
+
+          <OrderSection num="1" title="Thông tin khách hàng">
+            <div className="order-grid-2">
+              <div className="field span-2" style={{ marginBottom: 0 }}>
+                <label className="field-label">Tên đơn vị / khách hàng</label>
+                <input className="input" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="A Quang"/>
+              </div>
+              <div className="field span-2" style={{ marginBottom: 0 }}>
+                <label className="field-label">Địa chỉ</label>
+                <input className="input" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder="14 Lô E, TTTM Tân Thành..."/>
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">Người liên hệ</label>
+                <input className="input" value={contactPerson} onChange={e => setContactPerson(e.target.value)}/>
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">Điện thoại</label>
+                <input className="input" value={contactPhone} onChange={e => setContactPhone(e.target.value)}/>
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">Loại bơm / hàng</label>
+                <input className="input" value={pumpType} onChange={e => setPumpType(e.target.value)} placeholder="Máy con sò thổi khí..."/>
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">SĐT người báo giá</label>
+                <input className="input" value={quoterPhone} onChange={e => setQuoterPhone(e.target.value)}/>
+              </div>
+            </div>
+          </OrderSection>
+
+          <OrderSection
+            num="2"
+            title={`Sản phẩm (${lines.length})`}
+            action={
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button type="button" className="btn sm primary" onClick={() => setShowQuick(s => !s)}>
+                  {showQuick ? '✕ Đóng' : '☰ Chọn nhanh'}
+                </button>
+                <button type="button" className="btn sm" onClick={() => setLines(ls => [...ls, emptyLine()])}>+ Dòng</button>
+              </div>
+            }
+          >
+            {showQuick && costPrices.length > 0 && (
+              <QuickSelectPanel costPrices={costPrices} onAdd={addQuickItems} onClose={() => setShowQuick(false)}/>
+            )}
+
+            {costPrices.length === 0 && (
+              <div style={{ padding: '8px 10px', background: '#fffbea', border: '1px solid #fde68a', borderRadius: 8, fontSize: 12, marginBottom: 10, color: '#78350f' }}>
+                ⚠ Chưa có giá vốn — Admin import tại tab <strong>Giá vốn tính chênh</strong>
+              </div>
+            )}
+
+            <div className="order-line-header">
+              <span>Giá gốc (mã)</span>
+              <span>Tên sản phẩm</span>
+              <span>Giá bán</span>
+              <span>SL</span>
+              <span style={{ textAlign: 'right' }}>Thành tiền</span>
+              <span />
+            </div>
+
+            {lines.map(line => (
+              <OrderLineRow
+                key={line.key}
+                line={line}
+                costPrices={costPrices}
+                includeVat={includeVat}
+                onChange={data => updateLine(line.key, data)}
+                onRemove={() => setLines(ls => ls.filter(l => l.key !== line.key))}
+                canRemove={lines.length > 1}
+              />
+            ))}
+          </OrderSection>
+
+          <OrderSection num="3" title="VAT & tính chênh">
+            <div className="order-grid-2">
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">VAT trên giá bán</label>
+                <select className="input select" value={includeVat ? '8' : '0'} onChange={e => setIncludeVat(e.target.value === '8')}>
+                  <option value="0">Không tính VAT</option>
+                  <option value="8">Có VAT 8%</option>
+                </select>
+                <div className="text-sm text-muted" style={{ marginTop: 4 }}>
+                  Bật VAT để tính thuế trên báo giá và bậc chênh lệch
+                </div>
+              </div>
+              <div className="field" style={{ marginBottom: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                <label className="field-label">Gợi ý lợi nhuận</label>
+                <div style={{ padding: '8px 10px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 700, fontFamily: 'var(--mono)', color: orderCalc.recommendedProfit >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                  {orderCalc.recommendedProfit >= 0 ? '+' : ''}{fmt(orderCalc.recommendedProfit)}
+                </div>
+              </div>
+            </div>
+            {includeVat && (
+              <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text2)' }}>
+                <strong>Bậc chênh:</strong> {CHENH_TIER_LABELS.map(t => t.label).join(' · ')}
+              </div>
+            )}
+          </OrderSection>
+
+          <OrderSection num="4" title="Vận chuyển">
+            <div className="order-grid-3">
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">Phí vận chuyển</label>
+                <MoneyInput value={shipping} onChange={setShipping} placeholder="0"/>
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">Ai trả cước?</label>
+                <select className="input select" value={shippingPaidBy} onChange={e => setShippingPaidBy(e.target.value)}>
+                  <option value="customer">Khách trả</option>
+                  <option value="company">Mình trả</option>
+                </select>
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">Hóa đơn VC có VAT?</label>
+                <select className="input select" value={shippingHasVat ? 'yes' : 'no'} onChange={e => setShippingHasVat(e.target.value === 'yes')}>
+                  <option value="yes">Có VAT</option>
+                  <option value="no">Không VAT</option>
+                </select>
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">Lợi nhuận ước tính</label>
+                <MoneyInput value={userProfit} onChange={setUserProfit} placeholder="Tự nhập"/>
+              </div>
+            </div>
+            {ship > 0 && !shippingHasVat && includeVat && (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: ship >= 600_000 ? 'var(--warning)' : 'var(--text2)' }}>
+                {ship >= 600_000
+                  ? `⚠ VC không VAT ≥ 600k → chênh +20% × ${fmt(ship)}`
+                  : 'VC không VAT < 600k → chênh không đổi'}
+              </div>
+            )}
+          </OrderSection>
+
+          <OrderSection num="5" title="Ghi chú">
+            <textarea className="textarea input" value={note} onChange={e => setNote(e.target.value)} style={{ minHeight: 56, marginBottom: 0 }} placeholder="Ghi chú thêm cho đơn / báo giá..."/>
+          </OrderSection>
         </div>
-        <div className="field" style={{ marginBottom: 0 }}>
-          <label className="field-label">Ai trả cước?</label>
-          <select className="input select" value={shippingPaidBy} onChange={e => setShippingPaidBy(e.target.value)}>
-            <option value="customer">Khách trả cước</option>
-            <option value="company">Mình trả cước</option>
-          </select>
-        </div>
-        <div className="field" style={{ marginBottom: 0 }}>
-          <label className="field-label">VAT vận chuyển</label>
-          <select className="input select" value={shippingHasVat ? 'yes' : 'no'} onChange={e => setShippingHasVat(e.target.value === 'yes')}>
-            <option value="yes">Có VAT (chênh không đổi)</option>
-            <option value="no">Không VAT</option>
-          </select>
-        </div>
-        {ship > 0 && !shippingHasVat && includeVat && (
-          <div style={{ gridColumn: '1 / -1', fontSize: 12, color: ship >= 600_000 ? 'var(--warning)' : 'var(--text2)' }}>
-            {ship >= 600_000
-              ? `⚠ VC không VAT ≥ 600k → chênh cộng thêm 20% × ${fmt(ship)} = +${fmt(Math.round(ship * 0.2))}`
-              : `VC không VAT < 600k → chênh không đổi`}
+
+        {/* ── Cột phải: tóm tắt + actions ── */}
+        <aside className="order-create-aside">
+          <div className="order-summary-card">
+            {summaryRows.map(([label, val]) => (
+              <div key={label} className="order-summary-row">
+                <span>{label}</span>
+                <span>{val}</span>
+              </div>
+            ))}
+            <div className="order-summary-total">
+              <div className="label">Khách trả</div>
+              <div className="value">{fmt(orderCalc.grandTotal)}</div>
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Chenh info */}
-      {includeVat && (
-        <div style={{ marginBottom: 12, padding: '8px 12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', fontSize: 11.5, color: 'var(--text2)' }}>
-          <strong>Bậc chênh</strong>: {CHENH_TIER_LABELS.map(t => t.label).join(' · ')}
-        </div>
-      )}
-
-      {/* Products */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <label className="field-label" style={{ marginBottom: 0, flex: 1 }}>Sản phẩm ({lines.length})</label>
-        <button className="btn sm primary" onClick={() => setShowQuick(s => !s)}>
-          {showQuick ? '✕ Đóng danh sách' : '☰ Chọn nhanh nhiều SP'}
-        </button>
-        <button className="btn sm" onClick={() => setLines(ls => [...ls, emptyLine()])}>+ Thêm dòng</button>
-      </div>
-
-      {showQuick && costPrices.length > 0 && (
-        <QuickSelectPanel
-          costPrices={costPrices}
-          onAdd={addQuickItems}
-          onClose={() => setShowQuick(false)}
-        />
-      )}
-
-      {lines.map(line => (
-        <OrderLineRow
-          key={line.key}
-          line={line}
-          costPrices={costPrices}
-          includeVat={includeVat}
-          onChange={data => updateLine(line.key, data)}
-          onRemove={() => setLines(ls => ls.filter(l => l.key !== line.key))}
-          canRemove={lines.length > 1}
-        />
-      ))}
-
-      {costPrices.length === 0 && (
-        <div style={{ padding: '10px 12px', background: '#fffbea', border: '1px solid #fde68a', borderRadius: 8, fontSize: 12, marginBottom: 12, color: '#78350f' }}>
-          ⚠ Chưa có bảng giá vốn. Admin cần import Excel tại tab <strong>Giá vốn tính chênh</strong>.
-        </div>
-      )}
-
-      {/* Summary */}
-      <div style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', marginBottom: 14, fontSize: 12 }}>
-        {[
-          ['Tiền hàng', fmt(orderCalc.sellTotal)],
-          includeVat ? ['Chênh lệch gốc', fmt(orderCalc.rawChenhTotal)] : null,
-          includeVat ? ['Chênh bậc %', fmt(orderCalc.chenhBase)] : null,
-          includeVat && orderCalc.shippingChenhExtra > 0 ? [`Chênh thêm VC 20%`, `+${fmt(orderCalc.shippingChenhExtra)}`] : null,
-          includeVat ? ['Tổng chênh áp dụng', fmt(orderCalc.chenhAppliedTotal)] : null,
-          includeVat ? ['+ VAT 8%', fmt(orderCalc.vatAmount)] : null,
-          orderCalc.customerShipping > 0 ? ['+ VC (khách trả)', fmt(orderCalc.customerShipping)] : null,
-          orderCalc.companyShipping > 0 ? ['VC (mình trả)', `−${fmt(orderCalc.companyShipping)}`] : null,
-        ].filter(Boolean).map(([label, val]) => (
-          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 12px', borderBottom: '1px solid var(--border)' }}>
-            <span style={{ color: 'var(--text2)' }}>{label}</span>
-            <span style={{ fontWeight: 600, fontFamily: 'var(--mono)' }}>{val}</span>
+          <div className="order-aside-actions">
+            <button type="button" className="btn primary" onClick={handleCreate} disabled={saving}>
+              {saving ? <><span className="spinner" style={{ width: 14, height: 14 }}/> Đang lưu...</> : `✓ Tạo đơn hàng`}
+            </button>
+            <button type="button" className="btn" onClick={handleExportQuote}>📥 Xuất báo giá Excel</button>
+            <button type="button" className="btn ghost" onClick={onCancel}>Hủy</button>
           </div>
-        ))}
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--accent-s)' }}>
-          <span style={{ fontWeight: 600, color: 'var(--accent)' }}>Khách trả</span>
-          <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)', fontSize: 15 }}>{fmt(orderCalc.grandTotal)}</span>
-        </div>
-      </div>
-
-      {/* Profit input */}
-      <div style={{ marginBottom: 14, padding: '12px 14px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)' }}>
-        <label className="field-label" style={{ marginBottom: 6 }}>Lợi nhuận ước tính (tự nhập)</label>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            className="input"
-            type="number"
-            style={{ width: 200 }}
-            placeholder="Nhập lợi nhuận..."
-            value={userProfit}
-            onChange={e => setUserProfit(e.target.value)}
-          />
-          <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-            Gợi ý:{' '}
-            <strong style={{ color: orderCalc.recommendedProfit >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-              {orderCalc.recommendedProfit >= 0 ? '+' : ''}{fmt(orderCalc.recommendedProfit)}
-            </strong>
-            <span style={{ marginLeft: 6, color: 'var(--text2)', fontSize: 11 }}>
-              (giá bán − VC mình trả − chênh − giá gốc)
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="field">
-        <label className="field-label">Ghi chú</label>
-        <textarea className="textarea input" value={note} onChange={e => setNote(e.target.value)} style={{ minHeight: 54 }}/>
-      </div>
-
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn" onClick={onCancel}>Hủy</button>
-        <button className="btn primary" onClick={handleCreate} disabled={saving}>
-          {saving ? <><span className="spinner" style={{ width: 14, height: 14 }}/> Đang lưu...</> : `✓ Tạo đơn · ${fmt(orderCalc.grandTotal)}`}
-        </button>
+        </aside>
       </div>
     </div>
   )

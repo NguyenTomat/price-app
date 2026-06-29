@@ -1,6 +1,6 @@
 {
   "name": "price-manager",
-  "version": "1.1.0",
+  "version": "1.3.0",
   "description": "Hệ thống quản lý bảng giá sản phẩm",
   "main": "electron/main.js",
   "scripts": {
@@ -9,10 +9,13 @@
     "dist": "npm run build && electron-builder --win nsis",
     "dist:portable": "npm run build && electron-builder --win portable",
     "release": "npm run build && electron-builder --win nsis --publish always",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate:template": "node scripts/generate-quote-template.js",
+    "extract:logo": "node scripts/extract-company-logo.js"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
+    "exceljs": "^4.4.0",
     "firebase": "^10.12.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -50,7 +53,10 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Bảng Giá T&T",
-      "installerLanguages": ["vi_VN", "en_US"],
+      "installerLanguages": [
+        "vi_VN",
+        "en_US"
+      ],
       "language": "1066"
     },
     "files": [

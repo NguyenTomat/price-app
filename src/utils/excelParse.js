@@ -73,12 +73,27 @@ export const isGroupHeader = (row, { qtyCol = null } = {}) => {
   const name = (row[1] || '').toString().trim()
   const priceRaw = row[4]
   if (!name || shouldSkipName(name)) return false
+
+  // Dòng có STT số → sản phẩm, không phải tiêu đề nhóm
+  const sttRaw = row[0]
+  if (sttRaw != null && sttRaw !== '') {
+    const stt = parseNum(sttRaw)
+    if (!isNaN(stt) && stt > 0) return false
+  }
+
+  // Có thông số cột C/D → sản phẩm (tránh nhầm tên SP làm nhóm)
+  const spec1 = (row[2] || '').toString().trim()
+  const spec2 = (row[3] || '').toString().trim()
+  if (spec1 || spec2) return false
+
   const hasPrice = !isNaN(parseNum(priceRaw)) && parseNum(priceRaw) > 0
   if (hasPrice) return false
   if (qtyCol != null) {
     const qtyRaw = row[qtyCol]
     if (qtyRaw != null && qtyRaw !== '' && !isNaN(parseNum(qtyRaw))) return false
   }
+  const phiRaw = qtyCol == null ? row[5] : null
+  if (phiRaw != null && phiRaw !== '' && String(phiRaw).trim()) return false
   return true
 }
 

@@ -1,11 +1,14 @@
 import { useState, useRef } from 'react'
 import { useToast } from './Toast'
 import ModalPortal from './ModalPortal'
+import { copyOrSaveImage, downloadImage } from '../utils/imageClipboard'
 
 export default function ImageGallery({ images = [], onChange, readOnly = false }) {
   const [lightbox, setLightbox] = useState(null)
   const fileRef = useRef()
   const toast = useToast()
+
+  const imageFilename = (idx) => `san-pham-${idx + 1}.png`
 
   const compressImage = (fileOrBlob) =>
     new Promise((resolve, reject) => {
@@ -52,17 +55,16 @@ export default function ImageGallery({ images = [], onChange, readOnly = false }
     else if (lightbox != null && lightbox > idx) setLightbox(lightbox - 1)
   }
 
-  const handleCopy = async (src) => {
+  const handleCopy = (src, idx) => {
+    copyOrSaveImage(src, imageFilename(idx), toast)
+  }
+
+  const handleSave = async (src, idx) => {
     try {
-      const res = await fetch(src)
-      const blob = await res.blob()
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob })
-      ])
-      toast('Đã copy ảnh vào clipboard', 'success')
-    } catch {
-      await navigator.clipboard.writeText(src)
-      toast('Đã copy đường dẫn ảnh', 'default')
+      await downloadImage(src, imageFilename(idx))
+      toast('Đã lưu ảnh', 'success')
+    } catch (e) {
+      if (e?.message !== 'canceled') toast('Lỗi lưu ảnh', 'error')
     }
   }
 
@@ -115,16 +117,24 @@ export default function ImageGallery({ images = [], onChange, readOnly = false }
             <div className="img-actions">
               <button
                 className="btn sm"
-                style={{ background: 'rgba(255,255,255,0.9)', color: '#000', padding: '4px 8px', fontSize: 11 }}
-                onClick={e => { e.stopPropagation(); handleCopy(src) }}
-                title="Copy ảnh"
+                style={{ background: 'rgba(255,255,255,0.9)', color: '#000', padding: '4px 6px', fontSize: 10 }}
+                onClick={e => { e.stopPropagation(); handleCopy(src, idx) }}
+                title="Copy ảnh để dán"
               >
-                📋 Copy
+                📋
+              </button>
+              <button
+                className="btn sm"
+                style={{ background: 'rgba(255,255,255,0.9)', color: '#000', padding: '4px 6px', fontSize: 10 }}
+                onClick={e => { e.stopPropagation(); handleSave(src, idx) }}
+                title="Lưu ảnh về máy"
+              >
+                💾
               </button>
               {!readOnly && (
                 <button
                   className="btn sm danger"
-                  style={{ padding: '4px 8px', fontSize: 11 }}
+                  style={{ padding: '4px 6px', fontSize: 10 }}
                   onClick={e => { e.stopPropagation(); handleRemove(idx) }}
                   title="Xóa"
                 >
@@ -194,8 +204,11 @@ export default function ImageGallery({ images = [], onChange, readOnly = false }
               </div>
               <div className="img-lightbox-bar">
                 <div className="img-lightbox-actions">
-                  <button type="button" className="btn sm" onClick={() => handleCopy(images[lightbox])}>
+                  <button type="button" className="btn sm" onClick={() => handleCopy(images[lightbox], lightbox)}>
                     📋 Copy
+                  </button>
+                  <button type="button" className="btn sm" onClick={() => handleSave(images[lightbox], lightbox)}>
+                    💾 Lưu ảnh
                   </button>
                   {!readOnly && (
                     <button type="button" className="btn sm danger" onClick={() => handleRemove(lightbox)}>

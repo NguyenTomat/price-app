@@ -6,3 +6,8 @@ contextBridge.exposeInMainWorld('electronUpdater', {
   install:  () => ipcRenderer.send('update-install'),
   check:    () => ipcRenderer.send('update-check'),
 })
+
+contextBridge.exposeInMainWorld('electronClipboard', {
+  copyImage: (dataUrl) => ipcRenderer.invoke('clipboard-copy-image', dataUrl),
+  saveImage: (dataUrl, name) => ipcRenderer.invoke('clipboard-save-image', dataUrl, name),
+})

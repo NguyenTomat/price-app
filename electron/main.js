@@ -1,6 +1,7 @@
-const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron')
+const { app, BrowserWindow, shell, ipcMain, dialog, clipboard, nativeImage } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
+const fs = require('fs')
 const isDev = !app.isPackaged
 
 // ── Logging ──────────────────────────────────────────────────────────────────
@@ -41,6 +42,42 @@ function createWindow() {
   mainWin.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
+  })
+}
+
+// ── Clipboard / lưu ảnh (dev + production) ───────────────────────────────────
+function setupClipboardIpc() {
+  ipcMain.handle('clipboard-copy-image', (_e, dataUrl) => {
+    try {
+      const img = nativeImage.createFromDataURL(dataUrl)
+      if (img.isEmpty()) return { ok: false }
+      clipboard.writeImage(img)
+      return { ok: true }
+    } catch {
+      return { ok: false }
+    }
+  })
+
+  ipcMain.handle('clipboard-save-image', async (_e, dataUrl, defaultName) => {
+    try {
+      const img = nativeImage.createFromDataURL(dataUrl)
+      if (img.isEmpty()) return { ok: false }
+      const { canceled, filePath } = await dialog.showSaveDialog(mainWin, {
+        title: 'Lưu ảnh',
+        defaultPath: defaultName || 'san-pham.png',
+        filters: [
+          { name: 'PNG', extensions: ['png'] },
+          { name: 'JPEG', extensions: ['jpg', 'jpeg'] },
+        ],
+      })
+      if (canceled || !filePath) return { ok: false, canceled: true }
+      const ext = path.extname(filePath).toLowerCase()
+      const buf = ext === '.jpg' || ext === '.jpeg' ? img.toJPEG(92) : img.toPNG()
+      fs.writeFileSync(filePath, buf)
+      return { ok: true }
+    } catch {
+      return { ok: false }
+    }
   })
 }
 
@@ -104,6 +141,7 @@ function setupAutoUpdater() {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
+  setupClipboardIpc()
   createWindow()
   setupAutoUpdater()
 })

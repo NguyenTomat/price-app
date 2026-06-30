@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import { parseCostPriceFile } from '../utils/costPriceParse'
 import { writeJsonWorkbook } from '../utils/excelParse'
+import MobileTableWrap from '../components/MobileTableWrap'
 
 const fmt = n => n != null && !isNaN(n) ? Number(n).toLocaleString('vi-VN') + ' ₫' : '—'
 
@@ -105,7 +106,7 @@ export default function CostPricesPage() {
               {isAdmin && <div className="text-muted text-sm" style={{ marginTop: 6 }}>Import file Excel giá vốn để bắt đầu</div>}
             </div>
           ) : (
-            <div className="table-wrap">
+            <MobileTableWrap>
               <table>
                 <thead>
                   <tr>
@@ -126,7 +127,7 @@ export default function CostPricesPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </MobileTableWrap>
           )}
         </div>
       </div>

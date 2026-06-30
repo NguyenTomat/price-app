@@ -6,6 +6,7 @@ import { calcOrderLine, calcShippingChenhExtra, CHENH_TIER_LABELS } from '../uti
 import { exportQuoteExcel } from '../utils/quoteExport'
 import { parseMoney } from '../utils/moneyFormat'
 import MoneyInput from '../components/MoneyInput'
+import MobileTableWrap from '../components/MobileTableWrap'
 
 const fmt  = n => (n != null && !isNaN(Number(n))) ? Number(n).toLocaleString('vi-VN') + ' ₫' : '—'
 const fmtN = n => (n != null && !isNaN(Number(n))) ? Number(n).toLocaleString('vi-VN') : '0'
@@ -49,7 +50,7 @@ function OrderDetailModal({ order, onClose }) {
           <button className="btn ghost sm" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
-          <div className="table-wrap" style={{ marginBottom: 16 }}>
+          <MobileTableWrap style={{ marginBottom: 16 }}>
             <table>
               <thead>
                 <tr>
@@ -63,8 +64,8 @@ function OrderDetailModal({ order, onClose }) {
               <tbody>
                 {(order.items || []).map((item, i) => (
                   <tr key={i}>
-                    <td style={{ fontSize: 12 }}>
-                      <div style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{item.name}</div>
+                    <td className="td-mono" style={{ fontSize: 12 }}>
+                      <div>{item.name}</div>
                       {item.costCode && <div className="text-muted" style={{ fontSize: 10 }}>{item.costCode}</div>}
                     </td>
                     <td style={{ textAlign: 'center', fontWeight: 600 }}>{item.qty}</td>
@@ -82,7 +83,7 @@ function OrderDetailModal({ order, onClose }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </MobileTableWrap>
 
           <div className="calc-result" style={{ marginBottom: 16 }}>
             {[
@@ -772,7 +773,7 @@ export default function OrdersPage() {
               <div>Chưa có đơn hàng nào</div>
             </div>
           ) : (
-            <div className="table-wrap">
+            <MobileTableWrap>
               <table>
                 <thead>
                   <tr>
@@ -791,8 +792,8 @@ export default function OrdersPage() {
                     return (
                       <tr key={o.id} onClick={() => setDetailOrder(o)}>
                         <td style={{ fontWeight: 500 }}>{o.userName || '—'}</td>
-                        <td className="text-muted text-sm">
-                          {o.items?.length ?? 0} SP{o.items?.[0] ? ` · ${o.items[0].name?.slice(0, 16)}` : ''}
+                        <td className="td-mono text-sm">
+                          {o.items?.length ?? 0} SP{o.items?.[0] ? ` · ${o.items[0].name}` : ''}
                         </td>
                         <td className="td-price" style={{ textAlign: 'right' }}>{fmt(o.total)}</td>
                         <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--accent)' }}>{fmt(o.grandTotal ?? o.total)}</td>
@@ -818,7 +819,7 @@ export default function OrdersPage() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </MobileTableWrap>
           )}
         </div>
       </div>

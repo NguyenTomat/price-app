@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { subscribePriceLists, subscribeProducts, updateProduct, updateProductImages, addProduct, deleteProduct, deletePriceList } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import ProductModal from '../components/ProductModal'
+import MobileTableWrap from '../components/MobileTableWrap'
 
 // ✅ Sửa lỗi định dạng số: đảm bảo parse đúng, tránh NaN hiển thị
 const fmt = (n) => {
@@ -25,6 +26,67 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState({ name: '', group: '', spec1: '', spec2: '', phiHocng: '', price: '' })
   const [addSaving, setAddSaving] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [listPanelOpen, setListPanelOpen] = useState(true)
+  const touchRef = useRef(null)
+  const mainRef = useRef(null)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const sync = () => setIsMobile(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  useEffect(() => {
+    if (isMobile && !selectedList) setListPanelOpen(true)
+  }, [isMobile, selectedList])
+
+  const selectList = useCallback((l) => {
+    setSelectedList(l)
+    setSearch('')
+    setGroupFilter('')
+    if (isMobile) setListPanelOpen(false)
+  }, [isMobile])
+
+  const closeListPanel = useCallback(() => {
+    if (isMobile) setListPanelOpen(false)
+  }, [isMobile])
+
+  const onPanelTouchStart = (e) => {
+    touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, zone: 'panel' }
+  }
+
+  const onPanelTouchMove = (e) => {
+    const t = touchRef.current
+    if (!t || t.zone !== 'panel' || !isMobile || !listPanelOpen) return
+    const dx = e.touches[0].clientX - t.x
+    const dy = e.touches[0].clientY - t.y
+    if (Math.abs(dx) > Math.abs(dy) && dx < -50) {
+      closeListPanel()
+      touchRef.current = null
+    }
+  }
+
+  const onMainTouchStart = (e) => {
+    if (!isMobile || listPanelOpen) return
+    const x = e.touches[0].clientX
+    if (x <= 28) touchRef.current = { x, y: e.touches[0].clientY, zone: 'edge' }
+  }
+
+  const onMainTouchMove = (e) => {
+    const t = touchRef.current
+    if (!t || t.zone !== 'edge' || !isMobile || listPanelOpen) return
+    const dx = e.touches[0].clientX - t.x
+    const dy = e.touches[0].clientY - t.y
+    if (Math.abs(dx) > Math.abs(dy) && dx > 50) {
+      setListPanelOpen(true)
+      touchRef.current = null
+    }
+  }
+
+  const onTouchEnd = () => { touchRef.current = null }
 
   // Realtime price lists
   useEffect(() => {
@@ -146,33 +208,42 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
   }
 
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <div className="price-lists-layout">
+      {isMobile && listPanelOpen && (
+        <div
+          className="price-lists-sidebar-backdrop open"
+          onClick={closeListPanel}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar list */}
-      <div style={{
-        width: 220, minWidth: 220, borderRight: '1px solid var(--border)',
-        background: 'var(--surface)', overflowY: 'auto', padding: '12px 8px',
-        display: 'flex', flexDirection: 'column', gap: 2,
-      }}>
-        <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text2)', padding: '4px 8px 8px', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+      <div
+        className={`price-lists-sidebar ${isMobile && listPanelOpen ? 'open' : ''}`}
+        onTouchStart={onPanelTouchStart}
+        onTouchMove={onPanelTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        {isMobile && (
+          <div className="price-lists-sidebar-head">
+            <span>Chọn bảng giá</span>
+            <button type="button" className="mobile-icon-btn" onClick={closeListPanel} aria-label="Đóng">✕</button>
+          </div>
+        )}
+        <div className="price-lists-sidebar-label">
           Bảng giá
         </div>
         {lists.map(l => (
           <div
             key={l.id}
-            onClick={() => { setSelectedList(l); setSearch(''); setGroupFilter('') }}
-            style={{
-              padding: '9px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-              background: selectedList?.id === l.id ? 'var(--accent-s)' : 'transparent',
-              color: selectedList?.id === l.id ? 'var(--accent)' : 'var(--text)',
-              fontWeight: selectedList?.id === l.id ? 600 : 400,
-              fontSize: 13, transition: 'background 0.1s',
-            }}
+            onClick={() => selectList(l)}
+            className={`price-lists-item ${selectedList?.id === l.id ? 'active' : ''}`}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ opacity: .7 }}>📄</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
+              <span className="price-lists-item-name">{l.name}</span>
             </div>
-            {l.category && <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2, paddingLeft: 18 }}>{l.category}</div>}
+            {l.category && <div className="price-lists-item-cat">{l.category}</div>}
           </div>
         ))}
         {lists.length === 0 && (
@@ -180,10 +251,19 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
             {isAdmin ? 'Chưa có bảng giá. Vào Import để tạo.' : 'Chưa có bảng giá.'}
           </div>
         )}
+        {isMobile && listPanelOpen && (
+          <div className="price-lists-swipe-hint">← Vuốt sang trái để đóng</div>
+        )}
       </div>
 
       {/* Main content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div
+        ref={mainRef}
+        className="price-lists-main"
+        onTouchStart={onMainTouchStart}
+        onTouchMove={onMainTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
         {!selectedList ? (
           <div className="empty" style={{ margin: 'auto' }}>
             <div style={{ fontSize: 44, marginBottom: 12 }}>📊</div>
@@ -193,6 +273,16 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
         ) : (
           <>
             <div className="main-header" style={{ flexWrap: 'wrap', gap: 8 }}>
+              {isMobile && (
+                <button
+                  type="button"
+                  className="btn sm"
+                  onClick={() => setListPanelOpen(true)}
+                  style={{ flexShrink: 0 }}
+                >
+                  📄 Danh sách
+                </button>
+              )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h2 style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedList.name}</h2>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
@@ -274,7 +364,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
               {loadingList ? (
                 <div className="empty"><span className="spinner"/></div>
               ) : (
-                <div className="table-wrap">
+                <MobileTableWrap>
                   <table>
                     <thead>
                       <tr>
@@ -323,7 +413,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                       )}
                     </tbody>
                   </table>
-                </div>
+                </MobileTableWrap>
               )}
             </div>
           </>

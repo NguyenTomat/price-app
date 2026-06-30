@@ -3,6 +3,8 @@ import { subscribePriceLists, getProducts, getUserPriceLists, saveUserPriceList,
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import { calcPriceBreakdown } from '../utils/priceCalc'
+import MobileTableWrap from '../components/MobileTableWrap'
+import ProductImagesModal from '../components/ProductImagesModal'
 
 // ✅ Fixed formatter — parse properly, no NaN display
 const fmt = (n) => {
@@ -30,6 +32,8 @@ export default function MyPricesPage() {
   const [viewingSaved, setViewingSaved] = useState(null)
   const [editingSavedId, setEditingSavedId] = useState(null)
   const [editingSavedLabel, setEditingSavedLabel] = useState('')
+  const [imageView, setImageView] = useState(null)
+  const [savedSourceProducts, setSavedSourceProducts] = useState([])
 
   // Realtime price lists
   useEffect(() => {
@@ -38,6 +42,51 @@ export default function MyPricesPage() {
   }, [])
 
   useEffect(() => { loadSaved() }, [])
+
+  useEffect(() => {
+    if (!viewingSaved?.listId) {
+      setSavedSourceProducts([])
+      return
+    }
+    let cancelled = false
+    getProducts(viewingSaved.listId)
+      .then(prods => { if (!cancelled) setSavedSourceProducts(prods) })
+      .catch(() => { if (!cancelled) setSavedSourceProducts([]) })
+    return () => { cancelled = true }
+  }, [viewingSaved?.listId])
+
+  const getSavedRowImages = (row) => {
+    if (row.productId) {
+      const p = savedSourceProducts.find(x => x.id === row.productId)
+      if (p?.images?.length) return p.images
+    }
+    const byName = savedSourceProducts.find(x => x.name === row.name)
+    return byName?.images || []
+  }
+
+  const openImages = (name, images) => {
+    setImageView({ name, images: images || [] })
+  }
+
+  const renderImageCell = (name, images) => {
+    const count = images?.length || 0
+    return (
+      <td style={{ textAlign: 'center' }}>
+        {count > 0 ? (
+          <button
+            type="button"
+            className="btn xs ghost"
+            onClick={() => openImages(name, images)}
+            title="Xem ảnh"
+          >
+            📷 {count}
+          </button>
+        ) : (
+          <span className="text-muted text-sm">—</span>
+        )}
+      </td>
+    )
+  }
 
   const loadSaved = async () => {
     const s = await getUserPriceLists(user.uid)
@@ -79,6 +128,7 @@ export default function MyPricesPage() {
   const handleSave = async () => {
     if (!selectedList || !filtered.length) return
     const rows = filtered.map(p => ({
+      productId: p.id,
       name: p.name, group: p.group, spec1: p.spec1, spec2: p.spec2,
       originalPrice: p.price, myPrice: calcPrice(p.price),
     }))
@@ -242,7 +292,7 @@ export default function MyPricesPage() {
               <button className="btn sm" onClick={() => exportCSV(viewingSaved)}>📥 Xuất CSV</button>
               <button className="btn sm" onClick={() => setViewingSaved(null)}>✕ Đóng</button>
             </div>
-            <div className="table-wrap">
+            <MobileTableWrap>
               <table>
                 <thead>
                   <tr>
@@ -253,6 +303,7 @@ export default function MyPricesPage() {
                     <th style={{ textAlign: 'right' }}>Giá gốc</th>
                     <th style={{ textAlign: 'right', color: 'var(--accent)' }}>Giá bán</th>
                     <th style={{ textAlign: 'right' }}>Lợi nhuận</th>
+                    <th style={{ textAlign: 'center', width: 56 }}>Ảnh</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -276,15 +327,16 @@ export default function MyPricesPage() {
                         }}>
                           {profit != null ? (profit > 0 ? '+' : '') + fmt(profit) : '—'}
                         </td>
+                        {renderImageCell(r.name, getSavedRowImages(r))}
                       </tr>
                     )
                   })}
                   {!viewingSaved.rows?.length && (
-                    <tr><td colSpan={7} className="empty" style={{ padding: '32px 0' }}>Không có dữ liệu</td></tr>
+                    <tr><td colSpan={8} className="empty" style={{ padding: '32px 0' }}>Không có dữ liệu</td></tr>
                   )}
                 </tbody>
               </table>
-            </div>
+            </MobileTableWrap>
           </div>
         )}
 
@@ -376,7 +428,7 @@ export default function MyPricesPage() {
               {loadingProds ? (
                 <div className="empty"><span className="spinner"/></div>
               ) : (
-                <div className="table-wrap">
+                <MobileTableWrap>
                   <table>
                     <thead>
                       <tr>
@@ -386,6 +438,7 @@ export default function MyPricesPage() {
                         <th style={{ textAlign: 'right' }}>Giá gốc</th>
                         <th style={{ textAlign: 'right', color: 'var(--accent)' }}>Giá bán</th>
                         <th style={{ textAlign: 'right' }}>Lợi nhuận</th>
+                        <th style={{ textAlign: 'center', width: 56 }}>Ảnh</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -406,20 +459,29 @@ export default function MyPricesPage() {
                             }}>
                               {profit != null ? (profit > 0 ? '+' : '') + fmt(profit) : '—'}
                             </td>
+                            {renderImageCell(p.name, p.images)}
                           </tr>
                         )
                       })}
                       {filtered.length === 0 && (
-                        <tr><td colSpan={6} className="empty" style={{ padding: '32px 0' }}>Không có sản phẩm có giá</td></tr>
+                        <tr><td colSpan={7} className="empty" style={{ padding: '32px 0' }}>Không có sản phẩm có giá</td></tr>
                       )}
                     </tbody>
                   </table>
-                </div>
+                </MobileTableWrap>
               )}
             </div>
           </>
         )}
       </div>
+
+      {imageView && (
+        <ProductImagesModal
+          productName={imageView.name}
+          images={imageView.images}
+          onClose={() => setImageView(null)}
+        />
+      )}
     </div>
   )
 }

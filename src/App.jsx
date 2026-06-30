@@ -15,6 +15,8 @@ import InventoryPage from './pages/InventoryPage'
 import CatalogPage from './pages/CatalogPage'
 import Spotlight from './components/Spotlight'
 import UpdateBanner from './components/UpdateBanner'
+import PwaUpdateBanner from './components/PwaUpdateBanner'
+import PwaInstallPrompt from './components/PwaInstallPrompt'
 import { getPriceLists, getProducts } from './firebase/firebase'
 import './index.css'
 
@@ -106,6 +108,8 @@ export default function App() {
         <AuthProvider>
           <AppContent/>
           <UpdateBanner/>
+          <PwaUpdateBanner/>
+          <PwaInstallPrompt/>
         </AuthProvider>
       </ToastProvider>
     </ThemeProvider>

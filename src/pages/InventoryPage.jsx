@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { subscribeInventory, upsertInventoryItem, bulkUpsertInventory, getPriceLists, getProducts } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
+import MobileTableWrap from '../components/MobileTableWrap'
 import {
   parseInventorySheet, readWorkbookSheet,
   inventoryToTonKhoRows, writeAoaWorkbook, writeJsonWorkbook,
@@ -228,7 +229,7 @@ export default function InventoryPage() {
               </div>
             </div>
           ) : (
-            <div className="table-wrap">
+            <MobileTableWrap>
               <table>
                 <thead>
                   <tr>
@@ -245,7 +246,7 @@ export default function InventoryPage() {
                 <tbody>
                   {filtered.map(item => (
                     <tr key={item.id} style={{ cursor: 'default' }}>
-                      <td className="td-mono" style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <td className="td-mono">
                         {item.productName || '—'}
                       </td>
                       <td className="td-spec">{item.group || '—'}</td>
@@ -297,7 +298,7 @@ export default function InventoryPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </MobileTableWrap>
           )}
         </div>
 

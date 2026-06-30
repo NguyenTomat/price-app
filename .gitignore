@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-electron/
+.firebase/
 .env
 .env.local
 *.log

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getDashboardStats, subscribeOrders } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
+import MobileTableWrap from '../components/MobileTableWrap'
 
 const fmt = n => n != null && !isNaN(n)
   ? Number(n).toLocaleString('vi-VN') + ' ₫'
@@ -131,7 +132,7 @@ export default function DashboardPage({ setPage }) {
               <div className="text-sm text-muted" style={{ marginTop: 4 }}>Đơn bán sẽ xuất hiện tại đây</div>
             </div>
           ) : (
-            <div className="table-wrap">
+            <MobileTableWrap>
               <table>
                 <thead>
                   <tr>
@@ -148,7 +149,7 @@ export default function DashboardPage({ setPage }) {
                     return (
                       <tr key={o.id} style={{ cursor: 'default' }}>
                         <td style={{ fontWeight: 500 }}>{o.userName || o.uid?.slice(0, 8) || '—'}</td>
-                        <td className="text-muted text-sm">
+                        <td className="text-sm text-muted">
                           {o.items?.length ?? 0} sản phẩm
                           {o.items?.[0] ? ` · ${o.items[0].name}` : ''}
                           {o.items?.length > 1 ? ` +${o.items.length - 1}` : ''}
@@ -165,7 +166,7 @@ export default function DashboardPage({ setPage }) {
                   })}
                 </tbody>
               </table>
-            </div>
+            </MobileTableWrap>
           )}
         </div>
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ImageGallery from './ImageGallery'
 import { useAuth } from '../hooks/useAuth'
+import ModalPortal from './ModalPortal'
 
 // ✅ Fixed: parse đúng mọi kiểu đầu vào
 const fmt = (n) => {
@@ -56,16 +57,24 @@ export default function ProductModal({ product, onClose, onSave, readOnly = fals
   const displayPrice = price !== '' && !isNaN(parseFloat(price)) ? parseFloat(price) : product.price
 
   return (
-    <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 580 }}>
+    <ModalPortal>
+    <div className="overlay overlay-modal" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal modal-product" style={{ maxWidth: 580 }}>
         <div className="modal-header">
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <h2 style={{ fontFamily: 'var(--mono)', fontSize: 13.5, letterSpacing: '.02em' }}>
               {product.name || 'Sản phẩm mới'}
             </h2>
             {product.group && <div className="text-sm text-muted" style={{ marginTop: 2 }}>{product.group}</div>}
           </div>
-          <button className="btn ghost sm" onClick={onClose}>✕</button>
+          <div className="modal-header-actions">
+            {(canEditInfo || canEditImages) && (
+              <button type="button" className="btn sm primary modal-header-save" onClick={handleSave}>
+                💾 Lưu
+              </button>
+            )}
+            <button type="button" className="btn ghost sm" onClick={onClose}>✕</button>
+          </div>
         </div>
 
         <div className="modal-body">
@@ -210,5 +219,6 @@ export default function ProductModal({ product, onClose, onSave, readOnly = fals
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }

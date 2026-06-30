@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { createPriceList, saveProducts } from '../firebase/firebase'
 import { useToast } from '../components/Toast'
 import { parseFcmFromBinary } from '../utils/excelParse'
+import MobileTableWrap from '../components/MobileTableWrap'
 
 export default function AdminImportPage() {
   const toast = useToast()
@@ -232,7 +233,7 @@ export default function AdminImportPage() {
                 {groups.map(g => <span key={g} className="tag">{g}</span>)}
               </div>
 
-              <div className="table-wrap" style={{ maxHeight: 480, overflowY: 'auto' }}>
+              <MobileTableWrap style={{ maxHeight: 480, overflowY: 'auto' }}>
                 <table>
                   <thead>
                     <tr>
@@ -290,7 +291,7 @@ export default function AdminImportPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </MobileTableWrap>
             </div>
           </>
         )}

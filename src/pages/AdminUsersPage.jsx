@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { db, adminCreateUser } from '../firebase/firebase'
 import { collection, getDocs, setDoc, doc } from 'firebase/firestore'
 import { useToast } from '../components/Toast'
+import MobileTableWrap from '../components/MobileTableWrap'
 
 const FIREBASE_ERRORS = {
   'auth/email-already-in-use': 'Email này đã được sử dụng',
@@ -137,7 +138,7 @@ export default function AdminUsersPage() {
               <div className="text-sm text-muted">Kiểm tra collection "users" trong Firebase Console</div>
             </div>
           ) : (
-            <div className="table-wrap">
+            <MobileTableWrap>
               <table>
                 <thead>
                   <tr>
@@ -170,7 +171,7 @@ export default function AdminUsersPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </MobileTableWrap>
           )}
         </div>
 

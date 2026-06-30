@@ -1,14 +1,12 @@
 import { useState, useRef } from 'react'
 import { useToast } from './Toast'
+import ModalPortal from './ModalPortal'
 
 export default function ImageGallery({ images = [], onChange, readOnly = false }) {
-  const [lightbox, setLightbox] = useState(null) // index of full-screen image
+  const [lightbox, setLightbox] = useState(null)
   const fileRef = useRef()
   const toast = useToast()
 
-  // Nén ảnh: thu về tối đa 1200px cạnh dài + JPEG quality 0.72.
-  // Mục đích: data URL nhỏ gọn, tránh vượt giới hạn 1MB/document của Firestore
-  // (ảnh chụp gốc thường 2-5MB -> lưu thẳng sẽ làm "Lỗi lưu sản phẩm").
   const compressImage = (fileOrBlob) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -51,11 +49,11 @@ export default function ImageGallery({ images = [], onChange, readOnly = false }
     const next = images.filter((_, i) => i !== idx)
     onChange(next)
     if (lightbox === idx) setLightbox(null)
+    else if (lightbox != null && lightbox > idx) setLightbox(lightbox - 1)
   }
 
   const handleCopy = async (src) => {
     try {
-      // Try Clipboard API (works in Electron)
       const res = await fetch(src)
       const blob = await res.blob()
       await navigator.clipboard.write([
@@ -63,7 +61,6 @@ export default function ImageGallery({ images = [], onChange, readOnly = false }
       ])
       toast('Đã copy ảnh vào clipboard', 'success')
     } catch {
-      // Fallback: copy URL/dataURL as text
       await navigator.clipboard.writeText(src)
       toast('Đã copy đường dẫn ảnh', 'default')
     }
@@ -89,12 +86,14 @@ export default function ImageGallery({ images = [], onChange, readOnly = false }
     }
   }
 
+  const closeLightbox = () => setLightbox(null)
+
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+      <div className="img-gallery-toolbar">
         <span style={{ fontSize: 13, fontWeight: 500 }}>Hình ảnh ({images.length})</span>
         {!readOnly && (
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+          <div className="img-gallery-actions">
             <button className="btn sm" onClick={handlePaste} title="Paste ảnh từ clipboard (Ctrl+V)">
               📋 Paste
             </button>
@@ -146,52 +145,74 @@ export default function ImageGallery({ images = [], onChange, readOnly = false }
         )}
       </div>
 
-      {/* Lightbox */}
       {lightbox !== null && (
-        <div
-          className="overlay"
-          style={{ background: 'rgba(0,0,0,0.85)', cursor: 'zoom-out' }}
-          onClick={() => setLightbox(null)}
-        >
-          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '85vh' }}
-               onClick={e => e.stopPropagation()}>
-            <img
-              src={images[lightbox]}
-              alt={`Ảnh ${lightbox + 1}`}
-              style={{ maxWidth: '90vw', maxHeight: '80vh', objectFit: 'contain', borderRadius: 8 }}
-            />
-            {/* Nav arrows */}
+        <ModalPortal lockScroll>
+          <div
+            className="overlay img-lightbox-overlay"
+            onClick={closeLightbox}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Xem ảnh ${lightbox + 1}`}
+          >
+            <button
+              type="button"
+              className="img-lightbox-close"
+              onClick={closeLightbox}
+              aria-label="Đóng"
+            >
+              ✕
+            </button>
+
             {lightbox > 0 && (
-              <button className="btn" onClick={() => setLightbox(l => l - 1)}
-                style={{ position: 'absolute', left: -50, top: '50%', transform: 'translateY(-50%)',
-                         background: 'rgba(255,255,255,0.8)', padding: '8px 12px' }}>
+              <button
+                type="button"
+                className="img-lightbox-nav img-lightbox-nav-prev"
+                onClick={e => { e.stopPropagation(); setLightbox(l => l - 1) }}
+                aria-label="Ảnh trước"
+              >
                 ‹
               </button>
             )}
             {lightbox < images.length - 1 && (
-              <button className="btn" onClick={() => setLightbox(l => l + 1)}
-                style={{ position: 'absolute', right: -50, top: '50%', transform: 'translateY(-50%)',
-                         background: 'rgba(255,255,255,0.8)', padding: '8px 12px' }}>
+              <button
+                type="button"
+                className="img-lightbox-nav img-lightbox-nav-next"
+                onClick={e => { e.stopPropagation(); setLightbox(l => l + 1) }}
+                aria-label="Ảnh sau"
+              >
                 ›
               </button>
             )}
-            {/* Actions */}
-            <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'center' }}>
-              <button className="btn sm" onClick={() => handleCopy(images[lightbox])}>
-                📋 Copy ảnh
-              </button>
-              {!readOnly && (
-                <button className="btn sm danger" onClick={() => handleRemove(lightbox)}>
-                  🗑 Xóa
-                </button>
-              )}
-              <button className="btn sm" onClick={() => setLightbox(null)}>✕ Đóng</button>
-            </div>
-            <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 6 }}>
-              {lightbox + 1} / {images.length}
+
+            <div className="img-lightbox-inner" onClick={e => e.stopPropagation()}>
+              <div className="img-lightbox-stage">
+                <img
+                  src={images[lightbox]}
+                  alt={`Ảnh ${lightbox + 1}`}
+                  className="img-lightbox-img"
+                />
+              </div>
+              <div className="img-lightbox-bar">
+                <div className="img-lightbox-actions">
+                  <button type="button" className="btn sm" onClick={() => handleCopy(images[lightbox])}>
+                    📋 Copy
+                  </button>
+                  {!readOnly && (
+                    <button type="button" className="btn sm danger" onClick={() => handleRemove(lightbox)}>
+                      🗑 Xóa
+                    </button>
+                  )}
+                  <button type="button" className="btn sm primary" onClick={closeLightbox}>
+                    Đóng
+                  </button>
+                </div>
+                <div className="img-lightbox-counter">
+                  {lightbox + 1} / {images.length}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   )

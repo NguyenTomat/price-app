@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { logout } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
@@ -8,9 +9,32 @@ const Icon = ({ d, size = 16 }) => (
   </svg>
 )
 
+const BOTTOM_NAV = [
+  { key: 'dashboard', label: 'Trang chủ', icon: '📊' },
+  { key: 'my-prices', label: 'Giá', icon: '💰' },
+  { key: 'orders', label: 'Đơn', icon: '🛒' },
+  { key: 'inventory', label: 'Kho', icon: '📦' },
+]
+
 export default function Layout({ page, setPage, children, onSpotlight }) {
   const { profile, isAdmin } = useAuth()
   const { dark, toggle } = useTheme()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const sync = () => setIsMobile(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [menuOpen])
 
   const navItems = [
     { key: 'dashboard',    label: 'Dashboard',         icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
@@ -26,37 +50,38 @@ export default function Layout({ page, setPage, children, onSpotlight }) {
     ] : []),
   ]
 
+  const currentPage = navItems.find(i => i.key === page)
+
+  const goTo = (key) => {
+    setPage(key)
+    setMenuOpen(false)
+  }
+
   return (
-    <div className="layout">
-      <aside className="sidebar">
+    <div className={`layout ${isMobile ? 'layout-mobile' : ''}`}>
+      {isMobile && menuOpen && (
+        <div className="sidebar-backdrop open" onClick={() => setMenuOpen(false)} aria-hidden="true" />
+      )}
+
+      <aside className={`sidebar ${isMobile && menuOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <div>📊 Bảng Giá T&T</div>
           <div className="sub">Quản lý giá sản phẩm</div>
         </div>
 
-        {/* Spotlight button */}
         <div style={{ padding: '10px 10px 4px' }}>
           <button
-            onClick={onSpotlight}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px 10px', borderRadius: 'var(--radius-sm)',
-              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
-              color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 12,
-              fontFamily: 'var(--sans)', transition: 'background 0.12s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+            type="button"
+            className="sidebar-search-btn"
+            onClick={() => { onSpotlight?.(); setMenuOpen(false) }}
           >
             <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
             <span style={{ flex: 1, textAlign: 'left' }}>Tìm kiếm...</span>
-            <kbd style={{
-              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 3, padding: '1px 4px', fontSize: 10, fontFamily: 'var(--mono)',
-              color: 'rgba(255,255,255,0.4)',
-            }}>⌃K</kbd>
+            {!isMobile && (
+              <kbd className="sidebar-kbd">⌃K</kbd>
+            )}
           </button>
         </div>
 
@@ -66,7 +91,7 @@ export default function Layout({ page, setPage, children, onSpotlight }) {
             <div
               key={item.key}
               className={`nav-item ${page === item.key ? 'active' : ''}`}
-              onClick={() => setPage(item.key)}
+              onClick={() => goTo(item.key)}
             >
               <Icon d={item.icon}/>
               {item.label}
@@ -76,20 +101,17 @@ export default function Layout({ page, setPage, children, onSpotlight }) {
 
         <div className="sidebar-footer">
           <div className="user-name">{profile?.displayName || profile?.email || 'User'}</div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, gap: 8 }}>
+          <div className="sidebar-footer-actions">
             <span className={`badge ${isAdmin ? 'badge-amber' : 'badge-blue'}`} style={{ fontSize: 10 }}>
               {isAdmin ? '👑 Admin' : '👤 User'}
             </span>
-
-            {/* Dark mode toggle */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{dark ? '🌙' : '☀️'}</span>
               <div className={`theme-toggle ${dark ? 'on' : ''}`} onClick={toggle} title="Đổi giao diện"/>
             </div>
-
             <button
-              className="btn ghost xs"
-              style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, border: 'none', padding: '2px 6px' }}
+              type="button"
+              className="btn ghost xs sidebar-logout"
               onClick={logout}
             >
               Đăng xuất
@@ -98,9 +120,50 @@ export default function Layout({ page, setPage, children, onSpotlight }) {
         </div>
       </aside>
 
-      <main className="main">
-        {children}
-      </main>
+      <div className="layout-body">
+        {isMobile && (
+          <header className="mobile-topbar">
+            <button type="button" className="mobile-icon-btn" onClick={() => setMenuOpen(true)} aria-label="Mở menu">
+              ☰
+            </button>
+            <div className="mobile-topbar-title">
+              <img src="./icons/icon-192.png" alt="" className="mobile-topbar-logo" />
+              <span>{currentPage?.label || 'Bảng Giá T&T'}</span>
+            </div>
+            <button type="button" className="mobile-icon-btn" onClick={() => onSpotlight?.()} aria-label="Tìm kiếm">
+              🔍
+            </button>
+          </header>
+        )}
+
+        <main className="main">
+          {children}
+        </main>
+
+        {isMobile && (
+          <nav className="mobile-bottom-nav">
+            {BOTTOM_NAV.map(item => (
+              <button
+                key={item.key}
+                type="button"
+                className={`mobile-nav-item ${page === item.key ? 'active' : ''}`}
+                onClick={() => goTo(item.key)}
+              >
+                <span className="mobile-nav-icon">{item.icon}</span>
+                <span className="mobile-nav-label">{item.label}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`mobile-nav-item ${menuOpen ? 'active' : ''}`}
+              onClick={() => setMenuOpen(true)}
+            >
+              <span className="mobile-nav-icon">⋯</span>
+              <span className="mobile-nav-label">Thêm</span>
+            </button>
+          </nav>
+        )}
+      </div>
     </div>
   )
 }

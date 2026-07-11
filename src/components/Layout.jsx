@@ -41,6 +41,7 @@ export default function Layout({ page, setPage, children, onSpotlight }) {
     { key: 'lists',        label: 'Bảng giá',          icon: 'M3 3h18v4H3zM3 11h18v4H3zM3 19h18v4H3z' },
     { key: 'my-prices',    label: 'Giá của tôi',       icon: 'M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z' },
     { key: 'orders',       label: 'Đơn bán',           icon: 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0' },
+    { key: 'revenue',      label: 'Doanh thu',          icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6M22 12h-4m-2 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0' },
     { key: 'cost-prices',  label: 'Giá vốn tính chênh', icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' },
     { key: 'inventory',    label: 'Tồn kho',           icon: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12' },
     { key: 'catalog',      label: 'Catalog',            icon: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z' },

@@ -116,6 +116,19 @@ export const saveProducts = async (listId, products) => {
   }
 }
 
+// Batch-update the `order` field for a list of products (used when inserting a new product mid-group)
+// updates: [{ id, order }]
+export const reorderProducts = async (listId, updates) => {
+  const BATCH = 400
+  for (let i = 0; i < updates.length; i += BATCH) {
+    const batch = writeBatch(db)
+    updates.slice(i, i + BATCH).forEach(({ id, order }) => {
+      batch.update(doc(db, 'priceLists', listId, 'products', id), { order })
+    })
+    await batch.commit()
+  }
+}
+
 export const addProduct = (listId, data) => {
   const { id: _id, ...rest } = data
   return addDoc(collection(db, 'priceLists', listId, 'products'), rest)
@@ -131,6 +144,20 @@ export const updateProduct = (listId, productId, data) => {
 
 export const updateProductImages = (listId, productId, images) =>
   updateDoc(doc(db, 'priceLists', listId, 'products', productId), { images: images || [] })
+
+// Load ALL products from ALL price lists — used in order form for "giá bảng giá" picker
+// Returns flat array: [{ id, listId, listName, name, group, spec1, price, ... }]
+export const getAllProductsFlat = async () => {
+  const lists = await getPriceLists()
+  const chunks = await Promise.all(
+    lists.map(l =>
+      getProducts(l.id).then(ps =>
+        ps.map(p => ({ ...p, listId: l.id, listName: l.name }))
+      )
+    )
+  )
+  return chunks.flat()
+}
 
 // ── USER PRICE LISTS ───────────────────────────────────────────────────────
 export const getUserPriceLists = async (uid) => {
@@ -200,6 +227,11 @@ export const updateOrderStatus = (orderId, status) =>
 
 export const deleteOrder = (orderId) =>
   deleteDoc(doc(db, 'orders', orderId))
+
+// Cập nhật nội dung đơn hàng (chỉnh sửa sau khi tạo)
+export const updateOrder = (orderId, data) =>
+  updateDoc(doc(db, 'orders', orderId), { ...data, updatedAt: serverTimestamp() })
+
 
 // ── COST PRICES (giá gốc tính chênh) ───────────────────────────────────────
 // Collection: costPrices/{id} — { code, name, unit, avgPrice, updatedAt }

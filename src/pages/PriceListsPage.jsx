@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { subscribePriceLists, subscribeProducts, updateProduct, updateProductImages, addProduct, deleteProduct, deletePriceList } from '../firebase/firebase'
+import { subscribePriceLists, subscribeProducts, updateProduct, updateProductImages, addProduct, deleteProduct, deletePriceList, reorderProducts, updatePriceList } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import ProductModal from '../components/ProductModal'
@@ -28,6 +28,9 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
   const [addSaving, setAddSaving] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [listPanelOpen, setListPanelOpen] = useState(true)
+  // Rename bảng giá (admin)
+  const [editingListId, setEditingListId] = useState(null)
+  const [listNameDraft, setListNameDraft]  = useState('')
   const touchRef = useRef(null)
   const mainRef = useRef(null)
 
@@ -169,16 +172,62 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
     if (!price) { toast('Nhập đơn giá', 'error'); return }
     setAddSaving(true)
     try {
-      const groups = [...new Set(products.map(p => p.group).filter(Boolean))]
-      const order = products.length
+      const groupName = addForm.group.trim() || (groups[0] ?? '')
+      const newKw     = parseFloat(addForm.spec1) || null
+
+      // ── Tìm vị trí chèn đúng trong nhóm theo kW ──
+      // Lấy tất cả SP trong cùng nhóm, sắp theo order
+      const sameGroup = products
+        .filter(p => p.group === groupName)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+      // Vị trí chèn: sau sản phẩm cuối có kW ≤ newKw
+      // Nếu không có kW → chèn cuối nhóm
+      let insertAfterOrder = null  // order của sản phẩm liền trước vị trí chèn
+      if (newKw !== null) {
+        for (const p of sameGroup) {
+          const pkw = parseFloat(p.spec1) || null
+          if (pkw === null || pkw <= newKw) {
+            insertAfterOrder = p.order ?? 0
+          } else {
+            break
+          }
+        }
+      } else {
+        // Không có kW → chèn cuối nhóm
+        if (sameGroup.length > 0) {
+          insertAfterOrder = sameGroup[sameGroup.length - 1].order ?? 0
+        }
+      }
+
+      // Tính order của sản phẩm mới
+      let newOrder
+      if (insertAfterOrder === null && sameGroup.length === 0) {
+        // Nhóm rỗng / chưa có SP → append sau tất cả SP hiện tại
+        newOrder = products.length
+      } else if (insertAfterOrder === null) {
+        // Chèn đầu nhóm (newKw nhỏ hơn tất cả trong nhóm)
+        newOrder = sameGroup.length > 0 ? (sameGroup[0].order ?? 0) : products.length
+      } else {
+        newOrder = insertAfterOrder + 1
+      }
+
+      // Dịch order của tất cả SP có order >= newOrder lên 1
+      const toReorder = products
+        .filter(p => (p.order ?? 0) >= newOrder)
+        .map(p => ({ id: p.id, order: (p.order ?? 0) + 1 }))
+      if (toReorder.length > 0) {
+        await reorderProducts(selectedList.id, toReorder)
+      }
+
       await addProduct(selectedList.id, {
         name: addForm.name.trim(),
-        group: addForm.group.trim() || (groups[0] ?? ''),
+        group: groupName,
         spec1: addForm.spec1.trim(),
         spec2: addForm.spec2.trim(),
         phiHocng: addForm.phiHocng.trim(),
         price,
-        order,
+        order: newOrder,
         images: [],
       })
       setAddForm({ name: '', group: '', spec1: '', spec2: '', phiHocng: '', price: '' })
@@ -205,6 +254,20 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
       setProducts([])
       toast('Đã xóa bảng giá', 'success')
     } catch { toast('Lỗi xóa bảng giá', 'error') }
+  }
+
+  const handleRenameList = async (id, newName) => {
+    const trimmed = newName.trim()
+    setEditingListId(null)
+    if (!trimmed) return
+    const old = lists.find(l => l.id === id)
+    if (old && old.name === trimmed) return
+    try {
+      await updatePriceList(id, { name: trimmed })
+      // Cập nhật selectedList nếu đang xem bảng giá đó
+      if (selectedList?.id === id) setSelectedList(l => ({ ...l, name: trimmed }))
+      toast(`Đã đổi tên thành "${trimmed}"`, 'success')
+    } catch { toast('Lỗi đổi tên', 'error') }
   }
 
   return (
@@ -236,12 +299,39 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
         {lists.map(l => (
           <div
             key={l.id}
-            onClick={() => selectList(l)}
+            onClick={() => { if (editingListId !== l.id) selectList(l) }}
             className={`price-lists-item ${selectedList?.id === l.id ? 'active' : ''}`}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ opacity: .7 }}>📄</span>
-              <span className="price-lists-item-name">{l.name}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+              {editingListId === l.id ? (
+                // Inline rename input
+                <input
+                  className="input"
+                  style={{ flex: 1, padding: '3px 7px', fontSize: 13, height: 28 }}
+                  value={listNameDraft}
+                  autoFocus
+                  onClick={e => e.stopPropagation()}
+                  onChange={e => setListNameDraft(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleRenameList(l.id, listNameDraft)
+                    if (e.key === 'Escape') setEditingListId(null)
+                  }}
+                  onBlur={() => handleRenameList(l.id, listNameDraft)}
+                />
+              ) : (
+                <>
+                  <span style={{ opacity: .7 }}>📄</span>
+                  <span className="price-lists-item-name" style={{ flex: 1 }}>{l.name}</span>
+                  {isAdmin && (
+                    <button
+                      className="btn xs ghost"
+                      style={{ padding: '1px 5px', opacity: 0.6, flexShrink: 0 }}
+                      title="Đổi tên bảng giá"
+                      onClick={e => { e.stopPropagation(); setEditingListId(l.id); setListNameDraft(l.name) }}
+                    >✏️</button>
+                  )}
+                </>
+              )}
             </div>
             {l.category && <div className="price-lists-item-cat">{l.category}</div>}
           </div>

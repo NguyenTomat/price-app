@@ -13,6 +13,7 @@ import OrdersPage from './pages/OrdersPage'
 import CostPricesPage from './pages/CostPricesPage'
 import InventoryPage from './pages/InventoryPage'
 import CatalogPage from './pages/CatalogPage'
+import RevenuePage from './pages/RevenuePage'
 import Spotlight from './components/Spotlight'
 import UpdateBanner from './components/UpdateBanner'
 import PwaUpdateBanner from './components/PwaUpdateBanner'
@@ -80,6 +81,7 @@ function AppContent() {
     'cost-prices':  <CostPricesPage/>,
     'inventory':    <InventoryPage/>,
     'catalog':      <CatalogPage/>,
+    'revenue':      <RevenuePage/>,
     'admin-import': <AdminImportPage/>,
     'admin-users':  <AdminUsersPage/>,
   }

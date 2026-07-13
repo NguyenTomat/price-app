@@ -1,6 +1,6 @@
 {
   "name": "price-manager",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Hệ thống quản lý bảng giá sản phẩm",
   "main": "electron/main.js",
   "scripts": {

@@ -23,19 +23,19 @@ const STATUS_LABELS = {
 }
 
 export default function DashboardPage({ setPage }) {
-  const { profile, isAdmin } = useAuth()
+  const { user, profile, isAdmin } = useAuth()
   const [stats, setStats] = useState(null)
   const [recentOrders, setRecentOrders] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getDashboardStats().then(s => { setStats(s); setLoading(false) }).catch(() => setLoading(false))
-  }, [])
+    getDashboardStats(user.uid).then(s => { setStats(s); setLoading(false) }).catch(() => setLoading(false))
+  }, [user.uid])
 
   useEffect(() => {
-    const unsub = subscribeOrders(orders => setRecentOrders(orders.slice(0, 8)))
+    const unsub = subscribeOrders(orders => setRecentOrders(orders.slice(0, 8)), { uid: user.uid })
     return unsub
-  }, [])
+  }, [user.uid])
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'
@@ -99,7 +99,7 @@ export default function DashboardPage({ setPage }) {
         </div>
 
         {/* Order status breakdown */}
-        {isAdmin && stats?.ordersByStatus && (
+        {stats?.ordersByStatus && (
           <div className="card" style={{ marginBottom: 20 }}>
             <h3 style={{ marginBottom: 14 }}>Trạng thái đơn hàng</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>

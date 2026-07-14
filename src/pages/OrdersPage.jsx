@@ -1107,10 +1107,10 @@ export default function OrdersPage() {
   const [editingOrder, setEditingOrder] = useState(null)
 
   useEffect(() => {
-    const filters = isAdmin ? {} : { uid: user.uid }
-    const unsub = subscribeOrders(setOrders, filters)
+    // Luôn lọc đơn hàng theo chính uid của người dùng (kể cả admin)
+    const unsub = subscribeOrders(setOrders, { uid: user.uid })
     return unsub
-  }, [isAdmin, user.uid])
+  }, [user.uid])
 
   const handleAdvanceStatus = async (order) => {
     const next = STATUS[order.status]?.next

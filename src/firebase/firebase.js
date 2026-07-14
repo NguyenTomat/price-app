@@ -212,7 +212,10 @@ export const subscribeOrders = (cb, filters = {}) => {
     let orders = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0))
-    if (filters.uid) orders = orders.filter(o => o.uid === filters.uid)
+    // Luôn lọc theo uid để bảo mật tuyệt đối, của ai người nấy xem
+    if (filters.uid) {
+      orders = orders.filter(o => o.uid === filters.uid)
+    }
     cb(orders)
   }, (err) => console.error('subscribeOrders error:', err))
 }
@@ -297,23 +300,29 @@ export const bulkUpsertInventory = async (items) => {
 }
 
 // ── DASHBOARD STATS ────────────────────────────────────────────────────────
-export const getDashboardStats = async () => {
+export const getDashboardStats = async (uid) => {
   const [listsSnap, ordersSnap, usersSnap, invSnap] = await Promise.all([
     getDocs(collection(db, 'priceLists')),
     getDocs(collection(db, 'orders')),
     getDocs(collection(db, 'users')),
     getDocs(collection(db, 'inventory')),
   ])
-  const orders = ordersSnap.docs.map(d => d.data())
+  // Lọc orders theo uid (của riêng user đó, kể cả admin)
+  const orders = ordersSnap.docs
+    .map(d => d.data())
+    .filter(o => !uid || o.uid === uid)
+
   const totalRevenue = orders
     .filter(o => o.status === 'delivered')
     .reduce((sum, o) => sum + (o.total ?? 0), 0)
+
   const lowStock = invSnap.docs
     .map(d => d.data())
     .filter(i => i.qty != null && i.lowStockAlert != null && i.qty <= i.lowStockAlert).length
+
   return {
     priceLists:   listsSnap.size,
-    orders:       ordersSnap.size,
+    orders:       orders.length,
     users:        usersSnap.size,
     totalRevenue,
     lowStock,
@@ -365,3 +374,31 @@ export const deleteCatalog = async (catalog) => {
   }
   await deleteDoc(doc(db, 'catalogs', catalog.id))
 }
+
+// ── BUS STATIONS / BUS LINES (Nhà Xe) ────────────────────────────────────────
+// Collection: busLines/{id}
+// { name, phone, province, route, note, uid, userName, createdAt, updatedAt }
+
+export const subscribeBusLines = (cb) => {
+  const q = query(collection(db, 'busLines'), orderBy('createdAt', 'desc'))
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+  }, (err) => console.error('subscribeBusLines error:', err))
+}
+
+export const addBusLine = (data) =>
+  addDoc(collection(db, 'busLines'), {
+    ...data,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+
+export const updateBusLine = (id, data) =>
+  updateDoc(doc(db, 'busLines', id), {
+    ...data,
+    updatedAt: serverTimestamp(),
+  })
+
+export const deleteBusLine = (id) =>
+  deleteDoc(doc(db, 'busLines', id))
+

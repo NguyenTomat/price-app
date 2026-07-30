@@ -118,8 +118,8 @@ export default function RevenuePage() {
               </div>
             </div>
           ) : (
-            <MobileTableWrap>
-              <table>
+            <div style={{ overflowX: 'auto', width: '100%' }}>
+              <table style={{ minWidth: 680 }}>
                 <thead>
                   <tr>
                     <th>Ngày</th>
@@ -179,7 +179,7 @@ export default function RevenuePage() {
                   </tr>
                 </tfoot>
               </table>
-            </MobileTableWrap>
+            </div>
           )}
         </div>
 

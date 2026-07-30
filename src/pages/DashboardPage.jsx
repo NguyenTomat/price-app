@@ -52,15 +52,116 @@ export default function DashboardPage({ setPage }) {
     </div>
   )
 
+  // Hiệu ứng "Xin vía" rơi tiền xu
+  const [coins, setCoins] = useState([])
+  const handleXinVia = () => {
+    // Phát âm thanh ting ting bằng AudioContext
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+      const playTone = (freq, startTime, duration) => {
+        const osc = audioCtx.createOscillator()
+        const gain = audioCtx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        gain.gain.setValueAtTime(0.1, startTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
+        osc.start(startTime)
+        osc.stop(startTime + duration)
+      }
+      playTone(987.77, audioCtx.currentTime, 0.08) // Tiếng ting 1
+      playTone(1318.51, audioCtx.currentTime + 0.08, 0.25) // Tiếng ting 2
+    } catch {}
+
+    // Tạo 30 đồng xu rơi từ trên xuống
+    const newCoins = Array.from({ length: 30 }).map((_, i) => ({
+      id: Math.random() + i,
+      left: Math.random() * 95 + '%',
+      delay: Math.random() * 0.8 + 's',
+      duration: (1.2 + Math.random() * 1) + 's',
+      scale: 0.6 + Math.random() * 0.8,
+      rotation: Math.random() * 360
+    }))
+    setCoins(prev => [...prev, ...newCoins])
+    // Tự dọn dẹp coin sau khi rơi xong
+    setTimeout(() => {
+      setCoins(prev => prev.filter(c => !newCoins.includes(c)))
+    }, 2500)
+  }
+
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div className="main-header">
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+      {/* Container hiệu ứng rơi tiền */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 9999, overflow: 'hidden' }}>
+        {coins.map(c => (
+          <div
+            key={c.id}
+            style={{
+              position: 'absolute',
+              top: '-40px',
+              left: c.left,
+              fontSize: '28px',
+              transform: `scale(${c.scale}) rotate(${c.rotation}deg)`,
+              animation: `fallAndRotate ${c.duration} linear ${c.delay} forwards`,
+              userSelect: 'none'
+            }}
+          >
+            🪙
+          </div>
+        ))}
+      </div>
+
+      {/* CSS Animation chèn tạm thời */}
+      <style>{`
+        @keyframes fallAndRotate {
+          0% { top: -40px; transform: rotate(0deg); opacity: 1; }
+          90% { opacity: 1; }
+          100% { top: 105%; transform: rotate(360deg); opacity: 0; }
+        }
+      `}</style>
+
+      <div className="main-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>{greeting}, {profile?.displayName?.split(' ').pop() || 'bạn'} 👋</h2>
           <div className="text-muted text-sm" style={{ marginTop: 2 }}>
             {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
         </div>
+
+        {/* Nút con mèo tài lộc "Xin vía" */}
+        <button
+          className="btn"
+          onClick={handleXinVia}
+          style={{
+            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            color: '#fff',
+            border: 'none',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 16px',
+            borderRadius: '100px',
+            boxShadow: '0 4px 12px rgba(217, 119, 6, 0.3)',
+            cursor: 'pointer',
+            transition: 'transform 0.1s, box-shadow 0.1s'
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+          onMouseUp={e => e.currentTarget.style.transform = 'scale(1.05)'}
+        >
+          <span style={{ fontSize: '22px', display: 'inline-block', animation: 'waveCat 1.2s infinite ease-in-out' }}>🐱</span>
+          <span>Xin vía 🪙</span>
+        </button>
+
+        <style>{`
+          @keyframes waveCat {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(-15deg); }
+          }
+        `}</style>
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>

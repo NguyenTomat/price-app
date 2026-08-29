@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { subscribePriceLists, subscribeProducts, updateProduct, updateProductImages, addProduct, deleteProduct, deletePriceList, reorderProducts, updatePriceList } from '../firebase/firebase'
+import { subscribePriceLists, subscribeProducts, updateProduct, updateProductImages, addProduct, deleteProduct, deletePriceList, reorderProducts, updatePriceList, ensureProductStorageUrls } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import ProductModal from '../components/ProductModal'
@@ -156,14 +156,21 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
 
   const handleSaveProduct = async (updated) => {
     try {
+      // 1. Tải lên Storage nếu có ảnh dạng base64 (data:) để tránh lỗi Firestore vượt giới hạn 1MB
+      const finalImages = await ensureProductStorageUrls(updated.images || [], selectedList.id, updated.id)
+      
+      const cleanProduct = { ...updated, images: finalImages }
       if (isAdmin) {
-        await updateProduct(selectedList.id, updated.id, updated)
+        await updateProduct(selectedList.id, updated.id, cleanProduct)
       } else {
-        await updateProductImages(selectedList.id, updated.id, updated.images)
+        await updateProductImages(selectedList.id, updated.id, finalImages)
       }
       setSelectedProduct(null)
       toast(isAdmin ? 'Đã lưu sản phẩm' : 'Đã lưu ảnh', 'success')
-    } catch { toast('Lỗi lưu sản phẩm', 'error') }
+    } catch (err) {
+      console.error(err)
+      toast('Lỗi lưu sản phẩm: ' + err.message, 'error')
+    }
   }
 
   const handleAddProduct = async () => {
@@ -381,6 +388,15 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                   {!isAdmin && <span className="text-muted text-sm">· Bấm SP → tab Hình ảnh để thêm ảnh</span>}
                 </div>
               </div>
+
+              {/* Nút mở nhanh Web Catalog từ bảng giá */}
+              <button 
+                className="btn sm" 
+                onClick={() => window.open('https://bang-gia-tandt.web.app/#web', '_blank')}
+                style={{ background: 'var(--accent-s)', color: 'var(--accent)', borderColor: 'rgba(45,76,247,0.2)', fontWeight: 'bold' }}
+              >
+                🔗 Mở Web Catalog
+              </button>
               <div className="search-wrap" style={{ width: 200 }}>
                 <span className="search-icon">
                   <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>

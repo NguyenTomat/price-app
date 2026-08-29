@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { subscribeOrders, createOrder, updateOrderStatus, deleteOrder, subscribeCostPrices, getAllProductsFlat, updateOrder } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
-import { calcOrderLine, calcShippingChenhExtra, CHENH_TIER_LABELS } from '../utils/orderCalc'
+import { calcOrderLine, calcShippingChenhExtra, getChenhTierPct, CHENH_TIER_LABELS } from '../utils/orderCalc'
 import { exportQuoteExcel } from '../utils/quoteExport'
 import { parseMoney } from '../utils/moneyFormat'
 import MoneyInput from '../components/MoneyInput'
@@ -196,7 +196,8 @@ function OrderDetailModal({ order, onClose, onEdit }) {
 function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toast }) {
   const parseMoney = v => {
     if (typeof v === 'number') return v
-    return Number(String(v).replace(/[^0-9.-]/g, '')) || 0
+    const digits = String(v || '').replace(/[^\d]/g, '')
+    return parseInt(digits, 10) || 0
   }
   const fmt = n => (n != null && !isNaN(Number(n)))
     ? Number(n).toLocaleString('vi-VN') + ' đ' : '—'
@@ -229,13 +230,52 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
 
   // Tính lại các trường tổng
   const calcSummary = () => {
-    const sellTotal      = lines.reduce((s, l) => s + parseMoney(l.sellPrice) * (l.qty || 1), 0)
-    const listPriceTotal = lines.reduce((s, l) => s + parseMoney(l.listPrice) * (l.qty || 1), 0)
-    const companyShip    = shippingPaidBy === 'company' ? ship : 0
-    const customerShip   = shippingPaidBy === 'customer' ? ship : 0
-    const grandTotal     = sellTotal + customerShip
+    const shipNum = parseMoney(shipping)
+    const companyShip  = shippingPaidBy === 'company' ? shipNum : 0
+    const customerShip = shippingPaidBy === 'customer' ? shipNum : 0
+
+    const rawLines = lines.map(l => {
+      const q = l.qty || 1
+      const sell = parseMoney(l.sellPrice)
+      const lp = parseMoney(l.listPrice)
+      const costPrice = costPrices.find(c => c.id === l.costId)?.avgPrice
+        ?? order.items?.find(i => i.costId === l.costId)?.costPrice
+        ?? 0
+      const sellTotal = Math.round(sell * q)
+      const costTotal = Math.round(costPrice * q)
+      const rawChenh = Math.round((sell - costPrice) * q)
+      return { l, q, sell, lp, costPrice, sellTotal, costTotal, rawChenh }
+    })
+
+    const sellTotal      = rawLines.reduce((s, x) => s + x.sellTotal, 0)
+    const costTotal      = rawLines.reduce((s, x) => s + x.costTotal, 0)
+    const listPriceTotal = rawLines.reduce((s, x) => s + (x.lp > 0 ? x.lp * x.q : 0), 0)
+    const rawChenhTotal  = rawLines.reduce((s, x) => s + x.rawChenh, 0)
+
+    const overallChenhPct = order.includeVat ? getChenhTierPct(rawChenhTotal) : 0
+    const chenhBase = order.includeVat ? Math.round(rawChenhTotal * overallChenhPct / 100) : 0
+    const shippingChenhExtra = order.includeVat ? calcShippingChenhExtra({ shipping: shipNum, shippingHasVat: order.shippingHasVat ?? true }) : 0
+    const chenhAppliedTotal = chenhBase + shippingChenhExtra
+    const vatAmount = order.includeVat ? Math.round(sellTotal * 0.08) : 0
+    const grandTotal = sellTotal + vatAmount + customerShip
+    const recommendedProfit = sellTotal - companyShip - chenhAppliedTotal - costTotal
     const listPriceProfit = listPriceTotal > 0 ? sellTotal - listPriceTotal - companyShip : null
-    return { sellTotal, listPriceTotal, listPriceProfit, grandTotal, companyShip, customerShip }
+
+    return {
+      sellTotal,
+      costTotal,
+      listPriceTotal,
+      rawChenhTotal,
+      overallChenhPct,
+      chenhAppliedTotal,
+      vatAmount,
+      listPriceProfit,
+      recommendedProfit,
+      grandTotal,
+      companyShip,
+      customerShip,
+      rawLines,
+    }
   }
   const summary = calcSummary()
 
@@ -244,31 +284,48 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
     if (!validLines.length) { toast('Nhập tên và giá bán cho ít nhất 1 sản phẩm', 'error'); return }
     setSaving(true)
     try {
-      const items = validLines.map(l => ({
-        name: l.name.trim(),
-        costId:   l.costId   || null,
-        costCode: l.costCode || null,
-        qty: l.qty || 1,
-        sellPrice: parseMoney(l.sellPrice),
-        myPrice:   parseMoney(l.sellPrice),
-        listPrice: parseMoney(l.listPrice) > 0 ? parseMoney(l.listPrice) : null,
-        listProductId: l.listProductId || null,
-        // giữ nguyên costPrice từ đơn gốc nếu không đổi
-        costPrice: costPrices.find(c => c.id === l.costId)?.avgPrice
-          ?? order.items?.find(i => i.costId === l.costId)?.costPrice
-          ?? null,
-      }))
       const s = calcSummary()
+      const items = validLines.map(l => {
+        const costPrice = costPrices.find(c => c.id === l.costId)?.avgPrice
+          ?? order.items?.find(i => i.costId === l.costId)?.costPrice
+          ?? null
+        const q = l.qty || 1
+        const sellPrice = parseMoney(l.sellPrice)
+        const rawChenh = costPrice != null ? Math.round((sellPrice - costPrice) * q) : null
+        const chenhPct = order.includeVat ? s.overallChenhPct : 0
+        const chenhApplied = (order.includeVat && rawChenh != null) ? Math.round(rawChenh * chenhPct / 100) : 0
+
+        return {
+          name: l.name.trim(),
+          costId:   l.costId   || null,
+          costCode: l.costCode || null,
+          qty: q,
+          sellPrice,
+          myPrice:   sellPrice,
+          listPrice: parseMoney(l.listPrice) > 0 ? parseMoney(l.listPrice) : null,
+          listProductId: l.listProductId || null,
+          costPrice,
+          rawChenh:     order.includeVat ? rawChenh : null,
+          chenhPct,
+          chenhApplied,
+        }
+      })
+
       await updateOrder(order.id, {
         userName: customerName.trim() || order.userName,
         items,
         total: s.sellTotal,
+        totalCost: s.costTotal,
+        rawChenhTotal: order.includeVat ? s.rawChenhTotal : null,
+        chenhAppliedTotal: order.includeVat ? s.chenhAppliedTotal : 0,
+        vatAmount: s.vatAmount,
         grandTotal: s.grandTotal,
         shipping: ship,
         shippingPaidBy,
         companyShipping: s.companyShip,
         listPriceTotal: s.listPriceTotal || null,
         listPriceProfit: s.listPriceProfit,
+        recommendedProfit: s.recommendedProfit,
         note: note.trim(),
       })
       toast('Đã cập nhật đơn hàng', 'success')
@@ -442,10 +499,10 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
   )
 }
 
-function OrderLineRow({ line, costPrices, allProducts, onChange, onRemove, canRemove, includeVat }) {
+function OrderLineRow({ line, costPrices, allProducts, onChange, onRemove, canRemove, includeVat, overallChenhPct }) {
   const cost = costPrices.find(c => c.id === line.costId)
   const sell = parseMoney(line.sellPrice)
-  const calc = calcOrderLine({ sellPrice: sell, costPrice: cost?.avgPrice ?? 0, qty: line.qty, includeVat })
+  const calc = calcOrderLine({ sellPrice: sell, costPrice: cost?.avgPrice ?? 0, qty: line.qty, includeVat, orderChenhPct: overallChenhPct })
   const lp   = typeof line.listPrice === 'number' ? line.listPrice : parseMoney(line.listPrice)
 
   const [query, setQuery] = useState(cost ? cost.code : '')
@@ -738,37 +795,73 @@ function CreateOrderPanel({ onCreated, onCancel }) {
   const ship = parseMoney(shipping)
 
   const orderCalc = useMemo(() => {
-    const itemCalcs = lines.map(line => {
+    // 1. Tính thông số cơ bản (sellTotal, costTotal, rawChenh) cho từng dòng
+    const rawItems = lines.map(line => {
       const cost = costPrices.find(c => c.id === line.costId)
       const lp   = typeof line.listPrice === 'number' ? line.listPrice : (parseMoney(line.listPrice) || 0)
-      return {
-        line, cost, lp,
-        calc: calcOrderLine({
-          sellPrice: parseMoney(line.sellPrice),
-          costPrice: cost?.avgPrice ?? 0,
-          qty: line.qty,
-          includeVat,
-        }),
-      }
+      const q    = Math.max(1, Number(line.qty) || 1)
+      const sell = parseMoney(line.sellPrice)
+      const unitCost = cost?.avgPrice ?? 0
+      const sellTotal = Math.round(sell * q)
+      const costTotal = Math.round(unitCost * q)
+      const rawChenh = Math.round((sell - unitCost) * q)
+      return { line, cost, lp, q, sell, unitCost, sellTotal, costTotal, rawChenh }
     })
 
-    const sellTotal           = itemCalcs.reduce((s, x) => s + x.calc.sellTotal, 0)
-    const costTotal           = itemCalcs.reduce((s, x) => s + x.calc.costTotal, 0)
-    const listPriceTotal      = itemCalcs.reduce((s, x) => s + x.lp * (x.line.qty ?? 1), 0)  // tổng giá bảng giá
-    const rawChenhTotal       = itemCalcs.reduce((s, x) => s + x.calc.rawChenh, 0)
-    const chenhBase           = itemCalcs.reduce((s, x) => s + x.calc.chenhApplied, 0)
+    // 2. Tổng hợp toàn đơn (cộng tất cả các mã khác nhau)
+    const sellTotal           = rawItems.reduce((s, x) => s + x.sellTotal, 0)
+    const costTotal           = rawItems.reduce((s, x) => s + x.costTotal, 0)
+    const listPriceTotal      = rawItems.reduce((s, x) => s + x.lp * x.q, 0)
+    const rawChenhTotal       = rawItems.reduce((s, x) => s + x.rawChenh, 0)
+
+    // 3. Tính % bậc chênh lệch chung của CẢ ĐƠN HÀNG dựa trên tổng rawChenhTotal (cộng tất cả các mã)
+    const overallChenhPct     = includeVat ? getChenhTierPct(rawChenhTotal) : 0
+    const chenhBase           = includeVat ? Math.round(rawChenhTotal * overallChenhPct / 100) : 0
     const shippingChenhExtra  = includeVat ? calcShippingChenhExtra({ shipping: ship, shippingHasVat }) : 0
     const chenhAppliedTotal   = chenhBase + shippingChenhExtra
     const vatAmount           = includeVat ? Math.round(sellTotal * 0.08) : 0
     const customerShipping    = shippingPaidBy === 'customer' ? ship : 0
     const companyShipping     = shippingPaidBy === 'company'  ? ship : 0
     const grandTotal          = sellTotal + vatAmount + customerShipping
-    // Lợi nhuận gợi ý (theo giá vốn chênh): giá bán (ko VAT) − VC mình trả − chênh áp dụng − giá vốn
+
+    // 4. Lợi nhuận
     const recommendedProfit   = sellTotal - companyShipping - chenhAppliedTotal - costTotal
-    // Lợi nhuận theo giá bảng giá (khách hàng nhìn thấy): giá bán − giá bảng giá − VC mình trả
     const listPriceProfit     = listPriceTotal > 0 ? (sellTotal - listPriceTotal - companyShipping) : null
 
-    return { itemCalcs, sellTotal, costTotal, listPriceTotal, listPriceProfit, rawChenhTotal, chenhAppliedTotal, chenhBase, shippingChenhExtra, vatAmount, grandTotal, recommendedProfit, companyShipping, customerShipping }
+    // 5. Gắn calc chi tiết từng dòng theo % bậc chung của cả đơn
+    const itemCalcs = rawItems.map(x => ({
+      line: x.line,
+      cost: x.cost,
+      lp: x.lp,
+      calc: {
+        sellTotal: x.sellTotal,
+        costTotal: x.costTotal,
+        unitRawChenh: x.sell - x.unitCost,
+        rawChenh: x.rawChenh,
+        chenhPct: overallChenhPct,
+        chenhApplied: includeVat ? Math.round(x.rawChenh * overallChenhPct / 100) : 0,
+        vatAmount: includeVat ? Math.round(x.sellTotal * 0.08) : 0,
+        vatPct: includeVat ? 8 : 0,
+      }
+    }))
+
+    return {
+      itemCalcs,
+      sellTotal,
+      costTotal,
+      listPriceTotal,
+      listPriceProfit,
+      rawChenhTotal,
+      overallChenhPct,
+      chenhAppliedTotal,
+      chenhBase,
+      shippingChenhExtra,
+      vatAmount,
+      grandTotal,
+      recommendedProfit,
+      companyShipping,
+      customerShipping,
+    }
   }, [lines, costPrices, shipping, shippingPaidBy, shippingHasVat, includeVat])
 
   const handleExportQuote = async () => {
@@ -873,8 +966,8 @@ function CreateOrderPanel({ onCreated, onCancel }) {
 
   const summaryRows = [
     ['Tiền hàng', fmt(orderCalc.sellTotal)],
-    includeVat ? ['Chênh lệch gốc', fmt(orderCalc.rawChenhTotal)] : null,
-    includeVat ? ['Chênh bậc %', fmt(orderCalc.chenhBase)] : null,
+    includeVat ? ['Chênh lệch gốc (tổng các mã)', fmt(orderCalc.rawChenhTotal)] : null,
+    includeVat ? [`Chênh bậc % (Bậc ${orderCalc.overallChenhPct}%)`, fmt(orderCalc.chenhBase)] : null,
     includeVat && orderCalc.shippingChenhExtra > 0 ? ['Chênh thêm VC 20%', `+${fmt(orderCalc.shippingChenhExtra)}`] : null,
     includeVat ? ['Tổng chênh áp dụng', fmt(orderCalc.chenhAppliedTotal)] : null,
     includeVat ? ['VAT 8%', fmt(orderCalc.vatAmount)] : null,
@@ -961,6 +1054,7 @@ function CreateOrderPanel({ onCreated, onCancel }) {
                 costPrices={costPrices}
                 allProducts={allProducts}
                 includeVat={includeVat}
+                overallChenhPct={orderCalc.overallChenhPct}
                 onChange={data => updateLine(line.key, data)}
                 onRemove={() => setLines(ls => ls.filter(l => l.key !== line.key))}
                 canRemove={lines.length > 1}
@@ -1106,11 +1200,23 @@ export default function OrdersPage() {
   const [detailOrder,  setDetailOrder]  = useState(null)
   const [editingOrder, setEditingOrder] = useState(null)
 
+  const [costPrices, setCostPrices] = useState([])
+  const [allProducts, setAllProducts] = useState([])
+
   useEffect(() => {
     // Luôn lọc đơn hàng theo chính uid của người dùng (kể cả admin)
     const unsub = subscribeOrders(setOrders, { uid: user.uid })
     return unsub
   }, [user.uid])
+
+  useEffect(() => {
+    const unsub = subscribeCostPrices(setCostPrices)
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    getAllProductsFlat().then(setAllProducts).catch(err => console.error('Lỗi tải sản phẩm:', err))
+  }, [])
 
   const handleAdvanceStatus = async (order) => {
     const next = STATUS[order.status]?.next

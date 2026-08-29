@@ -27,6 +27,8 @@ const app = initializeApp(firebaseConfig)
 export const auth    = getAuth(app)
 export const db      = getFirestore(app)
 export const storage = getStorage(app)
+storage.maxUploadRetryTime = 2500 // fail fast after 2.5 seconds on upload CORS/network errors
+storage.maxOperationRetryTime = 2500 // fail fast on other storage operations
 
 // ── AUTH ───────────────────────────────────────────────────────────────────
 export const login  = (email, password) => signInWithEmailAndPassword(auth, email, password)
@@ -53,6 +55,7 @@ export const subscribePriceLists = (cb) => {
   return onSnapshot(q, (snap) => {
     const lists = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
+      .filter(d => d.id !== 'categories_settings')
       .sort((a, b) => {
         const ta = a.createdAt?.toMillis?.() ?? 0
         const tb = b.createdAt?.toMillis?.() ?? 0
@@ -67,6 +70,7 @@ export const getPriceLists = async () => {
   const snap = await getDocs(collection(db, 'priceLists'))
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
+    .filter(d => d.id !== 'categories_settings')
     .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0))
 }
 
@@ -129,6 +133,11 @@ export const reorderProducts = async (listId, updates) => {
   }
 }
 
+export const getProductDetail = async (listId, productId) => {
+  const snap = await getDoc(doc(db, 'priceLists', listId, 'products', productId))
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null
+}
+
 export const addProduct = (listId, data) => {
   const { id: _id, ...rest } = data
   return addDoc(collection(db, 'priceLists', listId, 'products'), rest)
@@ -157,6 +166,60 @@ export const getAllProductsFlat = async () => {
     )
   )
   return chunks.flat()
+}
+
+// Lấy danh sách sản phẩm đăng lên Web Catalog công cộng
+export const getWebCatalogProducts = async () => {
+  const lists = await getPriceLists()
+  const chunks = await Promise.all(
+    lists.map(l =>
+      getProducts(l.id).then(ps =>
+        ps.filter(p => p.showOnWeb === true).map(p => ({ ...p, listId: l.id, listName: l.name }))
+      )
+    )
+  )
+  return chunks.flat()
+}
+
+const dataUrlToBlob = (dataUrl) => {
+  try {
+    const arr = dataUrl.split(',')
+    const mime = arr[0].match(/:(.*?);/)[1]
+    const bstr = atob(arr[1])
+    let n = bstr.length
+    const u8arr = new Uint8Array(n)
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n)
+    }
+    return new Blob([u8arr], { type: mime })
+  } catch (err) {
+    console.error("dataUrlToBlob failed:", err)
+    return null
+  }
+}
+
+export const ensureProductStorageUrls = async (images, listId, productId) => {
+  const result = []
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i]
+    if (typeof img === 'string' && img.startsWith('data:')) {
+      const blob = dataUrlToBlob(img)
+      if (blob) {
+        try {
+          const url = await uploadProductImageFile(listId, productId, blob, 'jpg', i)
+          result.push(url)
+        } catch (uploadErr) {
+          console.warn("Storage upload failed, keeping base64 in document:", uploadErr)
+          result.push(img) // Fallback to base64
+        }
+      } else {
+        result.push(img)
+      }
+    } else {
+      result.push(img)
+    }
+  }
+  return result
 }
 
 // ── USER PRICE LISTS ───────────────────────────────────────────────────────
@@ -193,6 +256,17 @@ export const adminCreateUser = async (email, password, profileData) => {
 }
 
 // ── STORAGE ────────────────────────────────────────────────────────────────
+export const uploadProductImageFile = async (listId, productId, blob, extension, index) => {
+  // WORKAROUND: Uploading to catalogs/ folder instead of products/ just in case Storage rules block products/ path
+  const imgRef = ref(storage, `catalogs/products_${listId}_${productId}_img_${index}_${Date.now()}.${extension}`)
+  const snap = await uploadBytes(imgRef, blob)
+  return getDownloadURL(snap.ref)
+}
+export const uploadWebCategoryImage = async (blob, extension = 'jpg') => {
+  const imgRef = ref(storage, `catalogs/category_${Date.now()}.${extension}`)
+  const snap = await uploadBytes(imgRef, blob)
+  return getDownloadURL(snap.ref)
+}
 export const uploadImage = async (listId, productId, base64Data, index) => {
   const imgRef = ref(storage, `products/${listId}/${productId}/img_${index}.jpg`)
   await uploadString(imgRef, base64Data, 'data_url')
@@ -234,6 +308,27 @@ export const deleteOrder = (orderId) =>
 // Cập nhật nội dung đơn hàng (chỉnh sửa sau khi tạo)
 export const updateOrder = (orderId, data) =>
   updateDoc(doc(db, 'orders', orderId), { ...data, updatedAt: serverTimestamp() })
+
+
+// ── EXPENSES (chi phí vận hành) ─────────────────────────────────────────────
+// Collection: expenses/{id} — { amount, category, date, note, createdBy, createdAt }
+
+export const subscribeExpenses = (cb) => {
+  const q = collection(db, 'expenses')
+  return onSnapshot(q, (snap) => {
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    cb(list)
+  }, (err) => console.error('subscribeExpenses error:', err))
+}
+
+export const addExpense = (data) =>
+  addDoc(collection(db, 'expenses'), {
+    ...data,
+    createdAt: serverTimestamp()
+  })
+
+export const deleteExpense = (id) =>
+  deleteDoc(doc(db, 'expenses', id))
 
 
 // ── COST PRICES (giá gốc tính chênh) ───────────────────────────────────────
@@ -401,4 +496,74 @@ export const updateBusLine = (id, data) =>
 
 export const deleteBusLine = (id) =>
   deleteDoc(doc(db, 'busLines', id))
+
+// ── WEB CATEGORIES ──────────────────────────────────────────────────────────
+export const getWebCategories = async () => {
+  try {
+    // 1. Đọc trực tiếp từ tài liệu cấu hình chuyên dụng categories_settings
+    const settingsRef = doc(db, 'priceLists', 'categories_settings')
+    const settingsSnap = await getDoc(settingsRef)
+    if (settingsSnap.exists() && settingsSnap.data().webCategories) {
+      return settingsSnap.data().webCategories
+    }
+    
+    // 2. Chế độ tương thích ngược & di trú dữ liệu: Tìm trong các bảng giá khác
+    const snap = await getDocs(collection(db, 'priceLists'))
+    const docWithCats = snap.docs.find(d => d.data().webCategories && d.data().webCategories.length > 0)
+    if (docWithCats) {
+      const cats = docWithCats.data().webCategories || []
+      // Tự động di trú sang tài liệu categories_settings để các lần sau đọc siêu tốc
+      await setDoc(settingsRef, { webCategories: cats })
+      return cats
+    }
+  } catch (e) {
+    console.warn("getWebCategories error:", e)
+  }
+  return []
+}
+
+export const saveWebCategories = async (categories) => {
+  const settingsRef = doc(db, 'priceLists', 'categories_settings')
+  await setDoc(settingsRef, { webCategories: categories })
+}
+
+// ── WEB HERO SLIDES ────────────────────────────────────────────────────────
+export const getWebHeroSlides = async () => {
+  try {
+    const settingsRef = doc(db, 'priceLists', 'hero_slides_settings')
+    const snap = await getDoc(settingsRef)
+    if (snap.exists() && snap.data().slides) {
+      return snap.data().slides
+    }
+  } catch (e) {
+    console.warn("getWebHeroSlides error:", e)
+  }
+  return null
+}
+
+export const saveWebHeroSlides = async (slides) => {
+  const settingsRef = doc(db, 'priceLists', 'hero_slides_settings')
+  await setDoc(settingsRef, { slides })
+}
+
+// ── WEB ORDERS ──────────────────────────────────────────────────────────────
+export const createWebOrder = (data) =>
+  addDoc(collection(db, 'webOrders'), {
+    ...data,
+    status: 'pending',
+    createdAt: serverTimestamp()
+  })
+
+export const subscribeWebOrders = (cb) => {
+  const q = query(collection(db, 'webOrders'), orderBy('createdAt', 'desc'))
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+  }, (err) => console.error('subscribeWebOrders error:', err))
+}
+
+export const updateWebOrderStatus = (id, status) =>
+  updateDoc(doc(db, 'webOrders', id), { status })
+
+export const deleteWebOrder = (id) =>
+  deleteDoc(doc(db, 'webOrders', id))
 

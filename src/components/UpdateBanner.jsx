@@ -35,9 +35,34 @@ export default function UpdateBanner() {
     sub:   { fontSize: 12, opacity: 0.8, marginBottom: 10 },
     bar:   { height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', marginBottom: 10, overflow: 'hidden' },
     fill:  { height: '100%', background: '#60a5fa', borderRadius: 2, transition: 'width .3s', width: `${percent ?? 0}%` },
+    notes: {
+      background: 'rgba(0,0,0,0.25)',
+      borderRadius: 6,
+      padding: '10px 12px',
+      fontSize: 11.5,
+      maxHeight: 120,
+      overflowY: 'auto',
+      marginBottom: 14,
+      lineHeight: '1.4',
+      textAlign: 'left',
+      whiteSpace: 'pre-line',
+      color: '#ffffff',
+      border: '1px solid rgba(255,255,255,0.1)',
+    },
     btns:  { display: 'flex', gap: 8 },
     btn:   { flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12 },
   }
+
+  const getNotesHtml = (notes) => {
+    if (!notes) return ''
+    if (typeof notes === 'string') return notes
+    if (Array.isArray(notes)) {
+      return notes.map(n => typeof n === 'string' ? n : (n.note || '')).join('<br/>')
+    }
+    return ''
+  }
+
+  const notesHtml = getNotesHtml(status.releaseNotes)
 
   return (
     <div style={styles.wrap}>
@@ -55,7 +80,16 @@ export default function UpdateBanner() {
         {type === 'available' && (
           <>
             <div style={styles.title}>🎉 Có phiên bản mới: v{version}</div>
-            <div style={styles.sub}>Tải về để cập nhật tính năng mới nhất</div>
+            <div style={{ ...styles.sub, marginBottom: 8 }}>Thông tin phiên bản mới:</div>
+            
+            {notesHtml && (
+              <div 
+                style={styles.notes} 
+                className="custom-thin-scrollbar" 
+                dangerouslySetInnerHTML={{ __html: notesHtml }} 
+              />
+            )}
+
             <div style={styles.btns}>
               <button style={{ ...styles.btn, background: 'rgba(255,255,255,0.15)', color: '#fff' }} onClick={() => setStatus(null)}>Bỏ qua</button>
               <button style={{ ...styles.btn, background: '#3b82f6', color: '#fff' }} onClick={() => updater.download()}>Tải về</button>

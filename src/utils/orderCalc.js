@@ -1,4 +1,4 @@
-/** Tỷ lệ chênh lệch theo bậc — tính trên chênh lệch gốc (giá bán − giá vốn) 1 SP */
+/** Tỷ lệ chênh lệch theo bậc — tính trên tổng chênh lệch gốc (giá bán − giá vốn) của cả đơn hàng */
 export const getChenhTierPct = (rawChenhAmount) => {
   const p = Math.max(0, Number(rawChenhAmount) || 0)
   if (p < 3_000_000) return 0
@@ -33,14 +33,15 @@ export const calcShippingChenhExtra = ({ shipping = 0, shippingHasVat = true } =
 
 /**
  * Tính 1 dòng sản phẩm trong đơn hàng.
- * - rawChenh = giá bán − giá gốc
- * - % bậc áp dụng khi includeVat = true (VAT 8% trên giá bán)
+ * - rawChenh = (giá bán − giá gốc) * qty
+ * - % bậc áp dụng khi includeVat = true: nếu truyền orderChenhPct thì dùng % chung của cả đơn (tính từ tổng chênh các mã gộp lại), nếu không thì tự tính theo rawChenh dòng đó
  */
 export const calcOrderLine = ({
   sellPrice = 0,
   costPrice = 0,
   qty = 1,
   includeVat = false,
+  orderChenhPct = null,
 } = {}) => {
   const q = Math.max(1, Number(qty) || 1)
   const unitSell = Number(sellPrice) || 0
@@ -50,8 +51,10 @@ export const calcOrderLine = ({
   const costTotal = Math.round(unitCost * q)
   const unitRawChenh = unitSell - unitCost
   const rawChenh = Math.round(unitRawChenh * q)
-  const chenhPct = includeVat ? getChenhTierPct(unitRawChenh) : 0
-  const chenhApplied = includeVat ? Math.round(unitRawChenh * chenhPct / 100 * q) : 0
+  const chenhPct = includeVat
+    ? (orderChenhPct != null ? orderChenhPct : getChenhTierPct(rawChenh))
+    : 0
+  const chenhApplied = includeVat ? Math.round(rawChenh * chenhPct / 100) : 0
   const vatAmount = includeVat ? Math.round(sellTotal * 0.08) : 0
 
   return {

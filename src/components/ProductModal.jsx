@@ -35,22 +35,28 @@ export default function ProductModal({ product, onClose, onSave, readOnly = fals
   const finalPrice  = afterMargin + vatAmt
 
   const handleSave = () => {
-    if (canEditInfo) {
-      if (!name.trim()) return
-      onSave({
-        ...product,
-        name:     name.trim(),
-        group:    group.trim(),
-        spec1:    spec1.trim(),
-        spec2:    spec2.trim(),
-        phiHocng: phiHocng.trim(),
-        price:    price !== '' && !isNaN(parseFloat(price)) ? parseFloat(price) : null,
-        images,
-      })
-      return
-    }
-    if (canEditImages) {
-      onSave({ ...product, images })
+    try {
+      if (canEditInfo) {
+        const safeName = String(name || '').trim()
+        if (!safeName) return
+        onSave({
+          ...product,
+          name:     safeName,
+          group:    String(group || '').trim(),
+          spec1:    String(spec1 || '').trim(),
+          spec2:    String(spec2 || '').trim(),
+          phiHocng: String(phiHocng || '').trim(),
+          price:    price !== '' && !isNaN(parseFloat(price)) ? parseFloat(price) : null,
+          images,
+        })
+        return
+      }
+      if (canEditImages) {
+        onSave({ ...product, images })
+      }
+    } catch (err) {
+      console.error("handleSave failed:", err)
+      alert("Lỗi lưu dữ liệu: " + err.message)
     }
   }
 

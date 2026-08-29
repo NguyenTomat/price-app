@@ -1,15 +1,34 @@
-import { StrictMode } from 'react'
+import { StrictMode, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
-import { registerSW } from 'virtual:pwa-register'
 import App from './App.jsx'
+import WebCatalog from './pages/WebCatalog.jsx'
 
-const isElectron = typeof window !== 'undefined' && window.electronUpdater
-if (import.meta.env.PROD && !isElectron) {
-  registerSW({ immediate: true })
+const WEB_HASH_PREFIXES = ['#web', '#home', '#products', '#applications', '#brands', '#about', '#contact', '#policy', '#catalog', '#intro']
+
+function isWebRoute(hash) {
+  if (!hash) return false
+  return WEB_HASH_PREFIXES.some(prefix => hash.startsWith(prefix))
 }
 
-createRoot(document.getElementById('root')).render(
+function RootRouter() {
+  const [isWeb, setIsWeb] = useState(() => {
+    return typeof window !== 'undefined' && (isWebRoute(window.location.hash) || window.location.hash.startsWith('#web'))
+  })
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setIsWeb(isWebRoute(window.location.hash) || window.location.hash.startsWith('#web'))
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
+  return isWeb ? <WebCatalog /> : <App />
+}
+
+const rootEl = document.getElementById('root')
+createRoot(rootEl).render(
   <StrictMode>
-    <App />
-  </StrictMode>,
+    <RootRouter />
+  </StrictMode>
 )

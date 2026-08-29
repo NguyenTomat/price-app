@@ -18,7 +18,7 @@ export default function ImageGallery({ images = [], onChange, readOnly = false }
         const img = new Image()
         img.onerror = reject
         img.onload = () => {
-          const MAX = 1200
+          const MAX = 700
           let { width, height } = img
           if (width > MAX || height > MAX) {
             if (width >= height) { height = Math.round(height * MAX / width); width = MAX }
@@ -28,7 +28,7 @@ export default function ImageGallery({ images = [], onChange, readOnly = false }
           canvas.width = width
           canvas.height = height
           canvas.getContext('2d').drawImage(img, 0, 0, width, height)
-          resolve(canvas.toDataURL('image/jpeg', 0.72))
+          resolve(canvas.toDataURL('image/jpeg', 0.55))
         }
         img.src = ev.target.result
       }

@@ -20,11 +20,44 @@ export function srcToPngBlob(src) {
   })
 }
 
+export function srcToDataUrl(src) {
+  if (typeof src === 'string' && src.startsWith('data:')) {
+    return Promise.resolve(src)
+  }
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth || img.width
+        canvas.height = img.naturalHeight || img.height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('Canvas context not available'))
+          return
+        }
+        ctx.drawImage(img, 0, 0)
+        resolve(canvas.toDataURL('image/png'))
+      } catch (err) {
+        reject(err)
+      }
+    }
+    img.onerror = (err) => reject(new Error('Image failed to load for conversion'))
+    img.src = src
+  })
+}
+
 export async function downloadImage(src, filename = 'san-pham.png') {
   if (typeof window !== 'undefined' && window.electronClipboard?.saveImage) {
-    const res = await window.electronClipboard.saveImage(src, filename)
-    if (res?.ok) return
-    if (res?.canceled) throw new Error('canceled')
+    try {
+      const dataUrl = await srcToDataUrl(src)
+      const res = await window.electronClipboard.saveImage(dataUrl, filename)
+      if (res?.ok) return
+      if (res?.canceled) throw new Error('canceled')
+    } catch (err) {
+      console.warn("Electron saveImage failed:", err)
+    }
   }
   const blob = await srcToPngBlob(src)
   const url = URL.createObjectURL(blob)
@@ -43,8 +76,13 @@ export async function downloadImage(src, filename = 'san-pham.png') {
 
 export async function copyImageToClipboard(src) {
   if (typeof window !== 'undefined' && window.electronClipboard?.copyImage) {
-    const res = await window.electronClipboard.copyImage(src)
-    if (res?.ok) return
+    try {
+      const dataUrl = await srcToDataUrl(src)
+      const res = await window.electronClipboard.copyImage(dataUrl)
+      if (res?.ok) return
+    } catch (err) {
+      console.warn("Electron copyImage failed:", err)
+    }
   }
   if (!navigator.clipboard?.write) throw new Error('no clipboard write')
   const pngBlob = await srcToPngBlob(src)

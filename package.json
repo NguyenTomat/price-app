@@ -1,6 +1,6 @@
 {
   "name": "price-manager",
-  "version": "1.4.6",
+  "version": "1.4.8",
   "description": "Hệ thống quản lý bảng giá sản phẩm",
   "main": "electron/main.js",
   "scripts": {
@@ -23,6 +23,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@google-cloud/storage": "^7.21.0",
     "@vitejs/plugin-react": "^4.3.0",
     "concurrently": "^8.2.2",
     "electron": "^31.0.0",

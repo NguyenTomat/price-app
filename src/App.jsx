@@ -19,16 +19,32 @@ import Spotlight from './components/Spotlight'
 import UpdateBanner from './components/UpdateBanner'
 import PwaUpdateBanner from './components/PwaUpdateBanner'
 import PwaInstallPrompt from './components/PwaInstallPrompt'
+import WebManagePage from './pages/WebManagePage'
 import { getPriceLists, getProducts } from './firebase/firebase'
 import './index.css'
 
 function AppContent() {
   const { user, loading } = useAuth()
-  const [page, setPage] = useState('dashboard')
+  const [page, setPage] = useState(() => {
+    return localStorage.getItem('price_app_page') || 'dashboard'
+  })
   const [spotlightOpen, setSpotlightOpen] = useState(false)
   const [allProducts, setAllProducts] = useState([])
   // extra = product to auto-open from spotlight
   const [spotlightTarget, setSpotlightTarget] = useState(null)
+
+  // Lưu trang hiện tại vào localStorage để không bị nhảy về dashboard khi reload/memory sleep trên điện thoại
+  useEffect(() => {
+    localStorage.setItem('price_app_page', page)
+  }, [page])
+
+  // Reset trang về dashboard khi đăng xuất
+  useEffect(() => {
+    if (!user) {
+      localStorage.removeItem('price_app_page')
+      setPage('dashboard')
+    }
+  }, [user])
 
   // Load all products for spotlight search (runs once after login)
   useEffect(() => {
@@ -84,6 +100,7 @@ function AppContent() {
     'catalog':      <CatalogPage/>,
     'revenue':      <RevenuePage/>,
     'bus':          <BusPage/>,
+    'web-manage':   <WebManagePage/>,
     'admin-import': <AdminImportPage/>,
     'admin-users':  <AdminUsersPage/>,
   }

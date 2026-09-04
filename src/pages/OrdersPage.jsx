@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { subscribeOrders, createOrder, updateOrderStatus, deleteOrder, subscribeCostPrices, getAllProductsFlat, updateOrder } from '../firebase/firebase'
+import { subscribeOrders, createOrder, updateOrderStatus, deleteOrder, subscribeCostPrices, getAllProductsFlat, updateOrder, Timestamp } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import { calcOrderLine, calcShippingChenhExtra, getChenhTierPct, CHENH_TIER_LABELS } from '../utils/orderCalc'
@@ -215,10 +215,27 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
       listProductId: item.listProductId || '',
     }))
 
+  // Khởi tạo ngày tạo / tính doanh thu từ đơn hiện tại
+  const getInitDateStr = () => {
+    const t = order.createdAt || order.deliveredAt
+    if (!t) return new Date().toISOString().split('T')[0]
+    let d
+    if (typeof t.toDate === 'function') d = t.toDate()
+    else if (t instanceof Date) d = t
+    else if (t.seconds) d = new Date(t.seconds * 1000)
+    else d = new Date(t)
+    if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0]
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
   const [lines, setLines]               = useState(initLines)
   const [customerName, setCustomerName] = useState(order.userName || '')
   const [shipping, setShipping]         = useState(order.shipping > 0 ? String(order.shipping) : '')
   const [shippingPaidBy, setShippingPaidBy] = useState(order.shippingPaidBy || 'customer')
+  const [orderDate, setOrderDate]       = useState(getInitDateStr)
   const [note, setNote]                 = useState(order.note || '')
   const [saving, setSaving]             = useState(false)
 
@@ -311,7 +328,15 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
         }
       })
 
-      await updateOrder(order.id, {
+      let newTimestamp = null
+      if (orderDate) {
+        const [y, m, d] = orderDate.split('-').map(Number)
+        const origDate = order.createdAt?.toDate ? order.createdAt.toDate() : new Date()
+        const dateObj = new Date(y, m - 1, d, origDate.getHours() || 12, origDate.getMinutes() || 0, origDate.getSeconds() || 0)
+        newTimestamp = Timestamp.fromDate(dateObj)
+      }
+
+      const updateData = {
         userName: customerName.trim() || order.userName,
         items,
         total: s.sellTotal,
@@ -327,7 +352,16 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
         listPriceProfit: s.listPriceProfit,
         recommendedProfit: s.recommendedProfit,
         note: note.trim(),
-      })
+      }
+
+      if (newTimestamp) {
+        updateData.createdAt = newTimestamp
+        if (order.deliveredAt) {
+          updateData.deliveredAt = newTimestamp
+        }
+      }
+
+      await updateOrder(order.id, updateData)
       toast('Đã cập nhật đơn hàng', 'success')
       onSaved()
     } catch (e) {
@@ -370,8 +404,8 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
             </div>
           </div>
 
-          {/* Vận chuyển */}
-          <div className="order-grid-2" style={{ marginBottom: 16 }}>
+          {/* Vận chuyển & Thời gian đơn hàng */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 16 }}>
             <div className="field" style={{ marginBottom: 0 }}>
               <label className="field-label">Phí vận chuyển</label>
               <input className="input" value={shipping} onChange={e => setShipping(e.target.value)} placeholder="0" />
@@ -382,6 +416,16 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
                 <option value="customer">Khách trả</option>
                 <option value="company">Mình trả</option>
               </select>
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label className="field-label">📅 Ngày tính doanh thu</label>
+              <input
+                type="date"
+                className="input"
+                value={orderDate}
+                onChange={e => setOrderDate(e.target.value)}
+                style={{ fontSize: 13 }}
+              />
             </div>
           </div>
 

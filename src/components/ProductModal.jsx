@@ -10,7 +10,7 @@ const fmt = (n) => {
   return num.toLocaleString('vi-VN') + ' ₫'
 }
 
-export default function ProductModal({ product, onClose, onSave, readOnly = false }) {
+export default function ProductModal({ product, stock = null, onClose, onSave, readOnly = false }) {
   const { isAdmin } = useAuth()
   const canEditInfo = isAdmin && !readOnly
   const canEditImages = !readOnly
@@ -141,16 +141,42 @@ export default function ProductModal({ product, onClose, onSave, readOnly = fals
                 </div>
               )}
 
-              <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {[
-                  ['Giá gốc (chưa VAT)', fmt(displayPrice)],
-                  ['Giá gốc + VAT 8%', displayPrice != null ? fmt(Math.round(Number(displayPrice) * 1.08)) : '—'],
-                ].map(([label, val]) => (
-                  <div key={label} style={{ background: 'var(--accent-s)', borderRadius: 'var(--radius-sm)', padding: '12px 14px' }}>
-                    <div style={{ fontSize: 11, color: 'var(--accent)', marginBottom: 4 }}>{label}</div>
-                    <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{val}</div>
+              <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: stock != null ? '1fr 1fr 1fr' : '1fr 1fr', gap: 8 }}>
+                <div style={{ background: 'var(--accent-s)', borderRadius: 'var(--radius-sm)', padding: '12px 14px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--accent)', marginBottom: 4 }}>Giá gốc (chưa VAT)</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{fmt(displayPrice)}</div>
+                </div>
+                <div style={{ background: 'var(--accent-s)', borderRadius: 'var(--radius-sm)', padding: '12px 14px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--accent)', marginBottom: 4 }}>Giá gốc + VAT 8%</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>
+                    {displayPrice != null ? fmt(Math.round(Number(displayPrice) * 1.08)) : '—'}
                   </div>
-                ))}
+                </div>
+                {stock != null && (
+                  <div style={{
+                    background: stock.qty > 5 ? '#ECFDF5' : stock.qty > 0 ? '#FFFBEB' : '#FEF2F2',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '12px 14px',
+                    border: `1px solid ${stock.qty > 5 ? '#A7F3D0' : stock.qty > 0 ? '#FDE68A' : '#FECACA'}`
+                  }}>
+                    <div style={{
+                      fontSize: 11,
+                      color: stock.qty > 5 ? '#047857' : stock.qty > 0 ? '#B45309' : '#DC2626',
+                      fontWeight: 700,
+                      marginBottom: 4
+                    }}>
+                      Tồn kho thực tế
+                    </div>
+                    <div style={{
+                      fontSize: 16,
+                      fontWeight: 800,
+                      color: stock.qty > 5 ? '#047857' : stock.qty > 0 ? '#B45309' : '#DC2626',
+                      fontFamily: 'var(--mono)'
+                    }}>
+                      {stock.qty > 0 ? `${stock.qty} ${stock.unit || 'cái'}` : 'Hết hàng (0)'}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

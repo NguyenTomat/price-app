@@ -6,8 +6,9 @@ import {
 import {
   getFirestore, collection, doc, getDoc, getDocs,
   setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp,
-  writeBatch, onSnapshot, query, orderBy, where, limit,
+  writeBatch, onSnapshot, query, orderBy, where, limit, Timestamp
 } from 'firebase/firestore'
+export { Timestamp }
 import {
   getStorage, ref, uploadString, uploadBytes, getDownloadURL, deleteObject,
 } from 'firebase/storage'

@@ -105,7 +105,7 @@ export default function DashboardPage({ setPage }) {
     // 2. Sum profits from delivered orders
     const deliveredOrders = allOrders.filter(o => o.status === 'delivered')
     deliveredOrders.forEach(o => {
-      const t = o.deliveredAt ?? o.updatedAt ?? o.createdAt
+      const t = o.deliveredAt ?? o.createdAt ?? o.updatedAt
       if (!t) return
 
       let date
@@ -189,374 +189,956 @@ export default function DashboardPage({ setPage }) {
     </div>
   )
 
-  // Hiệu ứng "Xin vía" rơi tiền xu/tờ tiền thật
-  const [coins, setCoins] = useState([])
+  // Hiệu ứng "Xin vía" - Easter Egg tài lộc: Nút -> Gọi vía -> Lì xì -> Bùng lộc -> Chúc mừng -> Biến mất
+  const [viaStage, setViaStage] = useState('idle') // 'idle' | 'calling' | 'burst'
+
   const handleXinVia = () => {
-    // Phát âm thanh ting ting bằng AudioContext
+    if (viaStage !== 'idle') return
+
+    // 1. Âm thanh SIUUU huyền thoại
     try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-      const playTone = (freq, startTime, duration) => {
-        const osc = audioCtx.createOscillator()
-        const gain = audioCtx.createGain()
-        osc.type = 'sine'
-        osc.frequency.value = freq
-        gain.gain.setValueAtTime(0.1, startTime)
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
-        osc.connect(gain)
-        gain.connect(audioCtx.destination)
-        osc.start(startTime)
-        osc.stop(startTime + duration)
-      }
-      playTone(987.77, audioCtx.currentTime, 0.08) // Tiếng ting 1
-      playTone(1318.51, audioCtx.currentTime + 0.08, 0.25) // Tiếng ting 2
+      const audio = new Audio('/siuuu.mp3')
+      audio.currentTime = 0
+      audio.volume = 1.0
+      audio.play().catch(() => {})
     } catch {}
 
-    // Tạo 40 tờ tiền đô la uốn lượn rơi từ trên xuống
-    const newCoins = Array.from({ length: 40 }).map((_, i) => ({
-      id: Math.random() + i,
-      left: Math.random() * 95 + '%',
-      delay: Math.random() * 1.2 + 's',
-      duration: (1.5 + Math.random() * 1.5) + 's',
-      width: (50 + Math.random() * 40) + 'px',
-      rotationStart: Math.random() * 360,
-      rotationEnd: Math.random() * 360 + (Math.random() > 0.5 ? 360 : -360)
-    }))
-    setCoins(prev => [...prev, ...newCoins])
-    // Tự dọn dẹp sau khi rơi xong
+    // 2. Trạng thái 'calling' (0.0s - 0.4s)
+    setViaStage('calling')
+
+    // 3. Trạng thái 'burst' (0.4s - 2.8s)
     setTimeout(() => {
-      setCoins(prev => prev.filter(c => !newCoins.includes(c)))
-    }, 3200)
+      setViaStage('burst')
+    }, 380)
+
+    // 4. Kết thúc và dọn dẹp (2.85s)
+    setTimeout(() => {
+      setViaStage('idle')
+    }, 2850)
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-      {/* Container hiệu ứng rơi tiền uốn lượn */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 9999, overflow: 'hidden' }}>
-        {coins.map(c => (
-          <img
-            key={c.id}
-            src="./dollar.jpg"
-            alt="Dollar"
-            style={{
-              position: 'absolute',
-              top: '-60px',
-              left: c.left,
-              width: c.width,
-              height: 'auto',
-              borderRadius: '2px',
-              boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
-              transform: `rotate(${c.rotationStart}deg)`,
-              animation: `fallAndFlutter ${c.duration} ease-in-out ${c.delay} forwards`,
-              userSelect: 'none'
-            }}
-          />
-        ))}
-      </div>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: '#F7F8FA' }}>
 
-      {/* CSS Animation rơi uốn lượn như tờ tiền thật */}
+      {/* Embedded Styles for Easter Egg & Modern Dashboard */}
       <style>{`
-        @keyframes fallAndFlutter {
-          0% {
-            top: -60px;
-            transform: translateX(0) rotate(0deg) rotateY(0deg);
-            opacity: 1;
+        @keyframes viaPulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+          50% { transform: scale(0.97); box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+        }
+        .via-btn-calling {
+          animation: viaPulse 0.4s ease-in-out infinite;
+          background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+        }
+
+        /* Phong bao lì xì xuất hiện ngay dưới nút */
+        .via-envelope-pop {
+          position: absolute;
+          top: 42px;
+          right: 12px;
+          z-index: 1000;
+          pointer-events: none;
+          animation: envSequence 2.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .via-envelope-badge {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+          color: #FEF08A;
+          padding: 6px 14px;
+          border-radius: 100px;
+          box-shadow: 0 6px 18px rgba(220, 38, 38, 0.4);
+          border: 1.5px solid #FDE047;
+          font-weight: 750;
+          font-size: 12px;
+          white-space: nowrap;
+        }
+        @keyframes envSequence {
+          0% { transform: scale(0.5) translateY(-8px); opacity: 0; }
+          15% { transform: scale(1.1) translateY(0); opacity: 1; }
+          30% { transform: scale(1) translateY(0) rotate(-3deg); opacity: 1; }
+          40% { transform: scale(1.05) translateY(0) rotate(3deg); opacity: 1; }
+          50% { transform: scale(1) translateY(0) rotate(0deg); opacity: 1; }
+          75% { transform: scale(1) translateY(0); opacity: 1; }
+          100% { transform: scale(0.85) translateY(-10px); opacity: 0; }
+        }
+
+        /* Punchline Card */
+        .via-punchline-card {
+          position: absolute;
+          top: 86px;
+          right: 0;
+          z-index: 1001;
+          pointer-events: none;
+          background: #FFFFFF;
+          border: 1px solid #E7EAF0;
+          border-radius: 10px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+          padding: 10px 14px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          white-space: nowrap;
+          animation: punchlineFade 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation-delay: 0.55s;
+          opacity: 0;
+        }
+        @keyframes punchlineFade {
+          0% { transform: translateY(8px) scale(0.95); opacity: 0; }
+          15% { transform: translateY(0) scale(1); opacity: 1; }
+          80% { transform: translateY(0) scale(1); opacity: 1; }
+          100% { transform: translateY(-6px) scale(0.96); opacity: 0; }
+        }
+
+        /* Tờ tiền bắn ra từ lì xì */
+        .burst-item {
+          position: absolute;
+          top: 50px;
+          right: 50px;
+          pointer-events: none;
+          z-index: 999;
+          opacity: 0;
+          will-change: transform, opacity;
+        }
+        .burst-bn {
+          width: 56px;
+          height: 27px;
+          border-radius: 3px;
+          box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 2px 3px;
+          box-sizing: border-box;
+          color: #FFFFFF;
+          font-family: inherit;
+        }
+        .bn-500k { background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%); border: 1px solid #0369a1; }
+        .bn-200k { background: linear-gradient(135deg, #dc2626 0%, #f87171 100%); border: 1px solid #b91c1c; }
+        .bn-100k { background: linear-gradient(135deg, #059669 0%, #34d399 100%); border: 1px solid #047857; }
+        .bn-50k  { background: linear-gradient(135deg, #db2777 0%, #f472b6 100%); border: 1px solid #be185d; }
+        .bn-20k  { background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%); border: 1px solid #1d4ed8; }
+
+        .bn-top { display: flex; justify-content: space-between; font-size: 6px; font-weight: 800; line-height: 1; opacity: 0.9; }
+        .bn-mid { text-align: center; font-size: 8px; font-weight: 900; line-height: 1; text-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+        .bn-bot { display: flex; justify-content: space-between; font-size: 5.5px; font-weight: 700; line-height: 1; opacity: 0.85; }
+
+        /* Burst Trajectories */
+        @keyframes burstTraj1 {
+          0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+          20% { transform: translate(-110px, -45px) scale(1) rotate(-15deg); opacity: 1; }
+          75% { opacity: 0.95; }
+          100% { transform: translate(-150px, 70px) scale(0.9) rotate(-35deg); opacity: 0; }
+        }
+        @keyframes burstTraj2 {
+          0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+          20% { transform: translate(-160px, 15px) scale(1) rotate(20deg); opacity: 1; }
+          75% { opacity: 0.95; }
+          100% { transform: translate(-200px, 120px) scale(0.9) rotate(45deg); opacity: 0; }
+        }
+        @keyframes burstTraj3 {
+          0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+          20% { transform: translate(-95px, 60px) scale(1) rotate(-25deg); opacity: 1; }
+          75% { opacity: 0.95; }
+          100% { transform: translate(-125px, 175px) scale(0.9) rotate(-50deg); opacity: 0; }
+        }
+        @keyframes burstTraj4 {
+          0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+          20% { transform: translate(-35px, 75px) scale(1) rotate(15deg); opacity: 1; }
+          75% { opacity: 0.95; }
+          100% { transform: translate(-45px, 190px) scale(0.9) rotate(30deg); opacity: 0; }
+        }
+        @keyframes burstTraj5 {
+          0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+          20% { transform: translate(25px, 60px) scale(1) rotate(-10deg); opacity: 1; }
+          75% { opacity: 0.95; }
+          100% { transform: translate(35px, 160px) scale(0.9) rotate(-25deg); opacity: 0; }
+        }
+
+        /* Coin Trajectories */
+        @keyframes burstCoin1 {
+          0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+          20% { transform: translate(-70px, -55px) scale(1.1); opacity: 1; }
+          75% { opacity: 0.95; }
+          100% { transform: translate(-90px, 45px) scale(0.85); opacity: 0; }
+        }
+        @keyframes burstCoin2 {
+          0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+          20% { transform: translate(-135px, 50px) scale(1.1); opacity: 1; }
+          75% { opacity: 0.95; }
+          100% { transform: translate(-165px, 145px) scale(0.85); opacity: 0; }
+        }
+        @keyframes burstCoin3 {
+          0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+          20% { transform: translate(-15px, 80px) scale(1.1); opacity: 1; }
+          75% { opacity: 0.95; }
+          100% { transform: translate(-20px, 165px) scale(0.85); opacity: 0; }
+        }
+        @keyframes burstCoin4 {
+          0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+          20% { transform: translate(35px, 40px) scale(1.1); opacity: 1; }
+          75% { opacity: 0.95; }
+          100% { transform: translate(45px, 125px) scale(0.85); opacity: 0; }
+        }
+
+        /* Sparkles */
+        @keyframes burstSparkle1 {
+          0% { transform: translate(0, 0) scale(0.2); opacity: 0; }
+          40% { transform: translate(-80px, -10px) scale(1.2); opacity: 1; }
+          100% { transform: translate(-100px, 15px) scale(0.4); opacity: 0; }
+        }
+        @keyframes burstSparkle2 {
+          0% { transform: translate(0, 0) scale(0.2); opacity: 0; }
+          40% { transform: translate(10px, 25px) scale(1.2); opacity: 1; }
+          100% { transform: translate(15px, 50px) scale(0.4); opacity: 0; }
+        }
+
+        /* Mobile specific adjustments for Xin Vía: prevent left edge clipping */
+        @media (max-width: 768px) {
+          .via-envelope-pop {
+            right: 0;
+            top: 40px;
           }
-          25% {
-            transform: translateX(25px) rotate(45deg) rotateY(180deg);
+          .via-envelope-badge {
+            font-size: 11px;
+            padding: 5px 12px;
           }
-          50% {
-            transform: translateX(-25px) rotate(-30deg) rotateY(0deg);
+          .via-punchline-card {
+            right: 0;
+            top: 76px;
+            max-width: calc(100vw - 36px);
+            padding: 8px 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
           }
-          75% {
-            transform: translateX(15px) rotate(20deg) rotateY(180deg);
-            opacity: 1;
+          .burst-item {
+            right: 25px;
+            top: 42px;
           }
-          100% {
-            top: 105%;
-            transform: translateX(-10px) rotate(-10deg) rotateY(360deg);
-            opacity: 0;
+          @keyframes burstTraj1 {
+            0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+            20% { transform: translate(-60px, -30px) scale(0.88) rotate(-15deg); opacity: 1; }
+            75% { opacity: 0.95; }
+            100% { transform: translate(-80px, 45px) scale(0.8) rotate(-30deg); opacity: 0; }
+          }
+          @keyframes burstTraj2 {
+            0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+            20% { transform: translate(-85px, 10px) scale(0.88) rotate(15deg); opacity: 1; }
+            75% { opacity: 0.95; }
+            100% { transform: translate(-105px, 70px) scale(0.8) rotate(35deg); opacity: 0; }
+          }
+          @keyframes burstTraj3 {
+            0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+            20% { transform: translate(-50px, 40px) scale(0.88) rotate(-20deg); opacity: 1; }
+            75% { opacity: 0.95; }
+            100% { transform: translate(-65px, 110px) scale(0.8) rotate(-40deg); opacity: 0; }
+          }
+          @keyframes burstTraj4 {
+            0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+            20% { transform: translate(-20px, 50px) scale(0.88) rotate(10deg); opacity: 1; }
+            75% { opacity: 0.95; }
+            100% { transform: translate(-25px, 120px) scale(0.8) rotate(20deg); opacity: 0; }
+          }
+          @keyframes burstTraj5 {
+            0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+            20% { transform: translate(10px, 35px) scale(0.88) rotate(-10deg); opacity: 1; }
+            75% { opacity: 0.95; }
+            100% { transform: translate(15px, 95px) scale(0.8) rotate(-20deg); opacity: 0; }
+          }
+          @keyframes burstCoin1 {
+            0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+            20% { transform: translate(-45px, -35px) scale(0.95); opacity: 1; }
+            75% { opacity: 0.95; }
+            100% { transform: translate(-55px, 30px) scale(0.8); opacity: 0; }
+          }
+          @keyframes burstCoin2 {
+            0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+            20% { transform: translate(-75px, 30px) scale(0.95); opacity: 1; }
+            75% { opacity: 0.95; }
+            100% { transform: translate(-90px, 90px) scale(0.8); opacity: 0; }
+          }
+          @keyframes burstCoin3 {
+            0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+            20% { transform: translate(-10px, 50px) scale(0.95); opacity: 1; }
+            75% { opacity: 0.95; }
+            100% { transform: translate(-15px, 110px) scale(0.8); opacity: 0; }
+          }
+          @keyframes burstCoin4 {
+            0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+            20% { transform: translate(20px, 25px) scale(0.95); opacity: 1; }
+            75% { opacity: 0.95; }
+            100% { transform: translate(25px, 80px) scale(0.8); opacity: 0; }
           }
         }
-        @media (max-width: 900px) {
-          .revenue-split-container {
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 24px !important;
+          justify-content: space-between;
+          font-size: 6px;
+          font-weight: 700;
+          line-height: 1;
+          opacity: 0.85;
+        }
+        .coin-item {
+          position: absolute;
+          top: -30px;
+          font-size: 18px;
+          animation: coinFlutter linear forwards;
+          opacity: 0;
+          will-change: transform, opacity, top;
+        }
+        .sparkle-item {
+          position: absolute;
+          font-size: 16px;
+          animation: sparkleFade 1.2s ease-out forwards;
+          opacity: 0;
+        }
+        @keyframes banknoteFlutter {
+          0% {
+            top: -40px;
+            opacity: 0;
+            transform: translateX(0px) rotate(var(--rot-start)) rotateY(0deg);
           }
-          .mom-comparison-panel {
+          15% {
+            opacity: 1;
+          }
+          50% {
+            transform: translateX(var(--drift-mid)) rotate(var(--rot-mid)) rotateY(180deg);
+          }
+          80% {
+            opacity: 0.9;
+          }
+          100% {
+            top: 88vh;
+            opacity: 0;
+            transform: translateX(var(--drift-end)) rotate(var(--rot-end)) rotateY(360deg);
+          }
+        }
+        @keyframes coinFlutter {
+          0% { top: -30px; opacity: 0; transform: translateX(0) rotate(0deg); }
+          15% { opacity: 1; }
+          80% { opacity: 0.9; }
+          100% { top: 85vh; opacity: 0; transform: translateX(var(--drift-end)) rotate(720deg); }
+        }
+        @keyframes sparkleFade {
+          0% { transform: scale(0.3); opacity: 0; }
+          40% { transform: scale(1.2); opacity: 1; }
+          100% { transform: scale(0.5); opacity: 0; }
+        }
+        .lucky-toast-card {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          z-index: 10000;
+          background: #FFFFFF;
+          border: 1px solid #E7EAF0;
+          border-radius: 10px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+          padding: 10px 16px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          animation: toastSlideUp 2.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          pointer-events: none;
+          min-width: 240px;
+        }
+        @keyframes toastSlideUp {
+          0% { transform: translateY(16px); opacity: 0; }
+          12% { transform: translateY(0); opacity: 1; }
+          80% { transform: translateY(0); opacity: 1; }
+          100% { transform: translateY(10px); opacity: 0; }
+        }
+        .dash-scroll-area {
+          flex: 1;
+          overflow-y: auto;
+          padding: 20px 24px;
+        }
+        .dash-max-container {
+          max-width: 1420px;
+          margin: 0 auto;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .kpi-unified-strip {
+          display: grid;
+          background: #FFFFFF;
+          border: 1px solid #E7EAF0;
+          border-radius: 8px;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+          overflow: hidden;
+        }
+        .kpi-segment {
+          padding: 14px 18px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          min-height: 84px;
+          box-sizing: border-box;
+          transition: background-color 0.1s ease;
+        }
+        .kpi-segment:not(:last-child) {
+          border-right: 1px solid #F1F5F9;
+        }
+        .kpi-segment-label {
+          font-size: 11px;
+          font-weight: 600;
+          color: #667085;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 4px;
+        }
+        .kpi-segment-val {
+          font-size: 26px;
+          font-weight: 700;
+          line-height: 1.1;
+          letter-spacing: -0.02em;
+          font-variant-numeric: tabular-nums;
+        }
+        .kpi-segment-sub {
+          font-size: 11.5px;
+          color: #667085;
+          margin-top: 4px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .status-inline-strip {
+          background: #FFFFFF;
+          border: 1px solid #E7EAF0;
+          border-radius: 8px;
+          padding: 8px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 12px;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+          min-height: 40px;
+          box-sizing: border-box;
+        }
+        .status-inline-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          color: #344054;
+          font-weight: 500;
+        }
+        .status-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+        }
+        .analytics-2col-card {
+          background: #FFFFFF;
+          border: 1px solid #E7EAF0;
+          border-radius: 8px;
+          padding: 16px 20px;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .analytics-topbar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .analytics-split-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 250px;
+          gap: 20px;
+          align-items: stretch;
+        }
+        .chart-left-pane {
+          min-width: 0;
+          height: 210px;
+          position: relative;
+        }
+        .mom-right-pane {
+          width: 250px;
+          box-sizing: border-box;
+          padding: 12px 14px;
+          background: #F8FAFC;
+          border: 1px solid #E7EAF0;
+          border-radius: 8px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 8px;
+        }
+        .table-surface-card {
+          background: #FFFFFF;
+          border: 1px solid #E7EAF0;
+          border-radius: 8px;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+          overflow: hidden;
+        }
+        .erp-data-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 12.5px;
+        }
+        .erp-data-table thead th {
+          background: #F8FAFC;
+          border-bottom: 1px solid #E7EAF0;
+          padding: 8px 14px;
+          font-size: 10.5px;
+          font-weight: 650;
+          color: #667085;
+          text-align: left;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        .erp-data-table tbody tr {
+          border-bottom: 1px solid #F1F5F9;
+          height: 44px;
+          transition: background-color 0.1s ease;
+        }
+        .erp-data-table tbody tr:hover {
+          background-color: #F8FAFC;
+        }
+        .erp-data-table tbody td {
+          padding: 8px 14px;
+          vertical-align: middle;
+        }
+        @media (max-width: 960px) {
+          .analytics-split-layout {
+            grid-template-columns: 1fr !important;
+          }
+          .mom-right-pane {
             width: 100% !important;
-            box-sizing: border-box;
+          }
+        }
+        @media (max-width: 768px) {
+          .dash-scroll-area {
+            padding: 12px 14px;
+          }
+          .kpi-unified-strip {
+            grid-template-columns: 1fr !important;
+          }
+          .kpi-segment:not(:last-child) {
+            border-right: none !important;
+            border-bottom: 1px solid #F1F5F9;
+          }
+          .status-inline-strip {
+            gap: 8px;
           }
         }
       `}</style>
 
-      <div className="main-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Header Bar */}
+      <div className="main-header" style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '10px 24px',
+        minHeight: 52,
+        background: '#FFFFFF',
+        borderBottom: '1px solid #E7EAF0'
+      }}>
         <div>
-          <h2>{greeting}, {profile?.displayName?.split(' ').pop() || 'bạn'} 👋</h2>
-          <div className="text-muted text-sm" style={{ marginTop: 2 }}>
-            {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          <h2 style={{ fontSize: 18, fontWeight: 650, color: '#101828', margin: 0, letterSpacing: '-0.01em' }}>
+            {greeting}, {profile?.displayName?.split(' ').pop() || 'bạn'} 👋
+          </h2>
+          <div style={{ fontSize: 12, color: '#667085', marginTop: 1 }}>
+            Hệ thống quản lý giá & kinh doanh · {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
         </div>
 
-        {/* Nút con mèo tài lộc "Xin vía" */}
-        <button
-          className="btn"
-          onClick={handleXinVia}
-          style={{
-            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-            color: '#fff',
-            border: 'none',
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '6px 16px',
-            borderRadius: '100px',
-            boxShadow: '0 4px 12px rgba(217, 119, 6, 0.3)',
-            cursor: 'pointer',
-            transition: 'transform 0.1s, box-shadow 0.1s'
-          }}
-          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-          onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
-          onMouseUp={e => e.currentTarget.style.transform = 'scale(1.05)'}
-        >
-          <img
-            src="./lucky_cat.jpg"
-            alt="Mèo thần tài"
+        {/* Nút Easter Egg: 🤑 XIN VÍA với Burst Sequence */}
+        <div style={{ position: 'relative' }}>
+          <button
+            className={`btn ${viaStage === 'calling' ? 'via-btn-calling' : ''}`}
+            onClick={handleXinVia}
+            disabled={viaStage !== 'idle'}
             style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              objectFit: 'cover',
-              border: '2px solid #fff',
-              display: 'inline-block',
-              animation: 'waveCat 1.2s infinite ease-in-out'
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              color: '#fff',
+              border: 'none',
+              fontWeight: 650,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              borderRadius: '100px',
+              boxShadow: '0 2px 6px rgba(217, 119, 6, 0.22)',
+              cursor: viaStage === 'idle' ? 'pointer' : 'default',
+              fontSize: 12.5,
+              transition: 'transform 0.1s, box-shadow 0.1s, background 0.2s',
+              userSelect: 'none',
+              minWidth: 108,
+              justifyContent: 'center'
             }}
-          />
-          <span>Xin vía 🪙</span>
-        </button>
+            onMouseEnter={e => { if (viaStage === 'idle') e.currentTarget.style.transform = 'scale(1.02)' }}
+            onMouseLeave={e => { if (viaStage === 'idle') e.currentTarget.style.transform = 'scale(1)' }}
+          >
+            {viaStage === 'calling' ? (
+              <>
+                <span>🔮</span>
+                <span>Đang gọi vía...</span>
+              </>
+            ) : (
+              <>
+                <span>🤑</span>
+                <span>XIN VÍA</span>
+              </>
+            )}
+          </button>
 
-        <style>{`
-          @keyframes waveCat {
-            0%, 100% { transform: rotate(0deg); }
-            50% { transform: rotate(-15deg); }
-          }
-        `}</style>
+          {/* Phong bao lì xì pop ra ngay dưới nút */}
+          {viaStage === 'burst' && (
+            <>
+              <div className="via-envelope-pop">
+                <div className="via-envelope-badge">
+                  <span style={{ fontSize: 16 }}>🧧</span>
+                  <span>VÍA TÀI LỘC!</span>
+                  <span style={{ fontSize: 13 }}>✨</span>
+                </div>
+              </div>
+
+              {/* Punchline Card */}
+              <div className="via-punchline-card">
+                <div style={{ fontSize: 20 }}>💰</div>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#101828' }}>
+                    VÍA TÀI LỘC ĐÃ VỀ!
+                  </div>
+                  <div style={{ fontSize: 11, color: '#667085', marginTop: 1 }}>
+                    Chúc tháng này đơn về đều ✨
+                  </div>
+                </div>
+              </div>
+
+              {/* 5 Banknotes burst */}
+              <div className="burst-item" style={{ animation: 'burstTraj1 1.6s cubic-bezier(0.12, 0.9, 0.3, 1) forwards', animationDelay: '0.1s' }}>
+                <div className="burst-bn bn-500k">
+                  <div className="bn-top"><span>VIỆT NAM</span><span>500k</span></div>
+                  <div className="bn-mid">500.000 ₫</div>
+                  <div className="bn-bot"><span>★ NHNN</span><span>500k</span></div>
+                </div>
+              </div>
+              <div className="burst-item" style={{ animation: 'burstTraj2 1.6s cubic-bezier(0.12, 0.9, 0.3, 1) forwards', animationDelay: '0.12s' }}>
+                <div className="burst-bn bn-200k">
+                  <div className="bn-top"><span>VIỆT NAM</span><span>200k</span></div>
+                  <div className="bn-mid">200.000 ₫</div>
+                  <div className="bn-bot"><span>★ NHNN</span><span>200k</span></div>
+                </div>
+              </div>
+              <div className="burst-item" style={{ animation: 'burstTraj3 1.6s cubic-bezier(0.12, 0.9, 0.3, 1) forwards', animationDelay: '0.14s' }}>
+                <div className="burst-bn bn-100k">
+                  <div className="bn-top"><span>VIỆT NAM</span><span>100k</span></div>
+                  <div className="bn-mid">100.000 ₫</div>
+                  <div className="bn-bot"><span>★ NHNN</span><span>100k</span></div>
+                </div>
+              </div>
+              <div className="burst-item" style={{ animation: 'burstTraj4 1.6s cubic-bezier(0.12, 0.9, 0.3, 1) forwards', animationDelay: '0.16s' }}>
+                <div className="burst-bn bn-50k">
+                  <div className="bn-top"><span>VIỆT NAM</span><span>50k</span></div>
+                  <div className="bn-mid">50.000 ₫</div>
+                  <div className="bn-bot"><span>★ NHNN</span><span>50k</span></div>
+                </div>
+              </div>
+              <div className="burst-item" style={{ animation: 'burstTraj5 1.6s cubic-bezier(0.12, 0.9, 0.3, 1) forwards', animationDelay: '0.18s' }}>
+                <div className="burst-bn bn-20k">
+                  <div className="bn-top"><span>VIỆT NAM</span><span>20k</span></div>
+                  <div className="bn-mid">20.000 ₫</div>
+                  <div className="bn-bot"><span>★ NHNN</span><span>20k</span></div>
+                </div>
+              </div>
+
+              {/* 4 Coins */}
+              <div className="burst-item" style={{ fontSize: 18, animation: 'burstCoin1 1.5s cubic-bezier(0.12, 0.9, 0.3, 1) forwards', animationDelay: '0.08s' }}>
+                🪙
+              </div>
+              <div className="burst-item" style={{ fontSize: 18, animation: 'burstCoin2 1.5s cubic-bezier(0.12, 0.9, 0.3, 1) forwards', animationDelay: '0.12s' }}>
+                🪙
+              </div>
+              <div className="burst-item" style={{ fontSize: 18, animation: 'burstCoin3 1.5s cubic-bezier(0.12, 0.9, 0.3, 1) forwards', animationDelay: '0.15s' }}>
+                🪙
+              </div>
+              <div className="burst-item" style={{ fontSize: 18, animation: 'burstCoin4 1.5s cubic-bezier(0.12, 0.9, 0.3, 1) forwards', animationDelay: '0.18s' }}>
+                🪙
+              </div>
+
+              {/* 2 Sparkles */}
+              <div className="burst-item" style={{ fontSize: 16, animation: 'burstSparkle1 1.2s ease-out forwards', animationDelay: '0.1s' }}>
+                ✨
+              </div>
+              <div className="burst-item" style={{ fontSize: 16, animation: 'burstSparkle2 1.2s ease-out forwards', animationDelay: '0.14s' }}>
+                ✨
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
+      {/* Main Content Area (Max-Width 1420px centered) */}
+      <div className="dash-scroll-area">
+        <div className="dash-max-container">
 
-        {/* Stat cards */}
-        <div className="stat-grid" style={{ gridTemplateColumns: isAdmin ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)' }}>
-          <StatCard
-            label="Đơn bán" value={stats?.orders ?? '—'}
-            sub={`${stats?.ordersByStatus?.pending ?? 0} chờ xác nhận`}
-            icon="🛒" color="var(--warning)"
-            onClick={() => setPage('orders')}
-          />
-          {isAdmin && (
-            <StatCard
-              label="Doanh thu tháng này" 
-              value={loading ? '—' : fmtRevenueLong(currentMonthRevenue)}
-              sub={(
-                <span style={{ 
-                  color: prevMonthRevenue === 0 ? 'var(--text-muted)' : (isGrowthNoChange ? 'var(--text-muted)' : (isGrowthPositive ? '#10B981' : '#EF4444')), 
-                  fontWeight: 700 
-                }}>
-                  {growthPctStr}
-                </span>
-              )}
-              icon="💰" 
-              color="#10B981"
-            />
-          )}
-          <StatCard
-            label="Tồn kho thấp" value={stats?.lowStock ?? '—'}
-            sub="mặt hàng cần nhập thêm" icon="⚠️" color={stats?.lowStock > 0 ? '#EF4444' : '#10B981'}
-            onClick={() => setPage('inventory')}
-          />
-        </div>
-
-        {/* Order status breakdown */}
-        {stats?.ordersByStatus && (
-          <div className="card" style={{ marginBottom: 20 }}>
-            <h3 style={{ marginBottom: 14 }}>Trạng thái đơn hàng</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-              {Object.entries(STATUS_LABELS).map(([key, { label, cls }]) => (
-                <div key={key} style={{
-                  textAlign: 'center', padding: '14px 8px',
-                  background: 'var(--surface2)', borderRadius: 'var(--radius-sm)',
-                }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
-                    {stats.ordersByStatus[key] ?? 0}
-                  </div>
-                  <span className={`order-status ${cls}`}>{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Monthly Revenue Analytics Card (Admin Only) */}
-        {isAdmin && (
-          <div className="card" style={{
-            marginBottom: 20,
-            padding: revenueCollapsed ? '14px 20px' : '24px 28px',
-            transition: 'padding 200ms ease-in-out'
-          }}>
-            {/* Clickable Header for Toggling Collapsed State */}
+          {/* 1. KPI STRIP (Unified Data Strip) */}
+          <div className="kpi-unified-strip" style={{ gridTemplateColumns: isAdmin ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)' }}>
+            {/* Segment 1: ĐƠN BÁN */}
             <div
-              onClick={toggleRevenueCollapsed}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                cursor: 'pointer',
-                padding: '6px 10px',
-                margin: '-6px -10px',
-                borderRadius: 6,
-                transition: 'background-color 200ms ease-in-out'
-              }}
+              className="kpi-segment"
+              onClick={() => setPage('orders')}
+              style={{ cursor: 'pointer' }}
               onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
               onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <h3 style={{ margin: 0, color: '#082B4C', fontSize: 14.5, fontWeight: 900 }}>
-                  {revenueCollapsed ? '📈 DOANH THU & LỢI NHUẬN' : 'LỢI NHUẬN THỰC TẾ (LÃI - PHÍ)'}
-                </h3>
-                <span style={{ fontSize: 11, color: '#64748B', fontWeight: 800, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  {revenueCollapsed ? 'Tháng này' : '6 THÁNG'}
-                </span>
+              <div>
+                <div className="kpi-segment-label">
+                  <span>ĐƠN BÁN</span>
+                </div>
+                <div className="kpi-segment-val" style={{ color: '#101828' }}>
+                  {loading ? '—' : (stats?.orders ?? '—')}
+                </div>
               </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                {revenueCollapsed && (
-                  <>
-                    <span style={{ fontSize: 15, fontWeight: 900, color: '#082B4C' }}>
-                      {loading ? '—' : fmtRevenueLong(currentMonthRevenue)}
-                    </span>
-                    {prevMonthRevenue > 0 && (
-                      <span style={{
-                        fontSize: 11.5,
-                        fontWeight: 800,
-                        color: isGrowthNoChange ? '#64748B' : (isGrowthPositive ? '#10B981' : '#EF4444')
-                      }}>
-                        {isGrowthNoChange ? 'Không đổi' : `${isGrowthPositive ? '↑' : '↓'} ${growthPctStr.split(' ')[0].replace('+', '').replace('-', '')}`}
-                      </span>
-                    )}
-                  </>
-                )}
-                
-                {!revenueCollapsed && (
-                  <button
-                    className="btn sm"
-                    onClick={e => {
-                      e.stopPropagation(); // Avoid collapsing when clicking the button
-                      setShowExpenseModal(true);
-                    }}
-                    style={{
-                      background: '#FFFFFF', border: '1px solid #E2E8F0', color: '#475569',
-                      fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 4, cursor: 'pointer'
-                    }}
-                    onMouseOver={el => { el.currentTarget.style.color = '#0878D9'; el.currentTarget.style.borderColor = '#0878D9'; }}
-                    onMouseOut={el => { el.currentTarget.style.color = '#475569'; el.currentTarget.style.borderColor = '#E2E8F0'; }}
-                  >
-                    💸 Quản lý chi phí
-                  </button>
-                )}
-                
-                {/* Chevron icon */}
-                <span style={{ fontSize: 16, color: '#64748B', fontWeight: 900, marginLeft: 4 }}>
-                  {revenueCollapsed ? '⌄' : '⌃'}
-                </span>
+              <div className="kpi-segment-sub">
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B' }} />
+                <span><strong style={{ color: '#B45309' }}>{stats?.ordersByStatus?.pending ?? 0}</strong> đơn chờ xác nhận</span>
               </div>
             </div>
-            
-            {/* Body of the card containing line chart and MoM comparison panel */}
-            <div style={{
-              maxHeight: revenueCollapsed ? 0 : 500,
-              opacity: revenueCollapsed ? 0 : 1,
-              overflow: 'hidden',
-              transition: 'max-height 250ms ease-in-out, opacity 200ms ease-in-out, margin-top 250ms ease-in-out',
-              marginTop: revenueCollapsed ? 0 : 20
-            }}>
-              <div className="revenue-split-container" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-                {/* Left Panel: Line Chart */}
-                <div style={{ flex: 1, minWidth: 280, position: 'relative' }}>
-                  <svg width="100%" height="135" viewBox="0 0 500 135" style={{ overflow: 'visible' }}>
-                    {/* Grid helper lines */}
-                    <line x1="30" y1="65" x2="470" y2="65" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="4 4" />
-                    <line x1="30" y1="105" x2="470" y2="105" stroke="#E2E8F0" strokeWidth="1.5" />
-                    
+
+            {/* Segment 2: DOANH THU THÁNG NÀY (Hero Metric) */}
+            {isAdmin && (
+              <div className="kpi-segment" style={{ background: '#FAFAFC' }}>
+                <div>
+                  <div className="kpi-segment-label">
+                    <span style={{ color: '#101828', fontWeight: 650 }}>DOANH THU THÁNG NÀY</span>
+                  </div>
+                  <div
+                    className="kpi-segment-val"
+                    style={{
+                      color: loading ? '#101828' : (currentMonthRevenue < 0 ? '#EF4444' : '#16A34A')
+                    }}
+                  >
+                    {loading ? '—' : fmtRevenueLong(currentMonthRevenue)}
+                  </div>
+                </div>
+                <div className="kpi-segment-sub">
+                  <span style={{
+                    color: prevMonthRevenue === 0 ? '#667085' : (isGrowthNoChange ? '#667085' : (isGrowthPositive ? '#16A34A' : '#EF4444')),
+                    fontWeight: 650
+                  }}>
+                    {growthPctStr}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Segment 3: TỒN KHO THẤP */}
+            <div
+              className="kpi-segment"
+              onClick={() => setPage('inventory')}
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <div>
+                <div className="kpi-segment-label">
+                  <span>CẢNH BÁO TỒN KHO</span>
+                </div>
+                <div
+                  className="kpi-segment-val"
+                  style={{ color: (stats?.lowStock > 0 ? '#EF4444' : '#16A34A') }}
+                >
+                  {loading ? '—' : (stats?.lowStock ?? '—')}
+                </div>
+              </div>
+              <div className="kpi-segment-sub">
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: stats?.lowStock > 0 ? '#EF4444' : '#16A34A' }} />
+                <span>{stats?.lowStock > 0 ? `${stats.lowStock} mặt hàng cần nhập thêm` : 'Tất cả mức tồn an toàn'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. ORDER STATUS (Sleek Horizontal Status Bar) */}
+          {stats?.ordersByStatus && (
+            <div className="status-inline-strip">
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                TRẠNG THÁI ĐƠN
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div className="status-inline-item">
+                  <span className="status-dot" style={{ background: '#F59E0B' }} />
+                  <span>Chờ xác nhận: <strong>{stats.ordersByStatus.pending ?? 0}</strong></span>
+                </div>
+                <span style={{ color: '#E2E8F0' }}>·</span>
+                <div className="status-inline-item">
+                  <span className="status-dot" style={{ background: '#2563EB' }} />
+                  <span>Đã xác nhận: <strong>{stats.ordersByStatus.confirmed ?? 0}</strong></span>
+                </div>
+                <span style={{ color: '#E2E8F0' }}>·</span>
+                <div className="status-inline-item">
+                  <span className="status-dot" style={{ background: '#16A34A' }} />
+                  <span>Đã giao: <strong>{stats.ordersByStatus.delivered ?? 0}</strong></span>
+                </div>
+                <span style={{ color: '#E2E8F0' }}>·</span>
+                <div className="status-inline-item">
+                  <span className="status-dot" style={{ background: '#94A3B8' }} />
+                  <span>Đã hủy: <strong>{stats.ordersByStatus.cancelled ?? 0}</strong></span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3. MAIN ANALYTICS: 2-COLUMN LAYOUT (Chart ~75% + MoM ~25%) */}
+          {isAdmin && (
+            <div className="analytics-2col-card">
+              {/* Top Bar */}
+              <div className="analytics-topbar">
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <h3 style={{ fontSize: 14.5, fontWeight: 650, color: '#101828', margin: 0 }}>
+                    LỢI NHUẬN THỰC TẾ (LÃI - PHÍ)
+                  </h3>
+                  <span style={{ fontSize: 11, color: '#667085', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    6 THÁNG
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn sm"
+                  onClick={() => setShowExpenseModal(true)}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E7EAF0',
+                    color: '#344054',
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    cursor: 'pointer'
+                  }}
+                  onMouseOver={el => { el.currentTarget.style.color = '#2563EB'; el.currentTarget.style.borderColor = '#2563EB'; }}
+                  onMouseOut={el => { el.currentTarget.style.color = '#344054'; el.currentTarget.style.borderColor = '#E7EAF0'; }}
+                >
+                  💸 Quản lý chi phí
+                </button>
+              </div>
+
+              {/* 2-Column Split */}
+              <div className="analytics-split-layout">
+                {/* Left Pane: SVG Chart */}
+                <div className="chart-left-pane">
+                  <svg width="100%" height="100%" viewBox="0 0 700 200" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                    <defs>
+                      <linearGradient id="chartFillGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2563EB" stopOpacity="0.08" />
+                        <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
                     {(() => {
-                      const maxVal = Math.max(...monthlyRevenues.map(r => r.revenue), 1)
-                      const getScaleY = (val) => 105 - (val / maxVal) * 65
-                      const pts = monthlyRevenues.map((r, i) => ({ x: 50 + i * 78, y: getScaleY(r.revenue) }))
-                      const pathD = pts.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ')
+                      const revenues = monthlyRevenues.map(r => r.revenue)
+                      const rawMax = Math.max(...revenues, 0)
+                      const rawMin = Math.min(...revenues, 0)
                       
+                      const domainPadding = Math.max((rawMax - rawMin) * 0.15, 1000000)
+                      const domainMax = rawMax + domainPadding
+                      const domainMin = rawMin - domainPadding
+                      const domainRange = domainMax - domainMin || 1
+
+                      const topY = 20
+                      const bottomY = 165
+                      const heightY = bottomY - topY
+
+                      const getY = (val) => bottomY - ((val - domainMin) / domainRange) * heightY
+                      const zeroY = getY(0)
+
+                      const leftX = 55
+                      const rightX = 665
+                      const stepX = (rightX - leftX) / 5
+
+                      const pts = monthlyRevenues.map((r, i) => ({
+                        x: leftX + i * stepX,
+                        y: getY(r.revenue),
+                        rev: r.revenue,
+                        label: r.label
+                      }))
+
+                      const pathD = pts.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ')
+
                       return (
                         <g>
-                          {/* Line path */}
-                          <path d={pathD} fill="none" stroke="#0878D9" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                          
-                          {/* Interactive dots and tooltips */}
+                          {/* Top subtle gridline */}
+                          <line x1="45" y1={topY + 10} x2={rightX + 15} y2={topY + 10} stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3 3" />
+                          <text x="38" y={topY + 14} textAnchor="end" fontSize="9.5" fontWeight="600" fill="#94A3B8">
+                            {fmtShort(domainMax * 0.85)}
+                          </text>
+
+                          {/* Zero baseline */}
+                          <line x1="45" y1={zeroY} x2={rightX + 15} y2={zeroY} stroke="#CBD5E1" strokeWidth="1" strokeDasharray="3 3" />
+                          <text x="38" y={zeroY + 3.5} textAnchor="end" fontSize="9.5" fontWeight="650" fill="#64748B">
+                            0 ₫
+                          </text>
+
+                          {/* Area under curve */}
+                          <path
+                            d={`${pathD} L ${pts[5].x} ${bottomY} L ${pts[0].x} ${bottomY} Z`}
+                            fill="url(#chartFillGrad)"
+                          />
+
+                          {/* Main line */}
+                          <path d={pathD} fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+
+                          {/* Points and Tooltips */}
                           {pts.map((p, i) => {
                             const isCurrent = i === 5
                             const isHovered = hoveredIdx === i
                             const showTooltip = isHovered || (hoveredIdx === null && isCurrent)
-                            const rev = monthlyRevenues[i].revenue
-                            
+
                             return (
                               <g key={i}>
-                                {showTooltip && (
-                                  <line x1={p.x} y1={p.y} x2={p.x} y2="105" stroke="#0878D9" strokeWidth="1" strokeDasharray="2 2" />
-                                )}
-                                
+                                <line x1={p.x} y1={p.y} x2={p.x} y2={bottomY} stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 2" opacity={showTooltip ? 0.8 : 0.25} />
+
                                 <circle
                                   cx={p.x}
                                   cy={p.y}
-                                  r={isCurrent ? 6 : 4}
-                                  fill={isCurrent ? '#0878D9' : '#FFFFFF'}
-                                  stroke="#0878D9"
-                                  strokeWidth={isCurrent ? 2 : 2.5}
+                                  r={isCurrent ? 4.5 : 3}
+                                  fill={isCurrent ? '#2563EB' : '#FFFFFF'}
+                                  stroke="#2563EB"
+                                  strokeWidth={isCurrent ? 2 : 1.8}
                                 />
-                                
+
                                 <circle
                                   cx={p.x}
                                   cy={p.y}
-                                  r="20"
+                                  r="24"
                                   fill="transparent"
                                   style={{ cursor: 'pointer' }}
                                   onMouseEnter={() => setHoveredIdx(i)}
                                   onMouseLeave={() => setHoveredIdx(null)}
                                 />
-                                
+
                                 {showTooltip && (
                                   <g>
                                     <rect
-                                      x={isCurrent ? p.x - 92 : p.x - 46}
+                                      x={isCurrent ? p.x - 90 : (i === 0 ? p.x - 6 : p.x - 48)}
                                       y={p.y - 28}
-                                      width="92"
-                                      height="19"
+                                      width="96"
+                                      height="20"
                                       rx="4"
-                                      fill="#082B4C"
+                                      fill="#101828"
                                     />
                                     <text
-                                      x={isCurrent ? p.x - 46 : p.x}
-                                      y={p.y - 15}
+                                      x={isCurrent ? p.x - 42 : (i === 0 ? p.x + 42 : p.x)}
+                                      y={p.y - 14}
                                       textAnchor="middle"
                                       fill="#FFFFFF"
-                                      fontSize="9.5"
-                                      fontWeight="800"
+                                      fontSize="10"
+                                      fontWeight="650"
                                     >
-                                      {fmtRevenueLong(rev)}
+                                      {fmtRevenueLong(p.rev)}
                                     </text>
                                   </g>
                                 )}
-                                
-                                <text x={p.x} y="122" textAnchor="middle" fill="#64748B" fontSize="10.5" fontWeight="800">
-                                  {monthlyRevenues[i].label}
+
+                                <text x={p.x} y={bottomY + 18} textAnchor="middle" fill={isCurrent ? '#101828' : '#667085'} fontSize="11" fontWeight={isCurrent ? '700' : '600'}>
+                                  {p.label}
                                 </text>
                               </g>
                             )
@@ -566,38 +1148,61 @@ export default function DashboardPage({ setPage }) {
                     })()}
                   </svg>
                 </div>
-                
-                {/* Right Panel: MoM comparison */}
-                <div className="mom-comparison-panel" style={{
-                  width: 230, flexShrink: 0, padding: '16px 20px', background: '#F8FAFC',
-                  border: '1px solid #E2E8F0', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12
-                }}>
-                  <div style={{ fontSize: 11, fontWeight: 900, color: '#64748B', letterSpacing: '0.5px', textTransform: 'uppercase', borderBottom: '1px solid #E2E8F0', paddingBottom: 6 }}>
+
+                {/* Right Pane: Compact MoM Summary Box */}
+                <div className="mom-right-pane">
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#667085', letterSpacing: '0.05em', textTransform: 'uppercase', borderBottom: '1px solid #E7EAF0', paddingBottom: 5 }}>
                     SO SÁNH THÁNG
                   </div>
+
                   <div>
-                    <div style={{ fontSize: 10, fontWeight: 800, color: '#082B4C', textTransform: 'uppercase' }}>Tháng này ({months[5]?.label})</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: '#082B4C', marginTop: 2 }}>{fmtRevenueLong(currentMonthRevenue)}</div>
-                    <div style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
-                      Lãi đơn: {fmtShort(monthlyRevenues[5]?.orderProfit ?? 0)} · Phí: {fmtShort(monthlyRevenues[5]?.expenseAmount ?? 0)}
+                    <div style={{ fontSize: 10.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>
+                      THÁNG NÀY ({months[5]?.label})
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: currentMonthRevenue < 0 ? '#EF4444' : '#101828', marginTop: 1 }}>
+                      {fmtRevenueLong(currentMonthRevenue)}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: '#667085', marginTop: 1 }}>
+                      Lãi dòng: {fmtShort(monthlyRevenues[5]?.orderProfit ?? 0)} · Phí: {fmtShort(monthlyRevenues[5]?.expenseAmount ?? 0)}
                     </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>Tháng trước ({months[4]?.label})</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#475569', marginTop: 2 }}>{fmtRevenueLong(prevMonthRevenue)}</div>
-                    <div style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
-                      Lãi đơn: {fmtShort(monthlyRevenues[4]?.orderProfit ?? 0)} · Phí: {fmtShort(monthlyRevenues[4]?.expenseAmount ?? 0)}
+
+                  <div style={{ borderTop: '1px solid #E7EAF0', paddingTop: 6 }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>
+                      THÁNG TRƯỚC ({months[4]?.label})
+                    </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#344054', marginTop: 1 }}>
+                      {fmtRevenueLong(prevMonthRevenue)}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: '#667085', marginTop: 1 }}>
+                      Lãi dòng: {fmtShort(monthlyRevenues[4]?.orderProfit ?? 0)} · Phí: {fmtShort(monthlyRevenues[4]?.expenseAmount ?? 0)}
                     </div>
                   </div>
-                  <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 8 }}>
-                    <div style={{ fontSize: 10, fontWeight: 800, color: prevMonthRevenue === 0 ? '#64748B' : (isGrowthNoChange ? '#64748B' : (isGrowthPositive ? '#10B981' : '#EF4444')), textTransform: 'uppercase' }}>
+
+                  <div style={{ borderTop: '1px solid #E7EAF0', paddingTop: 6 }}>
+                    <div style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: prevMonthRevenue === 0 ? '#667085' : (isGrowthNoChange ? '#667085' : (isGrowthPositive ? '#16A34A' : '#EF4444')),
+                      textTransform: 'uppercase'
+                    }}>
                       {prevMonthRevenue === 0 ? 'SO SÁNH' : (isGrowthNoChange ? 'KHÔNG ĐỔI' : (isGrowthPositive ? 'TĂNG' : 'GIẢM'))}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: prevMonthRevenue === 0 ? '#64748B' : (isGrowthNoChange ? '#64748B' : (isGrowthPositive ? '#10B981' : '#EF4444')), marginTop: 2 }}>
+                    <div style={{
+                      fontSize: 13.5,
+                      fontWeight: 700,
+                      color: prevMonthRevenue === 0 ? '#667085' : (isGrowthNoChange ? '#667085' : (isGrowthPositive ? '#16A34A' : '#EF4444')),
+                      marginTop: 1
+                    }}>
                       {prevMonthRevenue === 0 ? '—' : `${diffAmount >= 0 ? '+' : ''}${fmtRevenueLong(diffAmount)}`}
                     </div>
                     {prevMonthRevenue > 0 && !isGrowthNoChange && (
-                      <div style={{ fontSize: 11, fontWeight: 800, color: isGrowthPositive ? '#10B981' : '#EF4444', marginTop: 1 }}>
+                      <div style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: isGrowthPositive ? '#16A34A' : '#EF4444',
+                        marginTop: 1
+                      }}>
                         {growthPctStr.split(' ')[0]}
                       </div>
                     )}
@@ -605,77 +1210,111 @@ export default function DashboardPage({ setPage }) {
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Recent orders */}
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <h3 style={{ flex: 1 }}>Đơn hàng gần đây</h3>
-            <button className="btn sm ghost" onClick={() => setPage('orders')}>Xem tất cả →</button>
-          </div>
-
-          {recentOrders.length === 0 ? (
-            <div className="empty" style={{ padding: '32px 0' }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>🛒</div>
-              <div>Chưa có đơn hàng nào</div>
-              <div className="text-sm text-muted" style={{ marginTop: 4 }}>Đơn bán sẽ xuất hiện tại đây</div>
+          {/* 4. RECENT ORDERS TABLE */}
+          <div className="table-surface-card">
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 18px',
+              borderBottom: '1px solid #E7EAF0'
+            }}>
+              <h3 style={{ fontSize: 14, fontWeight: 650, color: '#101828', margin: 0 }}>
+                Đơn hàng gần đây
+              </h3>
+              <button
+                className="btn ghost sm"
+                onClick={() => setPage('orders')}
+                style={{ fontSize: 12, fontWeight: 600, color: '#2563EB', padding: '2px 6px' }}
+              >
+                Xem tất cả →
+              </button>
             </div>
-          ) : (
-            <MobileTableWrap>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Khách hàng</th>
-                    <th>Sản phẩm</th>
-                    <th style={{ textAlign: 'right' }}>Tổng tiền</th>
-                    <th>Trạng thái</th>
-                    <th>Thời gian</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.map(o => {
-                    const st = STATUS_LABELS[o.status] || { label: o.status, cls: '' }
-                    return (
-                      <tr key={o.id} style={{ cursor: 'default' }}>
-                        <td style={{ fontWeight: 500 }}>{o.userName || o.uid?.slice(0, 8) || '—'}</td>
-                        <td className="text-sm text-muted">
-                          {o.items?.length ?? 0} sản phẩm
-                          {o.items?.[0] ? ` · ${o.items[0].name}` : ''}
-                          {o.items?.length > 1 ? ` +${o.items.length - 1}` : ''}
-                        </td>
-                        <td className="td-price" style={{ textAlign: 'right' }}>{fmt(o.total)}</td>
-                        <td><span className={`order-status ${st.cls}`}>{st.label}</span></td>
-                        <td className="text-sm text-muted">
-                          {o.createdAt?.toDate?.()
-                            ? o.createdAt.toDate().toLocaleDateString('vi-VN')
-                            : '—'}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </MobileTableWrap>
-          )}
-        </div>
 
-        {/* Quick actions */}
-        <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button className="btn primary" onClick={() => setPage('my-prices')}>
-            ⭐ Tính giá của tôi
-          </button>
-          <button className="btn" onClick={() => setPage('orders')}>
-            🛒 Tạo đơn bán
-          </button>
-          {isAdmin && (
-            <button className="btn" onClick={() => setPage('admin-import')}>
-              📥 Import bảng giá
+            {recentOrders.length === 0 ? (
+              <div className="empty" style={{ padding: '28px 0', textAlign: 'center', color: '#667085' }}>
+                <div style={{ fontSize: 24, marginBottom: 4 }}>🛒</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>Chưa có đơn hàng nào</div>
+                <div style={{ fontSize: 12, color: '#98A2B3', marginTop: 2 }}>Đơn bán mới sẽ xuất hiện tại đây</div>
+              </div>
+            ) : (
+              <MobileTableWrap>
+                <table className="erp-data-table">
+                  <thead>
+                    <tr>
+                      <th>Khách hàng</th>
+                      <th>Chi tiết sản phẩm</th>
+                      <th style={{ textAlign: 'right' }}>Tổng tiền</th>
+                      <th>Trạng thái</th>
+                      <th>Ngày tạo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentOrders.map(o => {
+                      const st = STATUS_LABELS[o.status] || { label: o.status, cls: '' }
+                      const dotColor = o.status === 'delivered' ? '#16A34A' : o.status === 'pending' ? '#F59E0B' : o.status === 'confirmed' ? '#2563EB' : '#94A3B8'
+                      return (
+                        <tr key={o.id}>
+                          <td style={{ fontWeight: 600, color: '#101828' }}>
+                            {o.userName || o.uid?.slice(0, 8) || '—'}
+                          </td>
+                          <td style={{ color: '#667085' }}>
+                            <span style={{ fontWeight: 500, color: '#344054' }}>{o.items?.length ?? 0} mặt hàng</span>
+                            {o.items?.[0] ? ` · ${o.items[0].name}` : ''}
+                            {o.items?.length > 1 ? ` +${o.items.length - 1}` : ''}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#101828', fontVariantNumeric: 'tabular-nums' }}>
+                            {fmt(o.total)}
+                          </td>
+                          <td>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              padding: '2px 7px',
+                              borderRadius: '100px',
+                              background: '#F1F5F9',
+                              color: '#344054'
+                            }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor }} />
+                              {st.label}
+                            </span>
+                          </td>
+                          <td style={{ color: '#667085', fontSize: 12 }}>
+                            {o.createdAt?.toDate?.()
+                              ? o.createdAt.toDate().toLocaleDateString('vi-VN')
+                              : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </MobileTableWrap>
+            )}
+          </div>
+
+          {/* 5. QUICK ACTIONS TOOLBAR */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+            <button className="btn primary sm" onClick={() => setPage('my-prices')} style={{ fontSize: 12.5, fontWeight: 600 }}>
+              ⭐ Tính giá của tôi
             </button>
-          )}
-          <button className="btn" onClick={() => setPage('inventory')}>
-            📦 Quản lý tồn kho
-          </button>
+            <button className="btn sm" onClick={() => setPage('orders')} style={{ fontSize: 12.5, fontWeight: 500, background: '#FFFFFF' }}>
+              🛒 Tạo đơn bán
+            </button>
+            {isAdmin && (
+              <button className="btn sm" onClick={() => setPage('admin-import')} style={{ fontSize: 12.5, fontWeight: 500, background: '#FFFFFF' }}>
+                📥 Import bảng giá
+              </button>
+            )}
+            <button className="btn sm" onClick={() => setPage('inventory')} style={{ fontSize: 12.5, fontWeight: 500, background: '#FFFFFF' }}>
+              📦 Quản lý tồn kho
+            </button>
+          </div>
         </div>
       </div>
 

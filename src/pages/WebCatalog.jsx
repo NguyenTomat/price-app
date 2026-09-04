@@ -544,7 +544,12 @@ export default function WebCatalog() {
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem('tt_web_cart')
-      return saved ? JSON.parse(saved) : []
+      if (!saved) return []
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed)) {
+        return parsed.filter(item => item && item.product && item.product.id)
+      }
+      return []
     } catch {
       return []
     }
@@ -569,16 +574,18 @@ export default function WebCatalog() {
   const [calcResults, setCalcResults] = useState(null)
   const [calculatedProducts, setCalculatedProducts] = useState([])
 
-
   // Callback form states
   const [callbackName, setCallbackName] = useState('')
   const [callbackPhone, setCallbackPhone] = useState('')
   const [callbackNote, setCallbackNote] = useState('')
   const [isSubmittingCallback, setIsSubmittingCallback] = useState(false)
 
-  // Save cart changes
+  // Save cart changes safely
   useEffect(() => {
-    localStorage.setItem('tt_web_cart', JSON.stringify(cart))
+    try {
+      const validCart = Array.isArray(cart) ? cart.filter(item => item && item.product && item.product.id) : []
+      localStorage.setItem('tt_web_cart', JSON.stringify(validCart))
+    } catch {}
   }, [cart])
   // Smart Pump Calculator Helper Logic
   const parsePumpSpecs = (specStr) => {
@@ -1451,14 +1458,19 @@ export default function WebCatalog() {
   }
 
   const handleAddToCart = (product, quantity = 1) => {
+    if (!product || !product.id) return
     setCart(prev => {
-      const idx = prev.findIndex(item => item.product.id === product.id)
+      const validCart = Array.isArray(prev) ? prev.filter(item => item && item.product && item.product.id) : []
+      const idx = validCart.findIndex(item => item.product.id === product.id)
       if (idx > -1) {
-        const next = [...prev]
-        next[idx].quantity += quantity
+        const next = [...validCart]
+        next[idx] = {
+          ...next[idx],
+          quantity: Math.max(1, (next[idx].quantity || 1) + quantity)
+        }
         return next
       } else {
-        return [...prev, { product, quantity }]
+        return [...validCart, { product, quantity: Math.max(1, quantity) }]
       }
     })
     // Show cart drawer immediately so they see it
@@ -1466,20 +1478,28 @@ export default function WebCatalog() {
   }
 
   const handleUpdateCartQty = (productId, delta) => {
+    if (!productId) return
     setCart(prev => {
-      const idx = prev.findIndex(item => item.product.id === productId)
-      if (idx === -1) return prev
-      const next = [...prev]
-      next[idx].quantity += delta
-      if (next[idx].quantity <= 0) {
+      const validCart = Array.isArray(prev) ? prev.filter(item => item && item.product && item.product.id) : []
+      const idx = validCart.findIndex(item => item.product.id === productId)
+      if (idx === -1) return validCart
+      const next = [...validCart]
+      const newQty = (next[idx].quantity || 1) + delta
+      if (newQty <= 0) {
         next.splice(idx, 1)
+      } else {
+        next[idx] = { ...next[idx], quantity: newQty }
       }
       return next
     })
   }
 
   const handleRemoveFromCart = (productId) => {
-    setCart(prev => prev.filter(item => item.product.id !== productId))
+    if (!productId) return
+    setCart(prev => {
+      const validCart = Array.isArray(prev) ? prev.filter(item => item && item.product && item.product.id) : []
+      return validCart.filter(item => item.product.id !== productId)
+    })
   }
 
   const handleCheckoutSubmit = async (e) => {
@@ -5697,28 +5717,63 @@ export default function WebCatalog() {
         </div>
       )}
 
-            {/* TRANG CHI TIẾT SẢN PHẨM */}
-      {viewMode === 'product-detail' && currentProduct && (() => {
-        const brandInfo = BRAND_METADATA[currentProduct.webBrand] || BRAND_METADATA['UPTI PUMP'];
-        const pow = currentProduct.webSpecs?.power ? formatPower(currentProduct.webSpecs.power) : '';
-        const volt = currentProduct.webSpecs?.voltage ? formatVoltage(currentProduct.webSpecs.voltage) : '';
-        const parsedSpecs = parsePumpSpecs(currentProduct.webSpecs?.specs);
-        
-        const formatSpecNumber = (val) => {
-          if (val === undefined || val === null) return '';
-          const num = parseFloat(val);
-          if (isNaN(num)) return val;
-          return Number(num.toFixed(1)).toString();
-        };
-        const qMin = parsedSpecs ? formatSpecNumber(parsedSpecs.qMin) : '';
-        const qMax = parsedSpecs ? formatSpecNumber(parsedSpecs.qMax) : '';
-        const hMin = parsedSpecs ? formatSpecNumber(parsedSpecs.hMin) : '';
-        const hMax = parsedSpecs ? formatSpecNumber(parsedSpecs.hMax) : '';
-        const qRange = qMax ? `${qMax} m³/h` : 'Liên hệ';
-        const hRange = hMax ? `${hMax} m` : 'Liên hệ';
+      {/* TRANG CHI TIẾT SẢN PHẨM */}
+      {viewMode === 'product-detail' && (
+        loading && !currentProduct ? (
+          <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <span className="spinner" style={{ width: 40, height: 40, borderWidth: 3, borderColor: '#0878D9' }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#64748B' }}>Đang tải thông tin sản phẩm...</span>
+          </div>
+        ) : !currentProduct ? (
+          <div style={{ maxWidth: 640, margin: '60px auto 100px', textAlign: 'center', padding: '48px 24px', background: '#FFFFFF', borderRadius: 16, border: '1px solid #E2E8F0', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📦</div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#071A2F', marginBottom: 10 }}>Không tìm thấy sản phẩm</h2>
+            <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, marginBottom: 28, maxWidth: 460, margin: '0 auto 28px' }}>
+              Mã sản phẩm này có thể không tồn tại hoặc đã được cập nhật. Bạn vui lòng quay lại trang chủ hoặc duyệt danh mục sản phẩm.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={goBackToCatalog}
+                style={{
+                  background: '#0878D9', color: '#FFFFFF', border: 'none', padding: '12px 24px',
+                  borderRadius: 8, fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(8,120,217,0.25)'
+                }}
+              >
+                ← VỀ TRANG CHỦ &amp; BẢNG GIÁ
+              </button>
+              <button
+                onClick={handleNavProducts}
+                style={{
+                  background: '#F0F9FF', color: '#0878D9', border: '1px solid #BAE6FD', padding: '12px 24px',
+                  borderRadius: 8, fontSize: 13.5, fontWeight: 700, cursor: 'pointer'
+                }}
+              >
+                XEM DANH MỤC SẢN PHẨM →
+              </button>
+            </div>
+          </div>
+        ) : (() => {
+          const brandInfo = (currentProduct.webBrand && BRAND_METADATA[currentProduct.webBrand]) || BRAND_METADATA['UPTI PUMP'] || {};
+          const pow = currentProduct.webSpecs?.power ? formatPower(currentProduct.webSpecs.power) : '';
+          const volt = currentProduct.webSpecs?.voltage ? formatVoltage(currentProduct.webSpecs.voltage) : '';
+          const parsedSpecs = parsePumpSpecs(currentProduct.webSpecs?.specs);
+          
+          const formatSpecNumber = (val) => {
+            if (val === undefined || val === null) return '';
+            const num = parseFloat(val);
+            if (isNaN(num)) return val;
+            return Number(num.toFixed(1)).toString();
+          };
+          const qMin = parsedSpecs ? formatSpecNumber(parsedSpecs.qMin) : '';
+          const qMax = parsedSpecs ? formatSpecNumber(parsedSpecs.qMax) : '';
+          const hMin = parsedSpecs ? formatSpecNumber(parsedSpecs.hMin) : '';
+          const hMax = parsedSpecs ? formatSpecNumber(parsedSpecs.hMax) : '';
+          const qRange = qMax ? `${qMax} m³/h` : 'Liên hệ';
+          const hRange = hMax ? `${hMax} m` : 'Liên hệ';
 
-        return (
-          <div style={{ maxWidth: 1200, margin: '30px auto 80px', padding: '0 24px', boxSizing: 'border-box' }}>
+          return (
+            <div style={{ maxWidth: 1200, margin: '30px auto 80px', padding: '0 24px', boxSizing: 'border-box' }}>
             {/* Breadcrumb for Desktop */}
             <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 16, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }} className="desktop-only">
               <span style={{ color: '#64748B', cursor: 'pointer', transition: 'color 0.2s' }} onClick={goBackToCatalog} onMouseOver={e => e.currentTarget.style.color = '#0878D9'} onMouseOut={e => e.currentTarget.style.color = '#64748B'}>TRANG CHỦ</span>
@@ -6046,7 +6101,7 @@ export default function WebCatalog() {
             </div>
           </div>
         );
-      })()}
+      })())}
 
 {/* TRANG CHÌNH SÁCH ĐỔI TRẢ BẢO HÀNH */}
       {viewMode === 'policy' && (
@@ -6259,29 +6314,116 @@ export default function WebCatalog() {
         }
         .desktop-floating-actions {
           position: fixed;
-          bottom: 90px;
+          bottom: 80px;
           right: 20px;
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 12px;
           z-index: 9999;
+          align-items: center;
         }
         .desktop-floating-btn {
-          width: 44px;
-          height: 44px;
+          width: 46px;
+          height: 46px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           color: #FFFFFF;
           cursor: pointer;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          transition: all 0.25s ease;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
           position: relative;
+          text-decoration: none;
         }
         .desktop-floating-btn:hover {
-          transform: scale(1.08) translateY(-2px);
-          box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+          transform: scale(1.1) translateY(-2px);
+          box-shadow: 0 8px 22px rgba(0,0,0,0.28);
+        }
+        .desktop-floating-btn.ai-floating-btn {
+          width: 50px;
+          height: 50px;
+        }
+        @keyframes aiPulseGlow {
+          0% {
+            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.65), 0 4px 16px rgba(37, 99, 235, 0.4);
+          }
+          70% {
+            box-shadow: 0 0 0 13px rgba(37, 99, 235, 0), 0 4px 16px rgba(37, 99, 235, 0.4);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0), 0 4px 16px rgba(37, 99, 235, 0.4);
+          }
+        }
+        .ai-pulse-btn {
+          animation: aiPulseGlow 2.4s infinite;
+        }
+        .desktop-floating-btn .floating-tooltip {
+          position: absolute;
+          right: 58px;
+          top: 50%;
+          transform: translateY(-50%) translateX(6px);
+          background: #071A2F;
+          color: #FFFFFF;
+          padding: 6px 12px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
+          pointer-events: none;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+          border: 1px solid rgba(255,255,255,0.1);
+        }
+        .desktop-floating-btn .floating-tooltip::after {
+          content: '';
+          position: absolute;
+          right: -5px;
+          top: 50%;
+          transform: translateY(-50%);
+          border-width: 5px 0 5px 5px;
+          border-style: solid;
+          border-color: transparent transparent transparent #071A2F;
+        }
+        .desktop-floating-btn:hover .floating-tooltip {
+          opacity: 1;
+          visibility: visible;
+          transform: translateY(-50%) translateX(0);
+        }
+        .ai-chat-widget {
+          position: fixed;
+          bottom: 80px;
+          right: 80px;
+          width: 370px;
+          max-width: calc(100vw - 32px);
+          height: 530px;
+          max-height: calc(100vh - 120px);
+          background: #FFFFFF;
+          border-radius: 16px;
+          box-shadow: 0 16px 48px rgba(7,26,47,0.24);
+          border: 1px solid #E2E8F0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          z-index: 10000;
+          animation: slideUpContact 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @media (max-width: 768px) {
+          .floating-tooltip {
+            display: none !important;
+          }
+          .ai-chat-widget {
+            bottom: 12px !important;
+            right: 12px !important;
+            left: 12px !important;
+            width: auto !important;
+            max-width: none !important;
+            height: 75vh !important;
+            max-height: 80vh !important;
+            border-radius: 16px !important;
+          }
         }
         .mobile-bottom-bar {
           display: none;
@@ -7230,10 +7372,107 @@ export default function WebCatalog() {
         </div>
       )}
 
-      {/* Fixed Floating Circular Actions (GIỎ HÀNG, ZALO, FACEBOOK, HOTLINE) */}
+      {/* Fixed Floating Circular Actions (AI TƯ VẤN, ZALO, FACEBOOK, TIKTOK, HOTLINE, GIỎ HÀNG) */}
       <div className="desktop-floating-actions">
         
-        {/* 1. GIỎ HÀNG / BÁO GIÁ */}
+        {/* 1. TRỢ LÝ TƯ VẤN AI (Ô TRÒN NỔI BẬT NHẤT) */}
+        <div 
+          onClick={() => {
+            setShowFloatingChat(prev => !prev);
+            setShowAiInvite(false);
+          }}
+          className={`desktop-floating-btn ai-floating-btn ${!showFloatingChat ? 'ai-pulse-btn' : ''}`}
+          style={{ 
+            background: showFloatingChat ? '#EF4444' : 'linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)', 
+            border: '1.5px solid rgba(255,255,255,0.4)',
+            position: 'relative'
+          }}
+          title="Trợ lý tư vấn AI 24/7"
+          aria-label="Trợ lý tư vấn AI"
+        >
+          {showFloatingChat ? (
+            <span style={{ fontSize: 20, fontWeight: 900, color: '#FFF' }}>✕</span>
+          ) : (
+            <>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="6" width="18" height="14" rx="5" fill="#FFFFFF" fillOpacity="0.95" />
+                <circle cx="8.5" cy="12" r="1.8" fill="#2563EB" />
+                <circle cx="15.5" cy="12" r="1.8" fill="#2563EB" />
+                <path d="M9.5 16C10.2 16.8 11.1 17.2 12 17.2C12.9 17.2 13.8 16.8 14.5 16" stroke="#2563EB" strokeWidth="1.6" strokeLinecap="round" />
+                <line x1="12" y1="2" x2="12" y2="6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="12" cy="2" r="1.5" fill="#38BDF8" />
+              </svg>
+              {/* Online Green Pulsing Dot */}
+              <span style={{
+                position: 'absolute', top: -2, right: -2, width: 12, height: 12,
+                background: '#10B981', border: '2px solid #FFFFFF', borderRadius: '50%',
+                boxShadow: '0 0 8px #10B981'
+              }} />
+            </>
+          )}
+          <span className="floating-tooltip">
+            {showFloatingChat ? 'Đóng trợ lý AI' : '🤖 Trợ lý tư vấn AI (24/7)'}
+          </span>
+        </div>
+
+        {/* 2. ZALO */}
+        <div 
+          onClick={() => window.open('https://zalo.me/0984273806', '_blank')}
+          className="desktop-floating-btn"
+          style={{ background: '#0068FF', border: '1px solid rgba(255,255,255,0.15)' }}
+          title="Nhắn Zalo Báo Giá (0984 273 806)"
+          aria-label="Nhắn Zalo"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C6.48 2 2 5.58 2 10C2 12.3 3.16 14.36 5 15.78V19.5C5 19.78 5.22 20 5.5 20C5.62 20 5.74 19.96 5.84 19.88L9.2 17.64C10.1 17.88 11.04 18 12 18C17.52 18 22 14.42 22 10C22 5.58 17.52 2 12 2Z" fill="#FFFFFF"/>
+            <text x="12" y="13.5" fontSize="8" fontWeight="900" fill="#0068FF" textAnchor="middle" fontFamily="'Inter', sans-serif">Zalo</text>
+          </svg>
+          <span className="floating-tooltip">💬 Nhắn tin Zalo</span>
+        </div>
+
+        {/* 3. FACEBOOK FANPAGE */}
+        <div 
+          onClick={() => window.open('https://www.facebook.com/profile.php?id=61578469481516', '_blank')}
+          className="desktop-floating-btn"
+          style={{ background: '#1877F2', border: '1px solid rgba(255,255,255,0.15)' }}
+          title="Facebook Fanpage T&T Pump"
+          aria-label="Facebook Fanpage"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+          </svg>
+          <span className="floating-tooltip">🌐 Fanpage Facebook</span>
+        </div>
+
+        {/* 4. TIKTOK */}
+        <div 
+          onClick={() => window.open('https://www.tiktok.com/@maybomnuocnhapkhautt', '_blank')}
+          className="desktop-floating-btn"
+          style={{ background: '#000000', border: '1px solid rgba(255,255,255,0.2)' }}
+          title="Kênh TikTok Máy Bơm T&T"
+          aria-label="Kênh TikTok"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF">
+            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.85.12V9.32a6.34 6.34 0 0 0-.85-.06A6.33 6.33 0 0 0 3.1 15.6a6.34 6.34 0 0 0 10.84 4.47 6.28 6.28 0 0 0 1.95-4.52V8.04a8.17 8.17 0 0 0 4.7 1.48V6.69h-1z"/>
+          </svg>
+          <span className="floating-tooltip">🎵 Kênh TikTok T&T</span>
+        </div>
+
+        {/* 5. GỌI HOTLINE */}
+        <div 
+          onClick={() => window.open('tel:0984273806')}
+          className="desktop-floating-btn"
+          style={{ background: '#071A2F', border: '1px solid rgba(255,255,255,0.15)' }}
+          title="Gọi Hotline 0984 273 806"
+          aria-label="Gọi Hotline"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+          </svg>
+          <span className="floating-tooltip">📞 Hotline: 0984 273 806</span>
+        </div>
+
+        {/* 6. GIỎ HÀNG / BÁO GIÁ */}
         <div 
           onClick={() => setShowCartDrawer(true)}
           className="desktop-floating-btn"
@@ -7255,46 +7494,7 @@ export default function WebCatalog() {
               {cart.length}
             </span>
           )}
-        </div>
-
-        {/* 2. ZALO */}
-        <div 
-          onClick={() => window.open('https://zalo.me/0984273806', '_blank')}
-          className="desktop-floating-btn"
-          style={{ background: '#0068FF', border: '1px solid rgba(255,255,255,0.15)' }}
-          title="Nhắn Zalo Báo Giá (0984 273 806)"
-          aria-label="Nhắn Zalo"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2C6.48 2 2 5.58 2 10C2 12.3 3.16 14.36 5 15.78V19.5C5 19.78 5.22 20 5.5 20C5.62 20 5.74 19.96 5.84 19.88L9.2 17.64C10.1 17.88 11.04 18 12 18C17.52 18 22 14.42 22 10C22 5.58 17.52 2 12 2Z" fill="#FFFFFF"/>
-            <text x="12" y="13.5" fontSize="8" fontWeight="900" fill="#0068FF" textAnchor="middle" fontFamily="'Inter', sans-serif">Zalo</text>
-          </svg>
-        </div>
-
-        {/* 3. FACEBOOK FANPAGE */}
-        <div 
-          onClick={() => window.open('https://www.facebook.com/profile.php?id=61578469481516', '_blank')}
-          className="desktop-floating-btn"
-          style={{ background: '#1877F2', border: '1px solid rgba(255,255,255,0.15)' }}
-          title="Facebook Fanpage T&T Pump"
-          aria-label="Facebook Fanpage"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF">
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-          </svg>
-        </div>
-
-        {/* 4. GỌI HOTLINE */}
-        <div 
-          onClick={() => window.open('tel:0984273806')}
-          className="desktop-floating-btn"
-          style={{ background: '#071A2F', border: '1px solid rgba(255,255,255,0.15)' }}
-          title="Gọi Hotline 0984 273 806"
-          aria-label="Gọi Hotline"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-          </svg>
+          <span className="floating-tooltip">🛒 Giỏ hàng ({cart.length})</span>
         </div>
 
       </div>
@@ -7478,7 +7678,7 @@ export default function WebCatalog() {
           justifyContent: 'space-between', alignItems: 'center'
         }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 8 }}>
-            🛒 GIỎ HÀNG CỦA BẠN ({cart.reduce((sum, item) => sum + item.quantity, 0)})
+            🛒 GIỎ HÀNG CỦA BẠN ({(cart || []).reduce((sum, item) => sum + (item?.quantity || 1), 0)})
           </h3>
           <button 
             onClick={() => setShowCartDrawer(false)}
@@ -7490,7 +7690,7 @@ export default function WebCatalog() {
 
         {/* Drawer Body (Scrollable) */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-          {cart.length === 0 ? (
+          {(cart || []).filter(item => item && item.product && item.product.id).length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>🛒</div>
               <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Giỏ hàng đang trống.</p>
@@ -7500,7 +7700,7 @@ export default function WebCatalog() {
             <div>
               {/* Product items list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-                {cart.map((item, idx) => (
+                {(cart || []).filter(item => item && item.product && item.product.id).map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', gap: 14, paddingBottom: 16, borderBottom: '1px solid #f1f5f9' }}>
                     <div style={{ width: 60, height: 60, borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <img src={item.product.webImages?.[0] || 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=100&q=80'} alt={item.product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />

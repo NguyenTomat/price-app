@@ -8,7 +8,7 @@ const isDev = !app.isPackaged
 autoUpdater.logger = require('electron').app
   ? (() => { try { return require('electron-log') } catch { return console } })()
   : console
-autoUpdater.autoDownload = false        // Hỏi user trước khi tải
+autoUpdater.autoDownload = true        // Tự động tải ngầm khi có bản mới
 autoUpdater.autoInstallOnAppQuit = true // Tự cài khi đóng app
 
 let mainWin = null

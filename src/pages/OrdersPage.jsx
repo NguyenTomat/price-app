@@ -22,6 +22,8 @@ const emptyLine = (costItem = null, listProduct = null) => ({
   key: Date.now() + Math.random(),
   costId: costItem?.id || '',
   name: costItem?.name || listProduct?.name || '',
+  specs: listProduct?.specs || [listProduct?.spec1, listProduct?.spec2].filter(Boolean).join('\n') || '',
+  unit: listProduct?.unit || 'Cái',
   qty: 1,
   sellPrice: '',
   listProductId: listProduct?.id || '',
@@ -30,6 +32,7 @@ const emptyLine = (costItem = null, listProduct = null) => ({
 
 // ── Chi tiết đơn ────────────────────────────────────────────────────────────
 function OrderDetailModal({ order, onClose, onEdit }) {
+  const toast = useToast()
   const st = STATUS[order.status] || { label: order.status, cls: '' }
   const shipping          = order.shipping ?? 0
   const vatAmount         = order.vatAmount ?? 0
@@ -40,6 +43,36 @@ function OrderDetailModal({ order, onClose, onEdit }) {
   const recommendedProfit = order.recommendedProfit ?? null
   const listPriceProfit   = order.listPriceProfit  ?? null
   const listPriceTotal    = order.listPriceTotal   ?? null
+
+  const handleExportQuoteFromDetail = async () => {
+    try {
+      await exportQuoteExcel({
+        customerName: order.userName || 'Khách hàng',
+        customerAddress: order.customerAddress || '',
+        customerTaxCode: order.customerTaxCode || '',
+        contactPerson: order.contactPerson || '',
+        contactPhone: order.contactPhone || '',
+        quoterName: order.quoterName || 'NGUYỄN THỊ TUYẾT',
+        note: order.note || '',
+        includeVat: order.includeVat || order.vatPct > 0,
+        vatPct: order.vatPct || 8,
+        shipping: order.shipping || 0,
+        items: (order.items || []).map(item => ({
+          name: item.name || '',
+          specs: item.specs || '',
+          unit: item.unit || 'Cái',
+          qty: item.qty || 1,
+          sellPrice: item.sellPrice ?? item.myPrice ?? item.price ?? 0,
+        })),
+        sellTotal: order.total || 0,
+        vatAmount: order.vatAmount || 0,
+        grandTotal: order.grandTotal || order.total || 0,
+      })
+      toast('Đã xuất báo giá Excel thành công', 'success')
+    } catch (e) {
+      toast('Lỗi xuất Excel: ' + e.message, 'error')
+    }
+  }
 
   // Xác định xem có dữ liệu listPrice không
   const hasListPrice = listPriceTotal != null && listPriceTotal > 0
@@ -182,9 +215,14 @@ function OrderDetailModal({ order, onClose, onEdit }) {
             )}
           </div>
         </div>
-        <div className="modal-footer">
-          <button className="btn ghost sm" onClick={() => onEdit(order)}>✏️ Chỉnh sửa</button>
-          <button className="btn" onClick={onClose}>Đóng</button>
+        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <button type="button" className="btn sm" onClick={handleExportQuoteFromDetail}>
+            📥 Xuất báo giá Excel
+          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn ghost sm" onClick={() => onEdit(order)}>✏️ Chỉnh sửa</button>
+            <button className="btn sm" onClick={onClose}>Đóng</button>
+          </div>
         </div>
       </div>
     </div>
@@ -207,9 +245,11 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
     (order.items || []).map(item => ({
       key: Math.random(),
       name: item.name || '',
+      specs: item.specs || '',
+      unit: item.unit || 'Cái',
       costId: item.costId || '',
       costCode: item.costCode || '',
-      sellPrice: item.sellPrice ?? '',
+      sellPrice: item.sellPrice ?? item.myPrice ?? '',
       qty: item.qty ?? 1,
       listPrice: item.listPrice ?? '',
       listProductId: item.listProductId || '',
@@ -241,7 +281,7 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
 
   const updateLine = (key, data) => setLines(ls => ls.map(l => l.key === key ? { ...l, ...data } : l))
   const removeLine = (key) => setLines(ls => ls.filter(l => l.key !== key))
-  const addLine    = () => setLines(ls => [...ls, { key: Math.random(), name: '', costId: '', costCode: '', sellPrice: '', qty: 1, listPrice: '', listProductId: '' }])
+  const addLine    = () => setLines(ls => [...ls, { key: Math.random(), name: '', specs: '', unit: 'Cái', costId: '', costCode: '', sellPrice: '', qty: 1, listPrice: '', listProductId: '' }])
 
   const ship = parseMoney(shipping)
 
@@ -314,6 +354,8 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
 
         return {
           name: l.name.trim(),
+          specs: (l.specs || '').trim(),
+          unit: (l.unit || 'Cái').trim(),
           costId:   l.costId   || null,
           costCode: l.costCode || null,
           qty: q,
@@ -432,20 +474,9 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
           {/* Danh sách sản phẩm */}
           <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13 }}>Sản phẩm</div>
           {lines.map((line, idx) => (
-            <div key={line.key} style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', padding: 10, marginBottom: 8 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, marginBottom: 6 }}>
-                <input
-                  className="input"
-                  style={{ fontSize: 12 }}
-                  value={line.name}
-                  onChange={e => updateLine(line.key, { name: e.target.value })}
-                  placeholder="Tên sản phẩm"
-                />
-                {lines.length > 1 && (
-                  <button className="btn xs ghost" style={{ color: 'var(--danger)' }} onClick={() => removeLine(line.key)}>✕</button>
-                )}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 60px', gap: 6, marginBottom: 6 }}>
+            <div key={line.key} style={{ background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', padding: 10, marginBottom: 10, border: '1px solid var(--border)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 1fr 60px auto', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+                {/* Giá bán */}
                 <div>
                   <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 2 }}>Giá bán</div>
                   <input
@@ -456,6 +487,18 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
                     placeholder="Giá bán"
                   />
                 </div>
+                {/* ĐVT */}
+                <div>
+                  <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 2, textAlign: 'center' }}>ĐVT</div>
+                  <input
+                    className="input"
+                    style={{ fontSize: 12, textAlign: 'center', padding: '6px 4px' }}
+                    value={line.unit || 'Cái'}
+                    onChange={e => updateLine(line.key, { unit: e.target.value })}
+                    placeholder="ĐVT"
+                  />
+                </div>
+                {/* Giá bảng giá */}
                 <div style={{ position: 'relative' }}>
                   <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 2 }}>Giá bảng giá</div>
                   <input
@@ -473,7 +516,14 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
                         <div
                           key={p.id}
                           onMouseDown={() => {
-                            updateLine(line.key, { listPrice: p.price, listProductId: p.id, name: line.name || p.name })
+                            const autoSpecs = p.specs || [p.spec1, p.spec2].filter(Boolean).join('\n') || ''
+                            updateLine(line.key, {
+                              listPrice: p.price,
+                              listProductId: p.id,
+                              name: line.name || p.name,
+                              specs: line.specs || autoSpecs,
+                              unit: line.unit || p.unit || 'Cái',
+                            })
                             setLpOpenIdx(null)
                           }}
                           style={{ padding: '6px 10px', cursor: 'pointer', fontSize: 11, borderBottom: '1px solid var(--border)' }}
@@ -489,20 +539,55 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
                     </div>
                   )}
                 </div>
+                {/* SL */}
                 <div>
-                  <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 2 }}>SL</div>
+                  <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 2, textAlign: 'center' }}>SL</div>
                   <input
                     className="input"
                     type="number" min="1"
-                    style={{ fontSize: 12, textAlign: 'center' }}
+                    style={{ fontSize: 12, textAlign: 'center', padding: '6px 4px' }}
                     value={line.qty}
                     onChange={e => updateLine(line.key, { qty: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                   />
                 </div>
+                {/* Xóa */}
+                <div>
+                  <div style={{ fontSize: 10, color: 'transparent', marginBottom: 2 }}>-</div>
+                  {lines.length > 1 ? (
+                    <button className="btn xs ghost" style={{ color: 'var(--danger)', padding: '6px 8px' }} onClick={() => removeLine(line.key)}>✕</button>
+                  ) : <span style={{ width: 24, display: 'inline-block' }}/>}
+                </div>
               </div>
+
+              {/* Tên / Model và Thông số kỹ thuật */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 4 }}>
+                <div>
+                  <div style={{ fontSize: 10.5, color: 'var(--text2)', fontWeight: 600, marginBottom: 2 }}>Tên hàng hóa / Model:</div>
+                  <textarea
+                    className="input textarea"
+                    rows={2}
+                    style={{ fontSize: 12, lineHeight: 1.4, padding: '6px 8px' }}
+                    value={line.name}
+                    onChange={e => updateLine(line.key, { name: e.target.value })}
+                    placeholder="Tên / Model sản phẩm"
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: 10.5, color: 'var(--text2)', fontWeight: 600, marginBottom: 2 }}>Thông số kỹ thuật:</div>
+                  <textarea
+                    className="input textarea"
+                    rows={2}
+                    style={{ fontSize: 12, lineHeight: 1.4, padding: '6px 8px' }}
+                    value={line.specs || ''}
+                    onChange={e => updateLine(line.key, { specs: e.target.value })}
+                    placeholder="CS: 2.2kW/ 380V... Hmax, Qmax"
+                  />
+                </div>
+              </div>
+
               {/* Hiện lãi dòng nếu có listPrice */}
               {parseMoney(line.listPrice) > 0 && parseMoney(line.sellPrice) > 0 && (
-                <div style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'right', marginTop: 4 }}>
                   Lãi dòng: <strong style={{ color: (parseMoney(line.sellPrice) - parseMoney(line.listPrice)) * line.qty >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                     {((parseMoney(line.sellPrice) - parseMoney(line.listPrice)) * line.qty).toLocaleString('vi-VN')} đ
                   </strong>
@@ -575,111 +660,155 @@ function OrderLineRow({ line, costPrices, allProducts, onChange, onRemove, canRe
   }, [allProducts, lpQuery])
 
   const pick = (item) => {
-    onChange({ ...line, costId: item.id, name: item.name || line.name })
+    onChange({ ...line, costId: item.id, name: line.name || item.name })
     setQuery(item.code || '')
     setOpen(false)
   }
 
   const pickListProduct = (p) => {
-    onChange({ ...line, listProductId: p.id, listPrice: p.price ?? '', name: line.name || p.name })
+    const autoSpecs = p.specs || [p.spec1, p.spec2].filter(Boolean).join('\n') || ''
+    onChange({
+      ...line,
+      listProductId: p.id,
+      listPrice: p.price ?? '',
+      name: line.name || (p.group ? `${p.group}\nModel: ${p.name}` : p.name),
+      specs: line.specs || autoSpecs,
+      unit: line.unit || p.unit || 'Cái',
+    })
     setLpQuery(p.name || '')
     setLpOpen(false)
   }
 
   return (
-    <div className="order-line">
-      <div style={{ position: 'relative' }}>
+    <div className="order-line-box">
+      <div className="order-line-top">
+        {/* Giá gốc picker */}
+        <div style={{ position: 'relative' }}>
+          <input
+            className="input"
+            style={{ padding: '6px 8px', fontSize: 12 }}
+            value={query}
+            placeholder="Mã gốc (tính chênh)..."
+            onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange({ ...line, costId: '' }) }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+          />
+          {open && (
+            <div className="order-cost-dropdown">
+              {filteredCost.map(item => (
+                <div
+                  key={item.id}
+                  onMouseDown={() => pick(item)}
+                  style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--border)' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                  onMouseLeave={e => e.currentTarget.style.background = ''}
+                >
+                  <span style={{ fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{item.code}</span>
+                  <span style={{ color: 'var(--text2)', marginLeft: 6 }}>{fmt(item.avgPrice)}</span>
+                </div>
+              ))}
+              {filteredCost.length === 0 && <div style={{ padding: 8, color: 'var(--text2)', fontSize: 11 }}>Không tìm thấy</div>}
+            </div>
+          )}
+        </div>
+
+        {/* Giá bảng giá picker */}
+        <div style={{ position: 'relative' }}>
+          <input
+            className="input"
+            style={{ padding: '6px 8px', fontSize: 12 }}
+            value={lpQuery}
+            placeholder="Chọn từ Bảng giá..."
+            onChange={e => { setLpQuery(e.target.value); setLpOpen(true); if (!e.target.value) onChange({ ...line, listProductId: '', listPrice: '' }) }}
+            onFocus={() => setLpOpen(true)}
+            onBlur={() => setTimeout(() => setLpOpen(false), 150)}
+          />
+          {lpOpen && allProducts.length > 0 && (
+            <div className="order-cost-dropdown">
+              {filteredProducts.map(p => (
+                <div
+                  key={p.id}
+                  onMouseDown={() => pickListProduct(p)}
+                  style={{ padding: '6px 10px', cursor: 'pointer', fontSize: 11, borderBottom: '1px solid var(--border)' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                  onMouseLeave={e => e.currentTarget.style.background = ''}
+                >
+                  <span style={{ fontWeight: 600, color: 'var(--success)', fontSize: 10 }}>{p.listName}</span>
+                  <span style={{ marginLeft: 6 }}>{p.name?.slice(0, 45)}</span>
+                  <span style={{ float: 'right', color: 'var(--accent)', fontWeight: 700 }}>{fmt(p.price)}</span>
+                </div>
+              ))}
+              {filteredProducts.length === 0 && <div style={{ padding: 8, color: 'var(--text2)', fontSize: 11 }}>Không tìm thấy</div>}
+            </div>
+          )}
+        </div>
+
+        {/* ĐVT */}
         <input
           className="input"
-          style={{ padding: '6px 8px', fontSize: 12 }}
-          value={query}
-          placeholder="Mã giá gốc (tính chênh)..."
-          onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange({ ...line, costId: '' }) }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          style={{ padding: '6px 4px', fontSize: 12, textAlign: 'center' }}
+          value={line.unit || 'Cái'}
+          onChange={e => onChange({ ...line, unit: e.target.value })}
+          placeholder="ĐVT"
+          title="Đơn vị tính (Cái / Bộ / Bình...)"
         />
-        {open && (
-          <div className="order-cost-dropdown">
-            {filteredCost.map(item => (
-              <div
-                key={item.id}
-                onMouseDown={() => pick(item)}
-                style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--border)' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
-                onMouseLeave={e => e.currentTarget.style.background = ''}
-              >
-                <span style={{ fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{item.code}</span>
-                <span style={{ color: 'var(--text2)', marginLeft: 6 }}>{fmt(item.avgPrice)}</span>
-              </div>
-            ))}
-            {filteredCost.length === 0 && <div style={{ padding: 8, color: 'var(--text2)', fontSize: 11 }}>Không tìm thấy</div>}
-          </div>
-        )}
-      </div>
 
-      {/* ─ Giá bảng giá picker ─ */}
-      <div style={{ position: 'relative' }}>
+        {/* Giá bán */}
+        <MoneyInput
+          value={line.sellPrice}
+          onChange={v => onChange({ ...line, sellPrice: v })}
+          placeholder="Giá bán"
+          style={{ padding: '6px 8px', fontSize: 12 }}
+        />
+
+        {/* SL */}
         <input
           className="input"
-          style={{ padding: '6px 8px', fontSize: 12 }}
-          value={lpQuery}
-          placeholder="Tìm SP bảng giá..."
-          onChange={e => { setLpQuery(e.target.value); setLpOpen(true); if (!e.target.value) onChange({ ...line, listProductId: '', listPrice: '' }) }}
-          onFocus={() => setLpOpen(true)}
-          onBlur={() => setTimeout(() => setLpOpen(false), 150)}
+          type="number"
+          min="1"
+          style={{ padding: '6px 4px', fontSize: 12, textAlign: 'center' }}
+          value={line.qty}
+          onChange={e => onChange({ ...line, qty: Math.max(1, parseInt(e.target.value, 10) || 1) })}
         />
-        {lpOpen && allProducts.length > 0 && (
-          <div className="order-cost-dropdown">
-            {filteredProducts.map(p => (
-              <div
-                key={p.id}
-                onMouseDown={() => pickListProduct(p)}
-                style={{ padding: '6px 10px', cursor: 'pointer', fontSize: 11, borderBottom: '1px solid var(--border)' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
-                onMouseLeave={e => e.currentTarget.style.background = ''}
-              >
-                <span style={{ fontWeight: 600, color: 'var(--success)', fontSize: 10 }}>{p.listName}</span>
-                <span style={{ marginLeft: 6 }}>{p.name?.slice(0, 45)}</span>
-                <span style={{ float: 'right', color: 'var(--accent)', fontWeight: 700 }}>{fmt(p.price)}</span>
-              </div>
-            ))}
-            {filteredProducts.length === 0 && <div style={{ padding: 8, color: 'var(--text2)', fontSize: 11 }}>Không tìm thấy</div>}
-          </div>
-        )}
+
+        {/* Thành tiền */}
+        <div className="order-line-total">
+          {sell > 0 ? fmt(calc.sellTotal) : '—'}
+        </div>
+
+        {/* Nút xóa */}
+        {canRemove ? (
+          <button type="button" className="btn xs ghost" style={{ color: 'var(--danger)', padding: '4px 6px' }} onClick={onRemove} title="Xóa dòng">✕</button>
+        ) : <span />}
       </div>
 
-      <input
-        className="input"
-        style={{ padding: '6px 8px', fontSize: 12 }}
-        value={line.name}
-        onChange={e => onChange({ ...line, name: e.target.value })}
-        placeholder="Tên / mô tả SP"
-      />
-
-      <MoneyInput
-        value={line.sellPrice}
-        onChange={v => onChange({ ...line, sellPrice: v })}
-        placeholder="Giá bán"
-        style={{ padding: '6px 8px', fontSize: 12 }}
-      />
-
-      <input
-        className="input"
-        type="number"
-        min="1"
-        style={{ padding: '6px 8px', fontSize: 12, textAlign: 'center' }}
-        value={line.qty}
-        onChange={e => onChange({ ...line, qty: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-      />
-
-      <div className="order-line-total">
-        {sell > 0 ? fmt(calc.sellTotal) : '—'}
+      {/* Tên hàng / Model và Thông số kỹ thuật */}
+      <div className="order-line-specs-grid">
+        <div>
+          <div className="specs-title">📦 TÊN HÀNG HÓA / MODEL:</div>
+          <textarea
+            className="input textarea"
+            rows={2}
+            style={{ fontSize: 12, lineHeight: 1.4, padding: '6px 8px', resize: 'vertical' }}
+            value={line.name}
+            onChange={e => onChange({ ...line, name: e.target.value })}
+            placeholder="Ví dụ: Máy bơm nước model:&#10;CM300/3 -380V"
+          />
+        </div>
+        <div>
+          <div className="specs-title">⚙️ THÔNG SỐ KỸ THUẬT:</div>
+          <textarea
+            className="input textarea"
+            rows={2}
+            style={{ fontSize: 12, lineHeight: 1.4, padding: '6px 8px', resize: 'vertical' }}
+            value={line.specs || ''}
+            onChange={e => onChange({ ...line, specs: e.target.value })}
+            placeholder="Ví dụ: CS: 2.2kW/ 380V&#10;Hmax: 18m - Qmax: 60m3/h"
+          />
+        </div>
       </div>
 
-      {canRemove ? (
-        <button type="button" className="btn xs ghost" style={{ color: 'var(--danger)', padding: '4px 6px' }} onClick={onRemove} title="Xóa dòng">✕</button>
-      ) : <span />}
-
+      {/* Meta calculation */}
       {(cost || sell > 0 || lp > 0) && (
         <div className="order-line-meta">
           {cost && <span>Gốc chênh: <strong>{fmt(cost.avgPrice)}</strong></span>}
@@ -799,10 +928,12 @@ function CreateOrderPanel({ onCreated, onCancel }) {
   const [lines, setLines]                   = useState([emptyLine()])
   const [customerName, setCustomerName]     = useState('')
   const [customerAddress, setCustomerAddress] = useState('')
+  const [customerTaxCode, setCustomerTaxCode] = useState('')
   const [contactPerson, setContactPerson]   = useState('')
   const [contactPhone, setContactPhone]     = useState('')
-  const [pumpType, setPumpType]             = useState('')
+  const [quoterName, setQuoterName]         = useState(profile?.displayName || 'NGUYỄN THỊ TUYẾT')
   const [quoterPhone, setQuoterPhone]       = useState('')
+  const [pumpType, setPumpType]             = useState('')
   const [note, setNote]                     = useState('')
   const [shipping, setShipping]             = useState('')
   const [shippingPaidBy, setShippingPaidBy] = useState('customer')
@@ -920,16 +1051,20 @@ function CreateOrderPanel({ onCreated, onCancel }) {
       await exportQuoteExcel({
         customerName: customerName.trim() || 'Khách hàng',
         customerAddress: customerAddress.trim(),
+        customerTaxCode: customerTaxCode.trim(),
         contactPerson: contactPerson.trim(),
         contactPhone: contactPhone.trim(),
         pumpType: pumpType.trim(),
-        quoterName: profile?.displayName || profile?.email || '',
+        quoterName: quoterName.trim() || profile?.displayName || 'NGUYỄN THỊ TUYẾT',
         quoterPhone: quoterPhone.trim(),
         note: note.trim(),
         includeVat,
+        vatPct: 8,
         shipping: orderCalc.customerShipping,
         items: valid.map(({ line }) => ({
           name: line.name.trim(),
+          specs: (line.specs || '').trim(),
+          unit: (line.unit || 'Cái').trim(),
           qty: line.qty,
           sellPrice: parseMoney(line.sellPrice),
         })),
@@ -937,7 +1072,7 @@ function CreateOrderPanel({ onCreated, onCancel }) {
         vatAmount: orderCalc.vatAmount,
         grandTotal: orderCalc.grandTotal,
       })
-      toast('Đã xuất báo giá Excel', 'success')
+      toast('Đã xuất báo giá Excel thành công', 'success')
     } catch (e) {
       toast('Lỗi xuất Excel: ' + e.message, 'error')
     }
@@ -962,6 +1097,8 @@ function CreateOrderPanel({ onCreated, onCancel }) {
     try {
       const items = valid.map(({ line, cost, lp, calc }) => ({
         name: line.name.trim(),
+        specs: (line.specs || '').trim(),
+        unit: (line.unit || 'Cái').trim(),
         costCode: cost?.code  ?? null,
         costId:   cost?.id   ?? null,
         qty: line.qty,
@@ -979,6 +1116,13 @@ function CreateOrderPanel({ onCreated, onCancel }) {
       await createOrder({
         uid: user.uid,
         userName: customerName.trim() || profile?.displayName || profile?.email || user.uid,
+        customerAddress: customerAddress.trim(),
+        customerTaxCode: customerTaxCode.trim(),
+        contactPerson: contactPerson.trim(),
+        contactPhone: contactPhone.trim(),
+        quoterName: quoterName.trim() || profile?.displayName || 'NGUYỄN THỊ TUYẾT',
+        quoterPhone: quoterPhone.trim(),
+        pumpType: pumpType.trim(),
         items,
         total: orderCalc.sellTotal,
         totalCost: orderCalc.costTotal,
@@ -1034,27 +1178,35 @@ function CreateOrderPanel({ onCreated, onCancel }) {
             <div className="order-grid-2">
               <div className="field span-2" style={{ marginBottom: 0 }}>
                 <label className="field-label">Tên đơn vị / khách hàng</label>
-                <input className="input" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="A Quang"/>
+                <input className="input" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="A Quang / Công ty TNHH ABC"/>
               </div>
               <div className="field span-2" style={{ marginBottom: 0 }}>
                 <label className="field-label">Địa chỉ</label>
                 <input className="input" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder="14 Lô E, TTTM Tân Thành..."/>
               </div>
               <div className="field" style={{ marginBottom: 0 }}>
-                <label className="field-label">Người liên hệ</label>
-                <input className="input" value={contactPerson} onChange={e => setContactPerson(e.target.value)}/>
-              </div>
-              <div className="field" style={{ marginBottom: 0 }}>
-                <label className="field-label">Điện thoại</label>
-                <input className="input" value={contactPhone} onChange={e => setContactPhone(e.target.value)}/>
+                <label className="field-label">Mã số thuế</label>
+                <input className="input" value={customerTaxCode} onChange={e => setCustomerTaxCode(e.target.value)} placeholder="0312345678"/>
               </div>
               <div className="field" style={{ marginBottom: 0 }}>
                 <label className="field-label">Loại bơm / hàng</label>
                 <input className="input" value={pumpType} onChange={e => setPumpType(e.target.value)} placeholder="Máy con sò thổi khí..."/>
               </div>
               <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">Người liên hệ</label>
+                <input className="input" value={contactPerson} onChange={e => setContactPerson(e.target.value)} placeholder="Anh / Chị..."/>
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">Điện thoại khách</label>
+                <input className="input" value={contactPhone} onChange={e => setContactPhone(e.target.value)} placeholder="090..."/>
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="field-label">Người báo giá</label>
+                <input className="input" value={quoterName} onChange={e => setQuoterName(e.target.value)} placeholder="NGUYỄN THỊ TUYẾT"/>
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
                 <label className="field-label">SĐT người báo giá</label>
-                <input className="input" value={quoterPhone} onChange={e => setQuoterPhone(e.target.value)}/>
+                <input className="input" value={quoterPhone} onChange={e => setQuoterPhone(e.target.value)} placeholder="098..."/>
               </div>
             </div>
           </OrderSection>
@@ -1084,7 +1236,7 @@ function CreateOrderPanel({ onCreated, onCancel }) {
             <div className="order-line-header">
               <span>Giá gốc (tính chênh)</span>
               <span>SP từ bảng giá {loadingProducts && <span style={{ fontSize: 10, color: 'var(--text2)' }}>(đang tải...)</span>}</span>
-              <span>Tên sản phẩm</span>
+              <span>ĐVT</span>
               <span>Giá bán</span>
               <span>SL</span>
               <span style={{ textAlign: 'right' }}>Thành tiền</span>

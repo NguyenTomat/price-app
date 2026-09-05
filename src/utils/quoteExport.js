@@ -1,104 +1,85 @@
 import ExcelJS from 'exceljs'
 
-const TEMPLATE_URL = `${import.meta.env.BASE_URL}templates/bao-gia-mau.xlsx`
+const TEMPLATE_URL = `${import.meta.env.BASE_URL}templates/Mau_bao_gia_TT_tu_dong.xlsx`
 
-const fmtDate = (d) => d.toLocaleDateString('vi-VN')
+/**
+ * Đọc số tiền thành chữ tiếng Việt chuẩn xác
+ * @example docSoThanhChu(5940000) => "Năm triệu chín trăm bốn mươi nghìn đồng chẵn."
+ */
+export function docSoThanhChu(so) {
+  if (so == null || isNaN(so)) return ''
+  const num = Math.round(Number(so))
+  if (num === 0) return 'Không đồng chẵn.'
 
-const thin = {
-  top: { style: 'thin' },
-  left: { style: 'thin' },
-  bottom: { style: 'thin' },
-  right: { style: 'thin' },
-}
+  const dv = ['', 'nghìn', 'triệu', 'tỷ', 'nghìn tỷ', 'triệu tỷ']
+  const chuSo = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín']
 
-const fontBody = { name: 'Times New Roman', size: 11 }
-const fontBold = { name: 'Times New Roman', size: 11, bold: true }
+  function docBlock3(b, full = true) {
+    const tr = Math.floor(b / 100)
+    const ch = Math.floor((b % 100) / 10)
+    const c = b % 10
+    let res = ''
 
-/** Cột phải meta — merge M:P (13–16), ghi vào ô master M */
-const META_COL = 13
-const setMetaRight = (ws, row, text) => {
-  const cell = ws.getCell(row, META_COL)
-  cell.value = text
-  cell.font = fontBody
-  cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }
-}
-
-/** Template đã merge sẵn một số dòng — bỏ qua nếu đã merge */
-const safeMerge = (ws, r1, c1, r2, c2) => {
-  try {
-    ws.mergeCells(r1, c1, r2, c2)
-  } catch (e) {
-    const msg = String(e?.message || e)
-    if (!msg.toLowerCase().includes('merge')) throw e
-  }
-}
-
-const TABLE_FROM = 4
-const TABLE_TO = 16
-
-const borderRange = (ws, r1, c1, r2, c2) => {
-  for (let r = r1; r <= r2; r++)
-    for (let c = c1; c <= c2; c++) {
-      ws.getCell(r, c).border = thin
+    if (tr > 0 || full) res += chuSo[tr] + ' trăm '
+    if (ch > 1) {
+      res += chuSo[ch] + ' mươi '
+      if (c === 1) res += 'mốt '
+      else if (c === 5) res += 'lăm '
+      else if (c > 0) res += chuSo[c] + ' '
+    } else if (ch === 1) {
+      res += 'mười '
+      if (c === 5) res += 'lăm '
+      else if (c > 0) res += chuSo[c] + ' '
+    } else {
+      if (c > 0) {
+        if (tr > 0 || full) res += 'lẻ ' + chuSo[c] + ' '
+        else res += chuSo[c] + ' '
+      }
     }
-}
-
-const borderTableRow = (ws, row) => borderRange(ws, row, TABLE_FROM, TABLE_TO)
-
-/** Viền liền cả khối bảng (header → tổng) — sửa ô bị mất khi in */
-const sealTableBorders = (ws, fromRow, toRow) => {
-  for (let r = fromRow; r <= toRow; r++)
-    for (let c = TABLE_FROM; c <= TABLE_TO; c++)
-      ws.getCell(r, c).border = thin
-}
-
-/** Cột Ghi chú liền một khối dọc — viền phải không bị đứt */
-const sealNoteColumn = (ws, fromRow, toRow) => {
-  if (toRow < fromRow) return
-  safeMerge(ws, fromRow, 16, toRow, 16)
-  const cell = ws.getCell(fromRow, 16)
-  cell.value = cell.value || ''
-  cell.font = fontBody
-  cell.alignment = { vertical: 'top', wrapText: true }
-  for (let r = fromRow; r <= toRow; r++) ws.getCell(r, 16).border = thin
-}
-
-const styleItemRow = (ws, row) => {
-  safeMerge(ws, row, 5, row, 9)
-  safeMerge(ws, row, 10, row, 11)
-  safeMerge(ws, row, 12, row, 13)
-  safeMerge(ws, row, 14, row, 15)
-  for (let c = TABLE_FROM; c <= TABLE_TO; c++) {
-    const cell = ws.getCell(row, c)
-    cell.font = fontBody
-    cell.alignment = { vertical: 'middle', wrapText: true }
+    return res.trim()
   }
-  ws.getCell(row, 4).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-  ws.getCell(row, 10).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-  ws.getCell(row, 12).numFmt = '#,##0'
-  ws.getCell(row, 12).alignment = { horizontal: 'right', vertical: 'middle' }
-  ws.getCell(row, 14).numFmt = '#,##0'
-  ws.getCell(row, 14).alignment = { horizontal: 'right', vertical: 'middle' }
-  borderTableRow(ws, row)
-}
 
-const styleTotalRow = (ws, row, label) => {
-  safeMerge(ws, row, 5, row, 13)
-  safeMerge(ws, row, 14, row, 15)
-  for (let c = TABLE_FROM; c <= TABLE_TO; c++) {
-    ws.getCell(row, c).font = fontBold
-    ws.getCell(row, c).alignment = { vertical: 'middle' }
+  const s = Math.abs(num)
+  let strNum = s.toString()
+  const blocks = []
+  while (strNum.length > 0) {
+    blocks.unshift(parseInt(strNum.slice(-3), 10))
+    strNum = strNum.slice(0, -3)
   }
-  const labelCell = ws.getCell(row, 5)
-  labelCell.value = label
-  labelCell.alignment = { horizontal: 'right', vertical: 'middle' }
-  const moneyCell = ws.getCell(row, 14)
-  moneyCell.numFmt = '#,##0'
-  moneyCell.alignment = { horizontal: 'right', vertical: 'middle' }
-  borderTableRow(ws, row)
+
+  let chuoi = ''
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i]
+    const donvi = dv[blocks.length - 1 - i]
+    if (b > 0) {
+      const doc = docBlock3(b, i > 0)
+      chuoi += doc + ' ' + donvi + ' '
+    }
+  }
+
+  chuoi = chuoi.trim() + ' đồng chẵn.'
+  chuoi = chuoi.charAt(0).toUpperCase() + chuoi.slice(1)
+  return chuoi.replace(/\s+/g, ' ')
 }
 
-const TABLE_HEADER_ROW = 23
+const thinBorder = {
+  top: { style: 'thin', color: { argb: 'FFAEBBC6' } },
+  left: { style: 'thin', color: { argb: 'FFAEBBC6' } },
+  bottom: { style: 'thin', color: { argb: 'FFAEBBC6' } },
+  right: { style: 'thin', color: { argb: 'FFAEBBC6' } },
+}
+
+const navyHeaderFill = {
+  type: 'pattern',
+  pattern: 'solid',
+  fgColor: { argb: 'FF17365D' },
+}
+
+const graySubFill = {
+  type: 'pattern',
+  pattern: 'solid',
+  fgColor: { argb: 'FFF3F6F8' },
+}
 
 const downloadBuffer = (buffer, filename) => {
   const blob = new Blob([buffer], {
@@ -112,63 +93,26 @@ const downloadBuffer = (buffer, filename) => {
   URL.revokeObjectURL(url)
 }
 
-/** Xóa footer mẫu cũ (tránh trùng Ghi chú / Phòng kinh doanh) */
-const clearFooterArea = (ws, fromRow = 30, toRow = 45) => {
-  for (let r = fromRow; r <= toRow; r++) {
-    for (let c = 4; c <= 16; c++) {
-      const cell = ws.getCell(r, c)
-      cell.value = null
-      cell.border = {}
-    }
-  }
-}
-
-/** Khổ A4 — vùng in vừa trang, không scale méo bảng */
-const applyPrintSetup = (ws, lastRow) => {
-  const endRow = Math.max(lastRow + 2, 37)
-  ws.pageSetup = {
-    paperSize: 9,
-    orientation: 'portrait',
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: 0,
-    horizontalCentered: true,
-    verticalCentered: false,
-    margins: {
-      left: 0.55,
-      right: 0.55,
-      top: 0.55,
-      bottom: 0.55,
-      header: 0.2,
-      footer: 0.2,
-    },
-    printArea: `B4:P${endRow}`,
-  }
-  for (let c = 17; c <= 26; c++) {
-    const col = ws.getColumn(c)
-    if (col) col.hidden = true
-  }
-}
-
-/** Xuất báo giá Excel theo mẫu T&T (ExcelJS — giữ viền, font, merge) */
+/**
+ * Xuất báo giá Excel chuẩn theo mẫu T&T tự động (Mau_bao_gia_TT_tu_dong.xlsx)
+ */
 export const exportQuoteExcel = async ({
   customerName = '',
   customerAddress = '',
+  customerTaxCode = '',
   contactPerson = '',
   contactPhone = '',
-  pumpType = '',
   quoteNumber = '',
   quoteDate = new Date(),
-  validUntil = null,
-  quoterName = '',
-  quoterPhone = '',
+  quoterName = 'NGUYỄN THỊ TUYẾT',
   note = '',
   items = [],
   sellTotal = 0,
   vatAmount = 0,
+  vatPct = 8,
+  includeVat = false,
   shipping = 0,
   grandTotal = 0,
-  includeVat = false,
   filename,
 }) => {
   const resp = await fetch(TEMPLATE_URL)
@@ -177,105 +121,287 @@ export const exportQuoteExcel = async ({
 
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.load(buf)
-  const ws = wb.getWorksheet('Invoice') || wb.worksheets[0]
+  const ws = wb.getWorksheet('BÁO GIÁ') || wb.worksheets[0]
 
-  const valid = validUntil || new Date(quoteDate.getTime() + 7 * 86400000)
-  const qNum =
-    quoteNumber ||
-    `BG-${quoteDate.toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`
+  const d = quoteDate instanceof Date ? quoteDate : new Date(quoteDate || Date.now())
+  const qDateStr = `Hà Nội, ngày ${String(d.getDate()).padStart(2, '0')} tháng ${String(d.getMonth() + 1).padStart(2, '0')} năm ${d.getFullYear()}`
+  const qNum = quoteNumber || `Số: ……/${d.getFullYear()}/BG-T&T`
 
-  ws.getCell(15, 4).value = `Tên đơn vị nhận hàng: ${customerName}`
-  setMetaRight(ws, 15, `Số báo giá: ${qNum}`)
-  ws.getCell(16, 4).value = `Địa chỉ: ${customerAddress}`
-  setMetaRight(ws, 16, `Ngày báo giá: ${fmtDate(quoteDate)}`)
-  ws.getCell(17, 4).value = `Người liên hệ: ${contactPerson}`
-  setMetaRight(ws, 17, `Hiệu lực đến: ${fmtDate(valid)}`)
-  ws.getCell(18, 4).value = `Điện thoại:${contactPhone ? ' ' + contactPhone : ''}`
-  setMetaRight(ws, 18, `Người báo giá : ${quoterName}`)
-  ws.getCell(19, 4).value = `Loại bơm: ${pumpType}`
-  setMetaRight(ws, 19, `Số điện thoại: ${quoterPhone}`)
+  // 1. Tiêu đề số báo giá & ngày
+  ws.getCell('A6').value = qNum
+  ws.getCell('D6').value = qDateStr
 
-  const ITEM_START = 25
-  let r = ITEM_START
-  const itemStart = r
-  items.forEach((item, i) => {
-    styleItemRow(ws, r)
-    const sell = Number(item.sellPrice) || 0
-    const qty = Number(item.qty) || 1
-    ws.getCell(r, 4).value = i + 1
-    ws.getCell(r, 5).value = item.name || ''
-    ws.getCell(r, 10).value = qty
-    ws.getCell(r, 12).value = sell
-    ws.getCell(r, 14).value = sell * qty
-    ws.getRow(r).height = Math.min(52, Math.max(22, Math.ceil(String(item.name || '').length / 50) * 14 + 8))
-    r++
+  // 2. Thông tin khách hàng
+  ws.getCell('B9').value = customerName || ''
+  ws.getCell('B10').value = customerAddress || ''
+  ws.getCell('F10').value = customerTaxCode || ''
+  ws.getCell('B11').value = contactPerson || ''
+  ws.getCell('F11').value = contactPhone || ''
+
+  // 3. Xóa sạch tất cả merge và ô từ dòng 14 trở xuống để tránh lỗi merge duplicate trong ExcelJS
+  for (const key in ws._merges) {
+    const m = ws._merges[key]
+    if (m && m.model && m.model.top >= 14) {
+      delete ws._merges[key]
+    }
+  }
+
+  for (let r = 14; r <= 80; r++) {
+    const row = ws.getRow(r)
+    row.values = []
+    row.height = undefined
+    for (let c = 1; c <= 7; c++) {
+      const cell = row.getCell(c)
+      cell.value = null
+      cell.fill = { type: 'pattern', pattern: 'none' }
+      cell.border = {}
+      cell.font = { name: 'Aptos', size: 10 }
+      cell.numFmt = null
+    }
+  }
+
+  // 4. Điền các dòng sản phẩm bắt đầu từ dòng 14
+  let curRow = 14
+  let calculatedSubTotal = 0
+
+  const safeItems = items && items.length > 0 ? items : [{ name: '', specs: '', unit: 'Cái', qty: 1, sellPrice: 0 }]
+
+  safeItems.forEach((it, idx) => {
+    const r = curRow
+    const qty = Number(it.qty) || 1
+    const price = Number(it.sellPrice) || 0
+    const total = qty * price
+    calculatedSubTotal += total
+
+    const row = ws.getRow(r)
+    row.getCell(1).value = idx + 1
+    row.getCell(2).value = it.name || ''
+    row.getCell(3).value = it.specs || ''
+    row.getCell(4).value = it.unit || 'Cái'
+    row.getCell(5).value = qty
+    row.getCell(6).value = price
+    row.getCell(7).value = total
+
+    row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
+    row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+    row.getCell(3).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+    row.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' }
+    row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' }
+    row.getCell(6).alignment = { horizontal: 'right', vertical: 'middle' }
+    row.getCell(6).numFmt = '#,##0;-#,##0;;'
+    row.getCell(7).alignment = { horizontal: 'right', vertical: 'middle' }
+    row.getCell(7).numFmt = '#,##0;-#,##0;;'
+
+    for (let c = 1; c <= 7; c++) {
+      const cell = row.getCell(c)
+      cell.font = { name: 'Aptos', size: 10, color: { argb: 'FF1F2933' } }
+      cell.border = thinBorder
+    }
+
+    const nameLines = String(it.name || '').split('\n').length
+    const specLines = String(it.specs || '').split('\n').length
+    const maxLines = Math.max(nameLines, specLines, 1)
+    row.height = Math.max(26, maxLines * 16 + 8)
+
+    curRow++
   })
 
-  styleTotalRow(ws, r, 'TỔNG CỘNG')
-  ws.getCell(r, 4).value = ''
-  ws.getCell(r, 14).value = sellTotal
-  r++
+  // 5. Phần tổng tiền
+  const finalSubTotal = sellTotal || calculatedSubTotal
+  const actualVatPct = includeVat ? (Number(vatPct) || 8) : 0
+  const finalVatAmount = includeVat ? (vatAmount || Math.round(finalSubTotal * (actualVatPct / 100))) : 0
+  const ship = Number(shipping) || 0
+  const finalGrandTotal = grandTotal || (finalSubTotal + finalVatAmount + ship)
 
-  if (includeVat) {
-    styleTotalRow(ws, r, 'Thuế VAT 8%')
-    ws.getCell(r, 4).value = ''
-    ws.getCell(r, 14).value = vatAmount
-    r++
+  // Dòng: Cộng tiền hàng (Merge D..F)
+  const subTotalRow = curRow
+  ws.mergeCells(`D${subTotalRow}:F${subTotalRow}`)
+  ws.getCell(`D${subTotalRow}`).value = 'Cộng tiền hàng'
+  ws.getCell(`D${subTotalRow}`).font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FF17365D' } }
+  ws.getCell(`D${subTotalRow}`).alignment = { horizontal: 'center', vertical: 'middle' }
+  ws.getCell(`D${subTotalRow}`).fill = graySubFill
+
+  ws.getCell(`G${subTotalRow}`).value = finalSubTotal
+  ws.getCell(`G${subTotalRow}`).font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FF17365D' } }
+  ws.getCell(`G${subTotalRow}`).alignment = { horizontal: 'right', vertical: 'middle' }
+  ws.getCell(`G${subTotalRow}`).numFmt = '#,##0;-#,##0;;'
+  ws.getCell(`G${subTotalRow}`).fill = graySubFill
+
+  for (let c = 4; c <= 7; c++) {
+    ws.getRow(subTotalRow).getCell(c).border = thinBorder
   }
+  ws.getRow(subTotalRow).height = 24
+  curRow++
 
-  if (shipping > 0) {
-    styleTotalRow(ws, r, 'Phí vận chuyển')
-    ws.getCell(r, 4).value = ''
-    ws.getCell(r, 14).value = shipping
-    r++
+  // Dòng: Thuế GTGT (Merge D..E, F: %VAT, G: tiền VAT)
+  const vatRow = curRow
+  ws.mergeCells(`D${vatRow}:E${vatRow}`)
+  ws.getCell(`D${vatRow}`).value = 'Thuế GTGT'
+  ws.getCell(`D${vatRow}`).font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FF17365D' } }
+  ws.getCell(`D${vatRow}`).alignment = { horizontal: 'center', vertical: 'middle' }
+
+  ws.getCell(`F${vatRow}`).value = actualVatPct > 0 ? `${actualVatPct}%` : '0%'
+  ws.getCell(`F${vatRow}`).font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FF17365D' } }
+  ws.getCell(`F${vatRow}`).alignment = { horizontal: 'center', vertical: 'middle' }
+
+  ws.getCell(`G${vatRow}`).value = finalVatAmount
+  ws.getCell(`G${vatRow}`).font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FF17365D' } }
+  ws.getCell(`G${vatRow}`).alignment = { horizontal: 'right', vertical: 'middle' }
+  ws.getCell(`G${vatRow}`).numFmt = '#,##0;-#,##0;;'
+
+  for (let c = 4; c <= 7; c++) {
+    ws.getRow(vatRow).getCell(c).border = thinBorder
   }
+  ws.getRow(vatRow).height = 24
+  curRow++
 
-  styleTotalRow(ws, r, 'Tổng thanh toán')
-  ws.getCell(r, 4).value = ''
-  ws.getCell(r, 14).value = grandTotal
-  const tableEnd = r
+  // Dòng: TỔNG THANH TOÁN (Merge D..F)
+  const grandTotalRow = curRow
+  ws.mergeCells(`D${grandTotalRow}:F${grandTotalRow}`)
+  ws.getCell(`D${grandTotalRow}`).value = 'TỔNG THANH TOÁN'
+  ws.getCell(`D${grandTotalRow}`).font = { name: 'Aptos', size: 11, bold: true, color: { argb: 'FF17365D' } }
+  ws.getCell(`D${grandTotalRow}`).alignment = { horizontal: 'center', vertical: 'middle' }
+  ws.getCell(`D${grandTotalRow}`).fill = graySubFill
 
-  sealTableBorders(ws, TABLE_HEADER_ROW, tableEnd)
-  if (items.length) sealNoteColumn(ws, itemStart, tableEnd)
-  r += 2
+  ws.getCell(`G${grandTotalRow}`).value = finalGrandTotal
+  ws.getCell(`G${grandTotalRow}`).font = { name: 'Aptos', size: 11, bold: true, color: { argb: 'FF17365D' } }
+  ws.getCell(`G${grandTotalRow}`).alignment = { horizontal: 'right', vertical: 'middle' }
+  ws.getCell(`G${grandTotalRow}`).numFmt = '#,##0;-#,##0;;'
+  ws.getCell(`G${grandTotalRow}`).fill = graySubFill
 
-  clearFooterArea(ws, 30, 50)
+  for (let c = 4; c <= 7; c++) {
+    ws.getRow(grandTotalRow).getCell(c).border = thinBorder
+  }
+  ws.getRow(grandTotalRow).height = 26
+  curRow++
 
-  ws.getCell(r, 4).value = note ? `Ghi chú: ${note}` : 'Ghi chú:'
-  ws.getCell(r, 4).font = fontBody
-  safeMerge(ws, r, 4, r, 11)
-  ws.getCell(r, 4).alignment = { wrapText: false, vertical: 'top', horizontal: 'left' }
-  safeMerge(ws, r, 13, r, 16)
-  ws.getCell(r, 13).value = 'Phòng kinh doanh'
-  ws.getCell(r, 13).font = fontBold
-  ws.getCell(r, 13).alignment = { horizontal: 'center', vertical: 'middle' }
-  r++
-  ws.getCell(r, 4).value = 'Thông tin thanh toán'
-  ws.getCell(r, 4).font = fontBold
-  r++
-  ws.getCell(r, 4).value = 'Ngân hàng: MB Bank - Ngân hàng quân đội'
-  ws.getCell(r, 4).font = fontBody
-  r++
-  ws.getCell(r, 4).value = 'Chủ tài khoản: CÔNG TY TNHH THƯƠNG MẠI MÁY CÔNG NGHIỆP T&T'
-  ws.getCell(r, 4).font = fontBody
-  r++
-  ws.getCell(r, 4).value = 'Số Tài khoản: 8600 8886 88888'
-  ws.getCell(r, 4).font = fontBody
-  r += 2
-  ws.getCell(r, 4).value = 'Hàng mới 100%'
-  ws.getCell(r, 4).font = fontBody
-  r++
-  ws.getCell(r, 4).value = 'Bảo Hành 12 tháng'
-  ws.getCell(r, 4).font = fontBody
+  // Dòng: Bằng chữ (Merge A..B: "Bằng chữ:", Merge C..G: chữ)
+  const wordsRow = curRow
+  ws.mergeCells(`A${wordsRow}:B${wordsRow}`)
+  ws.getCell(`A${wordsRow}`).value = 'Bằng chữ:'
+  ws.getCell(`A${wordsRow}`).font = { name: 'Aptos', size: 10, italic: true, bold: true, color: { argb: 'FF17365D' } }
+  ws.getCell(`A${wordsRow}`).alignment = { horizontal: 'left', vertical: 'middle' }
 
-  applyPrintSetup(ws, r)
+  ws.mergeCells(`C${wordsRow}:G${wordsRow}`)
+  ws.getCell(`C${wordsRow}`).value = docSoThanhChu(finalGrandTotal)
+  ws.getCell(`C${wordsRow}`).font = { name: 'Aptos', size: 10, italic: true, color: { argb: 'FF1F2933' } }
+  ws.getCell(`C${wordsRow}`).alignment = { horizontal: 'left', vertical: 'middle' }
+  ws.getRow(wordsRow).height = 24
+  curRow++
+
+  // Dòng trống cách biệt
+  ws.getRow(curRow).height = 10
+  curRow++
+
+  // 6. ĐIỀU KIỆN THƯƠNG MẠI
+  const termsHeaderRow = curRow
+  ws.mergeCells(`A${termsHeaderRow}:G${termsHeaderRow}`)
+  ws.getCell(`A${termsHeaderRow}`).value = 'ĐIỀU KIỆN THƯƠNG MẠI'
+  ws.getCell(`A${termsHeaderRow}`).font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
+  ws.getCell(`A${termsHeaderRow}`).fill = navyHeaderFill
+  ws.getCell(`A${termsHeaderRow}`).alignment = { horizontal: 'left', vertical: 'middle', indent: 1 }
+  ws.getRow(termsHeaderRow).height = 24
+  curRow++
+
+  const termsList = [
+    { label: 'Chất lượng / Bảo hành', text: 'Hàng mới 100%, chính hãng; bảo hành 12 tháng.' },
+    { label: 'Giá / Hiệu lực', text: 'Đơn giá chưa gồm VAT; báo giá có hiệu lực 07 ngày.' },
+    { label: 'Giao hàng', text: 'Trong 1 đến 4 ngày từ khi xác nhận đơn; địa điểm theo yêu cầu.' },
+    { label: 'Thanh toán', text: 'Thanh toán 100% trước khi giao hàng.' },
+    { label: 'Chuyển khoản', text: 'STK 8600888688888 – Ngân hàng TMCP Quân đội (MB), CN Tây Hà Nội.' },
+  ]
+
+  termsList.forEach(t => {
+    const r = curRow
+    ws.mergeCells(`A${r}:B${r}`)
+    ws.getCell(`A${r}`).value = t.label
+    ws.getCell(`A${r}`).font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FF17365D' } }
+    ws.getCell(`A${r}`).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true, indent: 1 }
+    ws.getCell(`A${r}`).fill = graySubFill
+
+    ws.mergeCells(`C${r}:G${r}`)
+    ws.getCell(`C${r}`).value = t.text
+    ws.getCell(`C${r}`).font = { name: 'Aptos', size: 10, color: { argb: 'FF1F2933' } }
+    ws.getCell(`C${r}`).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true, indent: 1 }
+
+    for (let c = 1; c <= 7; c++) {
+      ws.getRow(r).getCell(c).border = thinBorder
+    }
+    ws.getRow(r).height = 23
+    curRow++
+  })
+
+  // Dòng trống cách biệt
+  ws.getRow(curRow).height = 14
+  curRow++
+
+  // 7. Chữ ký xác nhận (Signatures)
+  const sigHeaderRow = curRow
+  ws.mergeCells(`A${sigHeaderRow}:C${sigHeaderRow}`)
+  ws.getCell(`A${sigHeaderRow}`).value = 'XÁC NHẬN KHÁCH HÀNG'
+  ws.getCell(`A${sigHeaderRow}`).font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FF17365D' } }
+  ws.getCell(`A${sigHeaderRow}`).alignment = { horizontal: 'center', vertical: 'middle' }
+
+  ws.mergeCells(`E${sigHeaderRow}:G${sigHeaderRow}`)
+  ws.getCell(`E${sigHeaderRow}`).value = 'ĐẠI DIỆN BÊN BÁN'
+  ws.getCell(`E${sigHeaderRow}`).font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FF17365D' } }
+  ws.getCell(`E${sigHeaderRow}`).alignment = { horizontal: 'center', vertical: 'middle' }
+  ws.getRow(sigHeaderRow).height = 20
+  curRow++
+
+  const sigSubRow = curRow
+  ws.mergeCells(`A${sigSubRow}:C${sigSubRow}`)
+  ws.getCell(`A${sigSubRow}`).value = '(Ký, ghi rõ họ tên)'
+  ws.getCell(`A${sigSubRow}`).font = { name: 'Aptos', size: 9, italic: true, color: { argb: 'FF6B7280' } }
+  ws.getCell(`A${sigSubRow}`).alignment = { horizontal: 'center', vertical: 'middle' }
+
+  ws.mergeCells(`E${sigSubRow}:G${sigSubRow}`)
+  ws.getCell(`E${sigSubRow}`).value = 'GIÁM ĐỐC'
+  ws.getCell(`E${sigSubRow}`).font = { name: 'Aptos', size: 9, italic: true, color: { argb: 'FF6B7280' } }
+  ws.getCell(`E${sigSubRow}`).alignment = { horizontal: 'center', vertical: 'middle' }
+  ws.getRow(sigSubRow).height = 18
+  curRow++
+
+  // 2 dòng trống tạo khoảng cách để ký
+  ws.getRow(curRow).height = 18
+  curRow++
+  ws.getRow(curRow).height = 18
+  curRow++
+
+  // Tên người đại diện bên bán / Giám đốc
+  const sigNameRow = curRow
+  ws.mergeCells(`E${sigNameRow}:G${sigNameRow}`)
+  ws.getCell(`E${sigNameRow}`).value = quoterName || 'NGUYỄN THỊ TUYẾT'
+  ws.getCell(`E${sigNameRow}`).font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FF17365D' } }
+  ws.getCell(`E${sigNameRow}`).alignment = { horizontal: 'center', vertical: 'middle' }
+  ws.getRow(sigNameRow).height = 22
+
+  // 8. Cấu hình in khổ A4 chuẩn
+  ws.pageSetup = {
+    paperSize: 9,
+    orientation: 'portrait',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    horizontalCentered: true,
+    margins: {
+      left: 0.35,
+      right: 0.35,
+      top: 0.4,
+      bottom: 0.4,
+      header: 0.2,
+      footer: 0.2,
+    },
+    printArea: `A1:G${sigNameRow + 1}`,
+  }
 
   const outName =
     filename ||
-    `bao-gia-${(customerName || 'khach').replace(/\s+/g, '-').slice(0, 30)}-${quoteDate.toISOString().slice(0, 10)}.xlsx`
+    `bao-gia-${(customerName || 'khach').replace(/[^a-zA-Z0-9à-ỹÀ-Ỹ]/g, '-').slice(0, 30)}-${d.toISOString().slice(0, 10)}.xlsx`
 
   const outBuf = await wb.xlsx.writeBuffer()
   downloadBuffer(outBuf, outName)
 }
 
-export const fmtNum = (n) => (n != null && !isNaN(n) ? Number(n).toLocaleString('en-US') : '')
+export const fmtNum = (n) => (n != null && !isNaN(n) ? Number(n).toLocaleString('vi-VN') : '')
+

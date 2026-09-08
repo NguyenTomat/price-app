@@ -169,23 +169,38 @@ export const getAllProductsFlat = async () => {
   return chunks.flat()
 }
 
-// Lấy danh sách sản phẩm đăng lên Web Catalog công cộng siêu tốc
+// Lấy danh sách sản phẩm đăng lên Web Catalog công cộng siêu tốc (tối ưu payload)
 export const getWebCatalogProducts = async () => {
   try {
     const q = query(collectionGroup(db, 'products'), where('showOnWeb', '==', true))
     const snap = await getDocs(q)
-    return snap.docs.map(d => ({
-      id: d.id,
-      listId: d.ref.parent?.parent ? d.ref.parent.parent.id : null,
-      ...d.data()
-    }))
+    return snap.docs.map(d => {
+      const data = d.data()
+      const rawImages = data.webImages || data.images || []
+      return {
+        id: d.id,
+        listId: d.ref.parent?.parent ? d.ref.parent.parent.id : null,
+        ...data,
+        webImages: rawImages.slice(0, 1), // Chỉ lấy 1 ảnh đầu cho grid để web load ngay lập tức
+        hasFullImages: rawImages.length > 1
+      }
+    })
   } catch (err) {
     console.warn('CollectionGroup fallback to priceLists scan:', err)
     const lists = await getPriceLists()
     const chunks = await Promise.all(
       lists.map(l =>
         getProducts(l.id).then(ps =>
-          ps.filter(p => p.showOnWeb === true).map(p => ({ ...p, listId: l.id, listName: l.name }))
+          ps.filter(p => p.showOnWeb === true).map(p => {
+            const rawImages = p.webImages || p.images || []
+            return {
+              ...p,
+              listId: l.id,
+              listName: l.name,
+              webImages: rawImages.slice(0, 1),
+              hasFullImages: rawImages.length > 1
+            }
+          })
         )
       )
     )

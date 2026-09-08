@@ -1,7 +1,8 @@
-import React, { StrictMode, useState, useEffect } from 'react'
+import React, { StrictMode, useState, useEffect, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App.jsx'
-import WebCatalog from './pages/WebCatalog.jsx'
+
+const App = lazy(() => import('./App.jsx'))
+const WebCatalog = lazy(() => import('./pages/WebCatalog.jsx'))
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -96,7 +97,18 @@ function RootRouter() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  return isWeb ? <WebCatalog /> : <App />
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', fontFamily: 'system-ui, sans-serif' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="spinner" style={{ width: 36, height: 36, borderWidth: 3, borderColor: '#0878D9', margin: '0 auto 14px' }} />
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#64748B' }}>Đang nạp Máy Bơm T&T...</div>
+        </div>
+      </div>
+    }>
+      {isWeb ? <WebCatalog /> : <App />}
+    </Suspense>
+  )
 }
 
 const rootEl = document.getElementById('root')

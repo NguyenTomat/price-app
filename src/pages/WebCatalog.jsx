@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder } from '../firebase/firebase'
+import { getWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder, getProductDetail } from '../firebase/firebase'
 import PwaUpdateBanner from '../components/PwaUpdateBanner'
 import { DEFAULT_HERO_SLIDES, normalizeHeroSlides } from './WebManagePage'
 
@@ -1436,6 +1436,21 @@ export default function WebCatalog() {
   const currentProduct = useMemo(() => {
     if (!detailProductId || !products.length) return null
     return products.find(p => p.id === detailProductId) || null
+  }, [detailProductId, products])
+
+  // When a product detail is opened, fetch full gallery images in background if needed
+  useEffect(() => {
+    if (!detailProductId) return
+    let isCancelled = false
+    const prod = products.find(p => p.id === detailProductId)
+    if (prod && prod.listId && prod.hasFullImages && prod.webImages?.length <= 1) {
+      getProductDetail(prod.listId, prod.id).then(fullProd => {
+        if (!isCancelled && fullProd && fullProd.webImages && fullProd.webImages.length > 1) {
+          setProducts(prev => prev.map(p => p.id === detailProductId ? { ...p, webImages: fullProd.webImages, hasFullImages: false } : p))
+        }
+      }).catch(() => {})
+    }
+    return () => { isCancelled = true }
   }, [detailProductId, products])
 
   // Get categories (custom settings list entered by the user)

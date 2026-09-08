@@ -450,9 +450,9 @@ export default function WebManagePage() {
   const handleDeleteStorageFile = async (file) => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa file "${file.name}" khỏi Cloud Storage?`)) return
     try {
-      await deleteCloudStorageFile(file.fullPath)
-      setStorageFiles(prev => prev.filter(f => f.fullPath !== file.fullPath))
-      setOrphanFiles(prev => prev.filter(f => f.fullPath !== file.fullPath))
+      await deleteCloudStorageFile(file)
+      setStorageFiles(prev => prev.filter(f => (f.fullPath !== file.fullPath && f.url !== file.url)))
+      setOrphanFiles(prev => prev.filter(f => (f.fullPath !== file.fullPath && f.url !== file.url)))
       toast('Đã xóa file khỏi Cloud thành công!', 'success')
     } catch (e) {
       toast('Lỗi xóa file: ' + e.message, 'error')
@@ -467,7 +467,7 @@ export default function WebManagePage() {
       let deletedCount = 0
       for (const f of orphanFiles) {
         try {
-          await deleteCloudStorageFile(f.fullPath)
+          await deleteCloudStorageFile(f)
           deletedCount++
         } catch {}
       }

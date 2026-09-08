@@ -569,72 +569,246 @@ export const deleteWebOrder = (id) =>
   deleteDoc(doc(db, 'webOrders', id))
 
 // ── CLOUD STORAGE MANAGEMENT ────────────────────────────────────────────────
+export const parseStorageUrl = (url) => {
+  if (!url || typeof url !== 'string') return null
+  if (!url.includes('firebasestorage.googleapis.com') && !url.includes('storage.googleapis.com')) {
+    return null
+  }
+  try {
+    const match = url.match(/\/o\/([^?]+)/)
+    if (match && match[1]) {
+      const fullPath = decodeURIComponent(match[1])
+      const parts = fullPath.split('/')
+      const name = parts[parts.length - 1]
+      const folder = parts.length > 1 ? parts.slice(0, -1).join('/') : 'root'
+      return { fullPath, name, folder }
+    }
+    const cleanUrl = url.split('?')[0]
+    const parts = cleanUrl.split('/')
+    const name = parts[parts.length - 1]
+    return { fullPath: name, name, folder: 'storage' }
+  } catch {
+    return null
+  }
+}
+
 export const getCloudStorageFiles = async () => {
   const allFiles = []
+  const seenUrls = new Set()
   const seenPaths = new Set()
 
-  const scanRef = async (currentRef, folderName = 'root') => {
-    try {
-      const res = await listAll(currentRef)
+  const addFile = (f) => {
+    const key = f.fullPath || f.url
+    if (!key || seenPaths.has(f.fullPath) || (f.url && seenUrls.has(f.url))) return
+    if (f.fullPath) seenPaths.add(f.fullPath)
+    if (f.url) seenUrls.add(f.url)
+    allFiles.push(f)
+  }
 
-      const filePromises = res.items.map(async (itemRef) => {
-        if (seenPaths.has(itemRef.fullPath)) return null
-        seenPaths.add(itemRef.fullPath)
-        try {
-          const meta = await getMetadata(itemRef)
-          const url = await getDownloadURL(itemRef).catch(() => '')
-          return {
-            name: meta.name || itemRef.name,
-            fullPath: meta.fullPath || itemRef.fullPath,
-            size: meta.size || 0,
-            contentType: meta.contentType || '',
-            timeCreated: meta.timeCreated ? new Date(meta.timeCreated) : new Date(),
-            url,
-            folder: folderName,
-          }
-        } catch {
-          const url = await getDownloadURL(itemRef).catch(() => '')
-          return {
-            name: itemRef.name,
-            fullPath: itemRef.fullPath,
+  // 1. Quét từ collection 'catalogs'
+  try {
+    const catSnap = await getDocs(collection(db, 'catalogs'))
+    catSnap.docs.forEach(d => {
+      const data = d.data()
+      if (data.url && (data.url.includes('firebasestorage') || data.storagePath)) {
+        const parsed = parseStorageUrl(data.url) || { fullPath: data.storagePath || data.name, name: data.fileName || data.name, folder: 'catalogs' }
+        addFile({
+          id: d.id,
+          name: data.name || data.fileName || parsed.name,
+          rawFileName: data.fileName || parsed.name,
+          fullPath: data.storagePath || parsed.fullPath,
+          size: data.fileSize || 0,
+          contentType: 'application/pdf',
+          timeCreated: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+          url: data.url,
+          folder: 'catalogs',
+          sourceDoc: `catalogs/${d.id}`,
+          type: 'catalog',
+        })
+      }
+    })
+  } catch (e) {
+    console.warn('Error reading catalogs for storage:', e)
+  }
+
+  // 2. Quét từ tất cả PriceLists & Subcollection Products
+  try {
+    const listsSnap = await getDocs(collection(db, 'priceLists'))
+    for (const listDoc of listsSnap.docs) {
+      if (listDoc.id.startsWith('categories_') || listDoc.id.startsWith('hero_')) continue
+      try {
+        const prodSnap = await getDocs(collection(db, 'priceLists', listDoc.id, 'products'))
+        prodSnap.docs.forEach(pDoc => {
+          const p = pDoc.data()
+          const imgs = [...(p.webImages || []), ...(p.images || [])]
+          imgs.forEach((imgUrl, idx) => {
+            if (!imgUrl || typeof imgUrl !== 'string') return
+            const parsed = parseStorageUrl(imgUrl)
+            if (parsed) {
+              addFile({
+                id: `${pDoc.id}_${idx}`,
+                name: `${p.code ? p.code + ' - ' : ''}Ảnh ${idx + 1} (${parsed.name})`,
+                rawFileName: parsed.name,
+                fullPath: parsed.fullPath,
+                size: 0,
+                contentType: 'image/jpeg',
+                timeCreated: p.updatedAt?.toDate ? p.updatedAt.toDate() : new Date(),
+                url: imgUrl,
+                folder: parsed.folder || 'products',
+                sourceDoc: `priceLists/${listDoc.id}/products/${pDoc.id}`,
+                productCode: p.code,
+                productName: p.name,
+                type: 'product',
+              })
+            }
+          })
+        })
+      } catch {}
+    }
+  } catch (e) {
+    console.warn('Error reading priceLists for storage:', e)
+  }
+
+  // 3. Quét từ categories settings
+  try {
+    const catSetSnap = await getDoc(doc(db, 'priceLists', 'categories_settings'))
+    if (catSetSnap.exists()) {
+      const catData = catSetSnap.data()
+      const list = catData.list || []
+      list.forEach((c, idx) => {
+        if (c.image && parseStorageUrl(c.image)) {
+          const parsed = parseStorageUrl(c.image)
+          addFile({
+            id: `cat_${idx}`,
+            name: `Danh mục: ${c.name} (${parsed.name})`,
+            rawFileName: parsed.name,
+            fullPath: parsed.fullPath,
             size: 0,
-            contentType: '',
+            contentType: 'image/jpeg',
             timeCreated: new Date(),
-            url,
-            folder: folderName,
-          }
+            url: c.image,
+            folder: 'categories',
+            type: 'category',
+          })
         }
       })
-
-      const files = (await Promise.all(filePromises)).filter(Boolean)
-      allFiles.push(...files)
-
-      // Recursively scan all sub-folders (prefixes)
-      for (const prefixRef of res.prefixes) {
-        await scanRef(prefixRef, prefixRef.fullPath)
-      }
-    } catch (e) {
-      console.warn(`Scan failed on ${folderName}:`, e)
     }
-  }
+  } catch {}
 
-  // 1. Scan from root of storage bucket
-  await scanRef(ref(storage), 'root')
+  // 4. Quét từ hero slides settings
+  try {
+    const slideSetSnap = await getDoc(doc(db, 'priceLists', 'hero_slides_settings'))
+    if (slideSetSnap.exists()) {
+      const slideData = slideSetSnap.data()
+      const slides = slideData.slides || slideData.list || []
+      slides.forEach((s, idx) => {
+        const img = s.img || s.url
+        if (img && parseStorageUrl(img)) {
+          const parsed = parseStorageUrl(img)
+          addFile({
+            id: `slide_${idx}`,
+            name: `Banner: ${s.headline || s.title || `Slide ${idx + 1}`} (${parsed.name})`,
+            rawFileName: parsed.name,
+            fullPath: parsed.fullPath,
+            size: 0,
+            contentType: 'image/jpeg',
+            timeCreated: new Date(),
+            url: img,
+            folder: 'banners',
+            type: 'banner',
+          })
+        }
+      })
+    }
+  } catch {}
 
-  // 2. Also try known top-level folders explicitly in case root list is restricted
-  const knownFolders = ['catalogs', 'products', 'images', 'uploads']
-  for (const folder of knownFolders) {
+  // 5. Thử quét trực tiếp từ Storage SDK nếu không bị chặn CORS
+  try {
+    const scanRef = async (currentRef, folderName = 'root') => {
+      try {
+        const res = await listAll(currentRef)
+        const filePromises = res.items.map(async (itemRef) => {
+          if (seenPaths.has(itemRef.fullPath)) return null
+          seenPaths.add(itemRef.fullPath)
+          try {
+            const meta = await getMetadata(itemRef)
+            const url = await getDownloadURL(itemRef).catch(() => '')
+            return {
+              name: meta.name || itemRef.name,
+              fullPath: meta.fullPath || itemRef.fullPath,
+              size: meta.size || 0,
+              contentType: meta.contentType || '',
+              timeCreated: meta.timeCreated ? new Date(meta.timeCreated) : new Date(),
+              url,
+              folder: folderName,
+            }
+          } catch {
+            return null
+          }
+        })
+        const directFiles = (await Promise.all(filePromises)).filter(Boolean)
+        directFiles.forEach(f => addFile(f))
+      } catch {}
+    }
+    await scanRef(ref(storage, 'catalogs'), 'catalogs').catch(() => {})
+  } catch {}
+
+  // 6. Tính dung lượng chính xác qua HEAD request (hoặc ước lượng nếu bị chặn CORS)
+  await Promise.all(allFiles.map(async (file) => {
+    if (file.size && file.size > 0) return file
+    if (!file.url) {
+      file.size = 180 * 1024
+      return file
+    }
     try {
-      await scanRef(ref(storage, folder), folder)
-    } catch {}
-  }
+      const res = await fetch(file.url, { method: 'HEAD' })
+      const cl = res.headers.get('content-length')
+      if (cl) {
+        file.size = parseInt(cl, 10)
+      } else {
+        file.size = 200 * 1024
+      }
+    } catch {
+      file.size = 200 * 1024
+    }
+    return file
+  }))
 
   return allFiles.sort((a, b) => (b.size || 0) - (a.size || 0))
 }
 
-export const deleteCloudStorageFile = async (fullPath) => {
-  const fileRef = ref(storage, fullPath)
-  await deleteObject(fileRef)
+export const deleteCloudStorageFile = async (fileObj) => {
+  const fullPath = typeof fileObj === 'string' ? fileObj : fileObj?.fullPath
+  const url = typeof fileObj === 'object' ? fileObj?.url : null
+
+  // 1. Delete from Firebase Storage bucket
+  try {
+    if (fullPath) await deleteObject(ref(storage, fullPath))
+    else if (url) await deleteObject(ref(storage, url))
+  } catch (e) {
+    console.warn('Storage deleteObject notice:', e)
+  }
+
+  // 2. If it is attached to a Firestore document, clean reference
+  if (typeof fileObj === 'object' && fileObj?.sourceDoc) {
+    try {
+      const parts = fileObj.sourceDoc.split('/')
+      if (parts[0] === 'catalogs' && parts[1]) {
+        await deleteDoc(doc(db, 'catalogs', parts[1]))
+      } else if (parts[0] === 'priceLists' && parts[2] === 'products' && parts[3]) {
+        const prodRef = doc(db, 'priceLists', parts[1], 'products', parts[3])
+        const snap = await getDoc(prodRef)
+        if (snap.exists()) {
+          const data = snap.data()
+          const newWebImages = (data.webImages || []).filter(u => u !== url && !u.includes(fileObj.rawFileName || fileObj.fullPath))
+          const newImages = (data.images || []).filter(u => u !== url && !u.includes(fileObj.rawFileName || fileObj.fullPath))
+          await updateDoc(prodRef, { webImages: newWebImages, images: newImages })
+        }
+      }
+    } catch (e) {
+      console.warn('Firestore doc reference cleanup notice:', e)
+    }
+  }
 }
 
 

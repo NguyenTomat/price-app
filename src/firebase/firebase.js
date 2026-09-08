@@ -169,17 +169,28 @@ export const getAllProductsFlat = async () => {
   return chunks.flat()
 }
 
-// Lấy danh sách sản phẩm đăng lên Web Catalog công cộng
+// Lấy danh sách sản phẩm đăng lên Web Catalog công cộng siêu tốc
 export const getWebCatalogProducts = async () => {
-  const lists = await getPriceLists()
-  const chunks = await Promise.all(
-    lists.map(l =>
-      getProducts(l.id).then(ps =>
-        ps.filter(p => p.showOnWeb === true).map(p => ({ ...p, listId: l.id, listName: l.name }))
+  try {
+    const q = query(collectionGroup(db, 'products'), where('showOnWeb', '==', true))
+    const snap = await getDocs(q)
+    return snap.docs.map(d => ({
+      id: d.id,
+      listId: d.ref.parent?.parent ? d.ref.parent.parent.id : null,
+      ...d.data()
+    }))
+  } catch (err) {
+    console.warn('CollectionGroup fallback to priceLists scan:', err)
+    const lists = await getPriceLists()
+    const chunks = await Promise.all(
+      lists.map(l =>
+        getProducts(l.id).then(ps =>
+          ps.filter(p => p.showOnWeb === true).map(p => ({ ...p, listId: l.id, listName: l.name }))
+        )
       )
     )
-  )
-  return chunks.flat()
+    return chunks.flat()
+  }
 }
 
 const dataUrlToBlob = (dataUrl) => {

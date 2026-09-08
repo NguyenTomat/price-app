@@ -205,6 +205,100 @@ const localAIEngine = (promptText, products) => {
   return { responseText, suggestedProducts }
 }
 
+// High-performance Product Image with Skeleton Shimmer and Brand Fallback
+function ProductImage({ src, alt, style = {}, className = '', fallbackTitle = '', priority = false, onClick, onMouseEnter, onMouseLeave, onMouseMove }) {
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
+
+  const isValidSrc = src && typeof src === 'string' && src.trim().length > 0 && !src.includes('unsplash.com')
+
+  if (!isValidSrc || error) {
+    return (
+      <div
+        onClick={onClick}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #F8FAFC 0%, #EEF2F6 100%)',
+          color: '#94A3B8',
+          padding: 10,
+          boxSizing: 'border-box',
+          cursor: onClick ? 'pointer' : 'default',
+          ...style
+        }}
+      >
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75, marginBottom: 4 }}>
+          <rect x="2" y="6" width="14" height="12" rx="2"></rect>
+          <path d="M16 10h4a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-4"></path>
+          <circle cx="9" cy="12" r="3"></circle>
+          <path d="M9 9v6"></path>
+        </svg>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.4px', color: '#64748B', textAlign: 'center', maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {fallbackTitle || 'T&T PUMP'}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onMouseMove={onMouseMove}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#FFFFFF',
+        cursor: onClick ? 'pointer' : 'default'
+      }}
+    >
+      {!loaded && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 1.5s infinite',
+            zIndex: 1
+          }}
+        />
+      )}
+      <img
+        src={src}
+        alt={alt || 'Máy bơm T&T'}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
+        fetchpriority={priority ? 'high' : 'auto'}
+        onLoad={() => setLoaded(true)}
+        onError={() => setError(true)}
+        className={className}
+        style={{
+          maxWidth: '100%',
+          maxHeight: '100%',
+          objectFit: 'contain',
+          opacity: loaded ? 1 : 0,
+          transition: 'opacity 0.22s ease-out, transform 0.3s ease',
+          zIndex: 2,
+          ...style
+        }}
+      />
+    </div>
+  )
+}
+
 // Category Product Slider Component: Shows 4 products per slide, auto-slides to next 4 products (looping), static if <= 4 products
 function CategoryProductSlider({ catName, catProducts, renderProductCard, onSelectCategory }) {
   const [currentPage, setCurrentPage] = useState(0)
@@ -878,11 +972,11 @@ export default function WebCatalog() {
       <div key={p.id} className="product-card">
         {/* Product image container */}
         <div className="product-card-image" onClick={() => navigateToProduct(p.id)}>
-          <img
-            src={((p.name && (p.name.includes('2-18') || p.code?.includes('2-18'))) ? './pump_vertical.jpg' : (p.webImages?.[0] || 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=400&q=80'))}
+          <ProductImage
+            src={p.webImages?.[0]}
             alt={`Máy bơm nước ${p.name}`}
             className="bg-image-zoom"
-            loading="lazy"
+            fallbackTitle={p.code || p.name}
           />
           <div
             className="quick-view-overlay"
@@ -981,9 +1075,6 @@ export default function WebCatalog() {
     const qRange = qMax ? `${qMax} m³/h` : '';
     const hRange = hMax ? `${hMax} m` : '';
 
-    // Prefer real product photo (webImages[0]) over promotional posters
-    const imgSrc = p.webImages?.[0] || './pump_showroom.jpg';
-
     const specs = [
       pow && { icon: '⚡', label: 'CS', val: pow },
       qRange && { icon: '💧', label: 'Q', val: qRange },
@@ -1030,22 +1121,14 @@ export default function WebCatalog() {
             position: 'relative',
           }}
         >
-          <img
-            src={imgSrc}
+          <ProductImage
+            src={p.webImages?.[0]}
             alt={p.name}
-            loading="lazy"
+            fallbackTitle={p.code || p.name}
             style={{
-              maxHeight: '100%',
-              maxWidth: '100%',
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
               padding: '10px',
               boxSizing: 'border-box',
-              transition: 'transform 0.3s ease',
             }}
-            onMouseOver={e => e.currentTarget.style.transform = 'scale(1.04)'}
-            onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
           />
         </div>
 
@@ -4493,10 +4576,11 @@ export default function WebCatalog() {
                   ✕
                 </button>
 
-                <div style={{ flex: '1 1 40%', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
-                  <img
-                    src={quickViewProduct.webImages?.[0] || 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=400&q=80'}
+                <div style={{ flex: '1 1 40%', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, overflow: 'hidden' }}>
+                  <ProductImage
+                    src={quickViewProduct.webImages?.[0]}
                     alt={quickViewProduct.name}
+                    fallbackTitle={quickViewProduct.code || quickViewProduct.name}
                     style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                   />
                 </div>
@@ -5830,9 +5914,10 @@ export default function WebCatalog() {
 
                           {/* Image */}
                           <div style={{ width: 70, height: 70, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: '#fff' }}>
-                            <img 
-                              src={p.webImages?.[0] || 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=100&q=80'} 
-                              alt={p.name} 
+                            <ProductImage 
+                              src={p.webImages?.[0]} 
+                              alt={p.name}
+                              fallbackTitle={p.code || p.name}
                               style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
                             />
                           </div>
@@ -5931,73 +6016,89 @@ export default function WebCatalog() {
           const qMax = parsedSpecs ? formatSpecNumber(parsedSpecs.qMax) : '';
           const hMin = parsedSpecs ? formatSpecNumber(parsedSpecs.hMin) : '';
           const hMax = parsedSpecs ? formatSpecNumber(parsedSpecs.hMax) : '';
-          const qRange = qMax ? `${qMax} m³/h` : 'Liên hệ';
-          const hRange = hMax ? `${hMax} m` : 'Liên hệ';
+          
+          const qRange = (qMin && qMax) ? `${qMin} - ${qMax} m³/h` : (qMax ? `Tối đa ${qMax} m³/h` : 'Liên hệ');
+          const hRange = (hMin && hMax) ? `${hMin} - ${hMax} m` : (hMax ? `Tối đa ${hMax} m` : 'Liên hệ');
 
           return (
-            <div style={{ maxWidth: 1200, margin: '30px auto 80px', padding: '0 24px', boxSizing: 'border-box' }}>
-            {/* Breadcrumb for Desktop */}
-            <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 16, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }} className="desktop-only">
-              <span style={{ color: '#64748B', cursor: 'pointer', transition: 'color 0.2s' }} onClick={goBackToCatalog} onMouseOver={e => e.currentTarget.style.color = '#0878D9'} onMouseOut={e => e.currentTarget.style.color = '#64748B'}>TRANG CHỦ</span>
-              <span style={{ color: '#CBD5E1' }}>/</span>
-              {currentProduct.group && (
-                <>
-                  <span style={{ color: '#0878D9', textTransform: 'uppercase', cursor: 'pointer' }} onClick={() => { setSelectedCategory(currentProduct.group); setViewMode('catalog'); setActiveTab('products'); }}>{currentProduct.group}</span>
-                  <span style={{ color: '#CBD5E1' }}>/</span>
-                </>
-              )}
-              <span style={{ color: '#082B4C', textTransform: 'uppercase' }}>{currentProduct.name}</span>
-            </div>
-
-            {/* Breadcrumb for Mobile */}
-            <div style={{ display: 'none', borderBottom: '1px solid #F1F5F9', paddingBottom: 12, marginBottom: 20, alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }} className="mobile-only-flex">
-              <span style={{ color: '#64748B', cursor: 'pointer' }} onClick={goBackToCatalog}>← DANH SÁCH SẢN PHẨM</span>
-            </div>
-
-            {/* PRODUCT HERO (Two Columns: 50% / 50%) */}
-            <div className="product-hero-container" style={{ marginBottom: 48 }}>
-              
-              {/* LEFT COLUMN: Large Product Image Gallery */}
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <div 
-                  onClick={() => setShowLightbox(true)}
-                  className="product-detail-img-wrap"
-                  style={{ 
-                    border: 'none', borderRadius: 16, background: '#F7F9FC', marginBottom: 16,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', 
-                    position: 'relative', cursor: 'zoom-in'
+            <div className="product-detail-page">
+              <div style={{ marginBottom: 24 }}>
+                <button
+                  onClick={goBackToCatalog}
+                  className="product-detail-back-btn"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    background: 'transparent', border: 'none', color: '#0878D9',
+                    fontWeight: 700, fontSize: 13.5, cursor: 'pointer', padding: 0
                   }}
                 >
-                  <img 
-                    src={currentProduct.webImages?.[activeImageIndex] || 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=500&q=80'} 
-                    alt={currentProduct.name} 
-                    style={{ maxWidth: '85%', maxHeight: '85%', objectFit: 'contain' }} 
-                  />
-                  <div style={{
-                    position: 'absolute', bottom: 16, right: 16, background: 'rgba(11, 31, 58, 0.85)', color: '#FFFFFF',
-                    padding: '6px 12px', borderRadius: 4, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4,
-                    backdropFilter: 'blur(4px)'
-                  }}>
-                    🔍 Xem rõ ảnh
-                  </div>
-                </div>
-                
-                {/* Thumbnails list */}
-                {currentProduct.webImages && currentProduct.webImages.length > 1 && (
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-start' }}>
-                    {currentProduct.webImages.map((url, idx) => (
-                      <img 
-                        key={idx} src={url} alt={`thumb-${idx}`} 
-                        onClick={() => setActiveImageIndex(idx)}
-                        style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 8, border: idx === activeImageIndex ? '2px solid #0878D9' : '1px solid #E2E8F0', background: '#FFFFFF', padding: 4, cursor: 'pointer', transition: 'all 0.2s' }}
-                      />
-                    ))}
-                  </div>
-                )}
+                  ← VỀ DANH SÁCH SẢN PHẨM
+                </button>
               </div>
 
-              {/* RIGHT COLUMN: Product Information */}
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+              {/* Breadcrumb for Mobile */}
+              <div style={{ display: 'none', borderBottom: '1px solid #F1F5F9', paddingBottom: 12, marginBottom: 20, alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }} className="mobile-only-flex">
+                <span style={{ color: '#64748B', cursor: 'pointer' }} onClick={goBackToCatalog}>← DANH SÁCH SẢN PHẨM</span>
+              </div>
+
+              {/* PRODUCT HERO (Two Columns: 50% / 50%) */}
+              <div className="product-hero-container" style={{ marginBottom: 48, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 40 }}>
+                
+                {/* LEFT COLUMN: Large Product Image Gallery */}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div 
+                    onClick={() => setShowLightbox(true)}
+                    className="product-detail-img-wrap"
+                    style={{ 
+                      border: 'none', borderRadius: 16, background: '#F7F9FC', marginBottom: 16,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', 
+                      position: 'relative', cursor: 'zoom-in', minHeight: 340
+                    }}
+                  >
+                    <ProductImage 
+                      src={currentProduct.webImages?.[activeImageIndex]} 
+                      alt={currentProduct.name}
+                      priority={true}
+                      fallbackTitle={currentProduct.code || currentProduct.name}
+                      style={{ maxWidth: '88%', maxHeight: '88%', objectFit: 'contain' }} 
+                    />
+                    <div style={{
+                      position: 'absolute', bottom: 16, right: 16, background: 'rgba(11, 31, 58, 0.85)', color: '#FFFFFF',
+                      padding: '6px 12px', borderRadius: 4, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4,
+                      backdropFilter: 'blur(4px)', zIndex: 3
+                    }}>
+                      🔍 Xem rõ ảnh
+                    </div>
+                  </div>
+                  
+                  {/* Thumbnails list */}
+                  {currentProduct.webImages && currentProduct.webImages.length > 1 && (
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-start' }}>
+                      {currentProduct.webImages.map((url, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setActiveImageIndex(idx)}
+                          style={{
+                            width: 64, height: 64, borderRadius: 8,
+                            border: idx === activeImageIndex ? '2px solid #0878D9' : '1px solid #E2E8F0',
+                            background: '#FFFFFF', padding: 4, cursor: 'pointer', transition: 'all 0.2s',
+                            overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}
+                        >
+                          <ProductImage
+                            src={url}
+                            alt={`thumb-${idx}`}
+                            fallbackTitle={`${idx + 1}`}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* RIGHT COLUMN: Product Information */}
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <span style={{ fontSize: 12, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase', letterSpacing: '1px' }}>
                     {currentProduct.group || 'MÁY BƠM NƯỚC'} / {currentProduct.webBrand || 'UPTI PUMP'}
@@ -7877,7 +7978,7 @@ export default function WebCatalog() {
                     onMouseOut={e => e.currentTarget.style.borderColor = '#e2e8f0'}
                   >
                     <div style={{ width: 44, height: 44, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: '1px solid #f1f5f9', background: '#fff' }}>
-                      <img src={item.webImages?.[0] || 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=100&q=80'} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <ProductImage src={item.webImages?.[0]} alt={item.name} fallbackTitle={item.code || item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                     <div style={{ flex: 1 }}>
                       <h5 style={{ fontSize: 11, fontWeight: 800, color: '#3b82f6', margin: '0 0 2px 0', textTransform: 'uppercase' }}>{item.name}</h5>
@@ -7972,7 +8073,7 @@ export default function WebCatalog() {
                 {(cart || []).filter(item => item && item.product && item.product.id).map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', gap: 14, paddingBottom: 16, borderBottom: '1px solid #f1f5f9' }}>
                     <div style={{ width: 60, height: 60, borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <img src={item.product.webImages?.[0] || 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=100&q=80'} alt={item.product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <ProductImage src={item.product.webImages?.[0]} alt={item.product.name} fallbackTitle={item.product.code || item.product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                     <div style={{ flex: 1 }}>
                       <h4 style={{ fontSize: 12.5, fontWeight: 700, color: '#1e293b', margin: '0 0 4px 0', textTransform: 'uppercase', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.3 }}>
@@ -8167,9 +8268,11 @@ export default function WebCatalog() {
             background: 'rgba(0,0,0,0.3)',
             boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
           }}>
-            <img 
-              src={currentProduct.webImages?.[activeImageIndex] || 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=500&q=80'} 
-              alt={currentProduct.name} 
+            <ProductImage 
+              src={currentProduct.webImages?.[activeImageIndex]} 
+              alt={currentProduct.name}
+              priority={true}
+              fallbackTitle={currentProduct.code || currentProduct.name}
               onMouseEnter={() => setIsZoomed(true)}
               onMouseLeave={() => setIsZoomed(false)}
               onMouseMove={(e) => {
@@ -8194,15 +8297,23 @@ export default function WebCatalog() {
           {currentProduct.webImages && currentProduct.webImages.length > 1 && (
             <div style={{ display: 'flex', gap: 12, marginTop: 24, padding: 10, background: 'rgba(255,255,255,0.06)', borderRadius: 12 }}>
               {currentProduct.webImages.map((url, idx) => (
-                <img 
-                  key={idx} src={url} alt={`thumb-light-${idx}`} 
+                <div
+                  key={idx}
                   onClick={() => setActiveImageIndex(idx)}
                   style={{ 
-                    width: 50, height: 50, objectFit: 'contain', borderRadius: 8, 
+                    width: 50, height: 50, borderRadius: 8, 
                     border: idx === activeImageIndex ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.2)', 
-                    background: '#fff', padding: 2, cursor: 'pointer', transition: 'all 0.2s' 
+                    background: '#fff', padding: 2, cursor: 'pointer', transition: 'all 0.2s',
+                    overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}
-                />
+                >
+                  <ProductImage 
+                    src={url} 
+                    alt={`thumb-light-${idx}`}
+                    fallbackTitle={`${idx + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                </div>
               ))}
             </div>
           )}

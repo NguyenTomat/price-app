@@ -28,6 +28,10 @@ service cloud.firestore {
       }
     }
 
+    match /{path=**}/products/{productId} {
+      allow read: if true;
+    }
+
     match /priceLists/{listId} {
       allow read: if true;
       allow write: if isAdmin();

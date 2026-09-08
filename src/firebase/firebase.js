@@ -312,12 +312,16 @@ export const updateOrder = (orderId, data) =>
 
 
 // ── EXPENSES (chi phí vận hành) ─────────────────────────────────────────────
-// Collection: expenses/{id} — { amount, category, date, note, createdBy, createdAt }
+// Collection: expenses/{id} — { amount, category, date, note, createdBy, uid, createdAt }
 
-export const subscribeExpenses = (cb) => {
+export const subscribeExpenses = (cb, filters = {}) => {
   const q = collection(db, 'expenses')
   return onSnapshot(q, (snap) => {
-    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    let list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    // Luôn lọc chi phí theo uid của từng tài khoản riêng biệt
+    if (filters.uid) {
+      list = list.filter(e => e.uid === filters.uid || e.createdBy === filters.uid)
+    }
     cb(list)
   }, (err) => console.error('subscribeExpenses error:', err))
 }
@@ -325,6 +329,7 @@ export const subscribeExpenses = (cb) => {
 export const addExpense = (data) =>
   addDoc(collection(db, 'expenses'), {
     ...data,
+    uid: data.uid || data.createdBy || '',
     createdAt: serverTimestamp()
   })
 

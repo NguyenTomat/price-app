@@ -59,11 +59,11 @@ export default function DashboardPage({ setPage }) {
   }, [user.uid])
 
   useEffect(() => {
-    if (isAdmin) {
-      const unsub = subscribeExpenses(setExpenses)
+    if (isAdmin && user?.uid) {
+      const unsub = subscribeExpenses(setExpenses, { uid: user.uid })
       return unsub
     }
-  }, [isAdmin])
+  }, [isAdmin, user?.uid])
 
   // Custom long Vietnamese currency formatter (e.g. 80,1 triệu ₫)
   const fmtRevenueLong = (n) => {
@@ -1367,7 +1367,9 @@ function ExpenseTrackerModal({ expenses, onClose, user, toast }) {
         category: cat,
         date: expDate,
         note: expNote.trim(),
-        createdBy: user.uid
+        createdBy: user.uid,
+        uid: user.uid,
+        userEmail: user.email || ''
       })
       toast('Đã thêm chi phí thành công', 'success')
       setExpAmount('')

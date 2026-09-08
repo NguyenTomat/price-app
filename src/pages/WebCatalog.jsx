@@ -205,6 +205,149 @@ const localAIEngine = (promptText, products) => {
   return { responseText, suggestedProducts }
 }
 
+// Category Product Slider Component with Smooth Auto-slide, Hover Pause & Controls
+function CategoryProductSlider({ catName, catProducts, renderProductCard, onSelectCategory }) {
+  const containerRef = useRef(null)
+  const [isHovered, setIsHovered] = useState(false)
+  const [touchActive, setTouchActive] = useState(false)
+
+  // Auto slide effect: smooth continuous / step auto-scroll
+  useEffect(() => {
+    if (isHovered || touchActive || catProducts.length <= 1) return
+
+    const interval = setInterval(() => {
+      const el = containerRef.current
+      if (!el) return
+
+      const firstCard = el.querySelector('.slider-card-item')
+      const step = firstCard ? (firstCard.offsetWidth + 18) : 260
+      const maxScroll = el.scrollWidth - el.clientWidth
+
+      if (maxScroll <= 5) return
+
+      if (el.scrollLeft >= maxScroll - 15) {
+        el.scrollTo({ left: 0, behavior: 'smooth' })
+      } else {
+        el.scrollBy({ left: step, behavior: 'smooth' })
+      }
+    }, 3500)
+
+    return () => clearInterval(interval)
+  }, [isHovered, touchActive, catProducts.length])
+
+  const handlePrev = (e) => {
+    e?.stopPropagation()
+    const el = containerRef.current
+    if (!el) return
+    const firstCard = el.querySelector('.slider-card-item')
+    const step = firstCard ? (firstCard.offsetWidth + 18) : 260
+    if (el.scrollLeft <= 10) {
+      el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' })
+    } else {
+      el.scrollBy({ left: -step, behavior: 'smooth' })
+    }
+  }
+
+  const handleNext = (e) => {
+    e?.stopPropagation()
+    const el = containerRef.current
+    if (!el) return
+    const firstCard = el.querySelector('.slider-card-item')
+    const step = firstCard ? (firstCard.offsetWidth + 18) : 260
+    const maxScroll = el.scrollWidth - el.clientWidth
+    if (el.scrollLeft >= maxScroll - 10) {
+      el.scrollTo({ left: 0, behavior: 'smooth' })
+    } else {
+      el.scrollBy({ left: step, behavior: 'smooth' })
+    }
+  }
+
+  return (
+    <section
+      className="category-section"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={() => setTouchActive(true)}
+      onTouchEnd={() => setTimeout(() => setTouchActive(false), 2500)}
+    >
+      <div className="category-header">
+        <div className="category-header-left">
+          <h3 className="category-title">{catName}</h3>
+          <span className="category-subtitle">
+            Nhập khẩu chính hãng &middot; {catProducts.length} sản phẩm
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {catProducts.length > 3 && (
+            <div className="slider-header-controls desktop-only-flex" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button
+                type="button"
+                className="slider-nav-btn"
+                onClick={handlePrev}
+                title="Sản phẩm trước"
+                aria-label="Previous"
+              >
+                <ChevronLeft size={13} />
+              </button>
+              <button
+                type="button"
+                className="slider-nav-btn"
+                onClick={handleNext}
+                title="Sản phẩm tiếp theo"
+                aria-label="Next"
+              >
+                <ChevronRight size={13} />
+              </button>
+            </div>
+          )}
+          <span
+            onClick={() => onSelectCategory(catName)}
+            className="category-view-all"
+          >
+            Xem tất cả <ChevronRight size={12} />
+          </span>
+        </div>
+      </div>
+
+      <div className="category-slider-wrapper">
+        {catProducts.length > 4 && (
+          <>
+            <button
+              type="button"
+              className="slider-floating-arrow left desktop-only"
+              onClick={handlePrev}
+              title="Trượt sang trái"
+              aria-label="Previous"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              className="slider-floating-arrow right desktop-only"
+              onClick={handleNext}
+              title="Trượt sang phải"
+              aria-label="Next"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </>
+        )}
+
+        <div
+          ref={containerRef}
+          className="category-slider-track"
+        >
+          {catProducts.map(p => (
+            <div key={p.id} className="slider-card-item">
+              {renderProductCard(p)}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function WebCatalog() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -4237,26 +4380,16 @@ export default function WebCatalog() {
                       if (catProducts.length === 0) return null;
 
                       return (
-                        <section key={idx} className="category-section">
-                          <div className="category-header">
-                            <div className="category-header-left">
-                              <h3 className="category-title">{catName}</h3>
-                              <span className="category-subtitle">
-                                Nhập khẩu chính hãng &middot; {catProducts.length} sản phẩm
-                              </span>
-                            </div>
-                            <span
-                              onClick={() => { setSelectedCategory(catName); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                              className="category-view-all"
-                            >
-                              Xem tất cả <ChevronRight size={12} />
-                            </span>
-                          </div>
- 
-                          <div className="catalog-grid">
-                            {catProducts.slice(0, 4).map(p => renderProductCard(p))}
-                          </div>
-                        </section>
+                        <CategoryProductSlider
+                          key={idx}
+                          catName={catName}
+                          catProducts={catProducts}
+                          renderProductCard={renderProductCard}
+                          onSelectCategory={(name) => {
+                            setSelectedCategory(name)
+                            window.scrollTo({ top: 0, behavior: 'smooth' })
+                          }}
+                        />
                       );
                     })}
                   </div>
@@ -6761,6 +6894,102 @@ export default function WebCatalog() {
           color: #0766B8;
         }
 
+        /* ── CATEGORY PRODUCT SLIDER STYLES ── */
+        .category-slider-wrapper {
+          position: relative;
+          width: 100%;
+        }
+        .category-slider-track {
+          display: flex !important;
+          gap: 18px !important;
+          overflow-x: auto !important;
+          scroll-behavior: smooth !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding: 6px 2px 18px !important;
+          margin-bottom: 8px !important;
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+        .category-slider-track::-webkit-scrollbar {
+          display: none !important;
+        }
+        .slider-card-item {
+          flex: 0 0 calc((100% - 3 * 18px) / 4) !important;
+          min-width: 230px !important;
+          max-width: 280px !important;
+          scroll-snap-align: start !important;
+          box-sizing: border-box !important;
+          display: flex !important;
+          flex-direction: column !important;
+        }
+        .slider-card-item .product-card {
+          height: 100% !important;
+          width: 100% !important;
+        }
+        @media (max-width: 1280px) {
+          .slider-card-item {
+            flex: 0 0 calc((100% - 2 * 14px) / 3) !important;
+            min-width: 220px !important;
+          }
+        }
+        .slider-nav-btn {
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
+          border: 1px solid #E2E8F0;
+          background: #FFFFFF;
+          color: #082B4C;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .slider-nav-btn:hover {
+          background: #0878D9;
+          border-color: #0878D9;
+          color: #FFFFFF;
+          box-shadow: 0 2px 6px rgba(8, 120, 217, 0.3);
+        }
+        .slider-floating-arrow {
+          position: absolute;
+          top: 45%;
+          transform: translateY(-50%);
+          z-index: 10;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          border: 1px solid #E2E8F0;
+          background: rgba(255, 255, 255, 0.95);
+          color: #082B4C;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          opacity: 0;
+          pointer-events: none;
+        }
+        .category-slider-wrapper:hover .slider-floating-arrow {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .slider-floating-arrow.left {
+          left: -14px;
+        }
+        .slider-floating-arrow.right {
+          right: -14px;
+        }
+        .slider-floating-arrow:hover {
+          background: #0878D9;
+          border-color: #0878D9;
+          color: #FFFFFF;
+          transform: translateY(-50%) scale(1.1);
+          box-shadow: 0 6px 16px rgba(8, 120, 217, 0.35);
+        }
+
         /* Utility visibility classes */
         @media (min-width: 769px) {
           .mobile-only, .mobile-only-flex {
@@ -6770,6 +6999,16 @@ export default function WebCatalog() {
 
         /* ── MOBILE SPECIFIC STYLES (<= 768px ONLY) ── */
         @media (max-width: 768px) {
+          .category-slider-track {
+            gap: 12px !important;
+            padding: 4px 12px 14px !important;
+          }
+          .slider-card-item {
+            flex: 0 0 calc(75vw - 20px) !important;
+            min-width: 180px !important;
+            max-width: 250px !important;
+            scroll-snap-align: center !important;
+          }
           .desktop-only, .desktop-only-flex {
             display: none !important;
           }

@@ -722,36 +722,6 @@ export const getCloudStorageFiles = async () => {
     }
   } catch {}
 
-  // 5. Thử quét trực tiếp từ Storage SDK nếu không bị chặn CORS
-  try {
-    const scanRef = async (currentRef, folderName = 'root') => {
-      try {
-        const res = await listAll(currentRef)
-        const filePromises = res.items.map(async (itemRef) => {
-          if (seenPaths.has(itemRef.fullPath)) return null
-          seenPaths.add(itemRef.fullPath)
-          try {
-            const meta = await getMetadata(itemRef)
-            const url = await getDownloadURL(itemRef).catch(() => '')
-            return {
-              name: meta.name || itemRef.name,
-              fullPath: meta.fullPath || itemRef.fullPath,
-              size: meta.size || 0,
-              contentType: meta.contentType || '',
-              timeCreated: meta.timeCreated ? new Date(meta.timeCreated) : new Date(),
-              url,
-              folder: folderName,
-            }
-          } catch {
-            return null
-          }
-        })
-        const directFiles = (await Promise.all(filePromises)).filter(Boolean)
-        directFiles.forEach(f => addFile(f))
-      } catch {}
-    }
-    await scanRef(ref(storage, 'catalogs'), 'catalogs').catch(() => {})
-  } catch {}
 
   // 6. Tính dung lượng chính xác qua HEAD request (hoặc ước lượng nếu bị chặn CORS)
   await Promise.all(allFiles.map(async (file) => {

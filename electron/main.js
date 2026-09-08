@@ -36,7 +36,14 @@ function createWindow() {
     mainWin.loadURL('http://localhost:5173')
     mainWin.webContents.openDevTools()
   } else {
-    mainWin.loadFile(path.join(app.getAppPath(), 'dist', 'index.html'))
+    // Tự động tải bản mới nhất trực tiếp từ Firebase Hosting
+    mainWin.loadURL('https://bang-gia-tandt.web.app').catch(() => {
+      mainWin.loadFile(path.join(app.getAppPath(), 'dist', 'index.html'))
+    })
+
+    mainWin.webContents.on('did-fail-load', () => {
+      mainWin.loadFile(path.join(app.getAppPath(), 'dist', 'index.html')).catch(() => {})
+    })
   }
 
   mainWin.webContents.setWindowOpenHandler(({ url }) => {

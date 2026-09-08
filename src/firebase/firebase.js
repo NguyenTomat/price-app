@@ -570,71 +570,63 @@ export const deleteWebOrder = (id) =>
 
 // ── CLOUD STORAGE MANAGEMENT ────────────────────────────────────────────────
 export const getCloudStorageFiles = async () => {
-  const folders = ['catalogs', 'products']
   const allFiles = []
+  const seenPaths = new Set()
 
-  for (const folder of folders) {
+  const scanRef = async (currentRef, folderName = 'root') => {
     try {
-      const folderRef = ref(storage, folder)
-      const res = await listAll(folderRef)
+      const res = await listAll(currentRef)
 
       const filePromises = res.items.map(async (itemRef) => {
+        if (seenPaths.has(itemRef.fullPath)) return null
+        seenPaths.add(itemRef.fullPath)
         try {
           const meta = await getMetadata(itemRef)
           const url = await getDownloadURL(itemRef).catch(() => '')
           return {
-            name: meta.name,
-            fullPath: meta.fullPath,
+            name: meta.name || itemRef.name,
+            fullPath: meta.fullPath || itemRef.fullPath,
             size: meta.size || 0,
             contentType: meta.contentType || '',
             timeCreated: meta.timeCreated ? new Date(meta.timeCreated) : new Date(),
             url,
-            folder,
+            folder: folderName,
           }
         } catch {
+          const url = await getDownloadURL(itemRef).catch(() => '')
           return {
             name: itemRef.name,
             fullPath: itemRef.fullPath,
             size: 0,
             contentType: '',
             timeCreated: new Date(),
-            url: '',
-            folder,
+            url,
+            folder: folderName,
           }
         }
       })
 
-      const files = await Promise.all(filePromises)
+      const files = (await Promise.all(filePromises)).filter(Boolean)
       allFiles.push(...files)
 
-      // Also check sub-folders if any
+      // Recursively scan all sub-folders (prefixes)
       for (const prefixRef of res.prefixes) {
-        try {
-          const subRes = await listAll(prefixRef)
-          const subPromises = subRes.items.map(async (itemRef) => {
-            try {
-              const meta = await getMetadata(itemRef)
-              const url = await getDownloadURL(itemRef).catch(() => '')
-              return {
-                name: meta.name,
-                fullPath: meta.fullPath,
-                size: meta.size || 0,
-                contentType: meta.contentType || '',
-                timeCreated: meta.timeCreated ? new Date(meta.timeCreated) : new Date(),
-                url,
-                folder: prefixRef.fullPath,
-              }
-            } catch {
-              return null
-            }
-          })
-          const subFiles = (await Promise.all(subPromises)).filter(Boolean)
-          allFiles.push(...subFiles)
-        } catch {}
+        await scanRef(prefixRef, prefixRef.fullPath)
       }
     } catch (e) {
-      console.warn(`listAll on ${folder} failed:`, e)
+      console.warn(`Scan failed on ${folderName}:`, e)
     }
+  }
+
+  // 1. Scan from root of storage bucket
+  await scanRef(ref(storage), 'root')
+
+  // 2. Also try known top-level folders explicitly in case root list is restricted
+  const knownFolders = ['catalogs', 'products', 'images', 'uploads']
+  for (const folder of knownFolders) {
+    try {
+      await scanRef(ref(storage, folder), folder)
+    } catch {}
   }
 
   return allFiles.sort((a, b) => (b.size || 0) - (a.size || 0))

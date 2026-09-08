@@ -349,7 +349,13 @@ export default function WebManagePage() {
   }
 
   useEffect(() => {
-    if (activeAdminTab === 'cloud_storage' && isMasterAdmin) {
+    if (isMasterAdmin) {
+      fetchStorageData()
+    }
+  }, [isMasterAdmin])
+
+  useEffect(() => {
+    if (activeAdminTab === 'cloud_storage' && isMasterAdmin && storageFiles.length === 0) {
       fetchStorageData()
     }
   }, [activeAdminTab, isMasterAdmin])

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getPriceLists, getProducts, updateProduct, uploadProductImageFile, uploadWebCategoryImage, getProductDetail, getWebCategories, saveWebCategories, getWebHeroSlides, saveWebHeroSlides, subscribeWebOrders, updateWebOrderStatus, deleteWebOrder, ensureProductStorageUrls } from '../firebase/firebase'
+import { getPriceLists, getProducts, updateProduct, uploadProductImageFile, uploadWebCategoryImage, getProductDetail, getWebCategories, saveWebCategories, getWebHeroSlides, saveWebHeroSlides, subscribeWebOrders, updateWebOrderStatus, deleteWebOrder, ensureProductStorageUrls, getCloudStorageFiles, deleteCloudStorageFile } from '../firebase/firebase'
+import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import MobileTableWrap from '../components/MobileTableWrap'
 
@@ -258,13 +259,25 @@ export const normalizeHeroSlides = (raw) => {
 
 export default function WebManagePage() {
   const toast = useToast()
-  
+  const { user } = useAuth()
+  const isMasterAdmin = (user?.email || '').trim().toLowerCase() === 'tunbebong1126@gmail.com'
+
   const [lists, setLists] = useState([])
   const [selectedListId, setSelectedListId] = useState('')
   const [products, setProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [search, setSearch] = useState('')
   const [editingProduct, setEditingProduct] = useState(null)
+
+  // Cloud Storage Management states (exclusive to tunbebong1126@gmail.com)
+  const [storageFiles, setStorageFiles] = useState([])
+  const [loadingStorage, setLoadingStorage] = useState(false)
+  const [storageSearch, setStorageSearch] = useState('')
+  const [storageFilter, setStorageFilter] = useState('all') // 'all' | 'products' | 'catalogs' | 'categories' | 'other'
+  const [previewFile, setPreviewFile] = useState(null)
+  const [scanningOrphans, setScanningOrphans] = useState(false)
+  const [orphanFiles, setOrphanFiles] = useState([])
+  const [cleaningOrphans, setCleaningOrphans] = useState(false)
 
   // Web custom categories management
   const [showCatModal, setShowCatModal] = useState(false)
@@ -287,7 +300,7 @@ export default function WebManagePage() {
   const [savingProduct, setSavingProduct] = useState(false) // Trạng thái đang lưu sản phẩm
   const [draggedIndex, setDraggedIndex] = useState(null) // Drag & drop index state
 
-  // Web Admin tabs: 'products' | 'orders' | 'hero_slides'
+  // Web Admin tabs: 'products' | 'orders' | 'hero_slides' | 'cloud_storage'
   const [activeAdminTab, setActiveAdminTab] = useState('products')
   const [orders, setOrders] = useState([])
   const [newOrderAlert, setNewOrderAlert] = useState(null)
@@ -321,6 +334,146 @@ export default function WebManagePage() {
       }
     }).catch(err => console.warn('Lỗi tải hero slides từ firebase:', err))
   }, [])
+  // Load Cloud Storage Data on demand
+  const fetchStorageData = async () => {
+    if (!isMasterAdmin) return
+    setLoadingStorage(true)
+    try {
+      const files = await getCloudStorageFiles()
+      setStorageFiles(files)
+    } catch (e) {
+      toast('Lỗi tải dữ liệu Cloud Storage: ' + e.message, 'error')
+    } finally {
+      setLoadingStorage(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeAdminTab === 'cloud_storage' && isMasterAdmin) {
+      fetchStorageData()
+    }
+  }, [activeAdminTab, isMasterAdmin])
+
+  const storageStats = useMemo(() => {
+    const totalBytes = storageFiles.reduce((sum, f) => sum + (f.size || 0), 0)
+    const totalMB = totalBytes / (1024 * 1024)
+    const maxMB = 5000 // 5 GB Firebase Free Tier
+    const percent = Math.min(100, Math.round((totalMB / maxMB) * 1000) / 10)
+
+    const productImages = storageFiles.filter(f => (f.name || '').includes('products_') || (f.folder || '').includes('products'))
+    const catalogPdfs = storageFiles.filter(f => (f.name || '').toLowerCase().endsWith('.pdf') || f.contentType === 'application/pdf')
+    const categoryIcons = storageFiles.filter(f => (f.name || '').includes('category_'))
+    const otherFiles = storageFiles.filter(f => !productImages.includes(f) && !catalogPdfs.includes(f) && !categoryIcons.includes(f))
+
+    const productBytes = productImages.reduce((sum, f) => sum + (f.size || 0), 0)
+    const catalogBytes = catalogPdfs.reduce((sum, f) => sum + (f.size || 0), 0)
+    const categoryBytes = categoryIcons.reduce((sum, f) => sum + (f.size || 0), 0)
+    const otherBytes = otherFiles.reduce((sum, f) => sum + (f.size || 0), 0)
+
+    return {
+      totalBytes,
+      totalMB: Number(totalMB.toFixed(2)),
+      maxMB,
+      percent,
+      totalCount: storageFiles.length,
+      productCount: productImages.length,
+      productMB: Number((productBytes / (1024 * 1024)).toFixed(2)),
+      catalogCount: catalogPdfs.length,
+      catalogMB: Number((catalogBytes / (1024 * 1024)).toFixed(2)),
+      categoryCount: categoryIcons.length,
+      categoryMB: Number((categoryBytes / (1024 * 1024)).toFixed(2)),
+      otherCount: otherFiles.length,
+      otherMB: Number((otherBytes / (1024 * 1024)).toFixed(2)),
+    }
+  }, [storageFiles])
+
+  const handleScanOrphans = async () => {
+    setScanningOrphans(true)
+    try {
+      const usedUrls = new Set()
+
+      // 1. Quét tất cả sản phẩm
+      const pLists = await getPriceLists()
+      for (const pl of pLists) {
+        const prods = await getProducts(pl.id)
+        for (const p of prods) {
+          if (p.webImages && Array.isArray(p.webImages)) {
+            p.webImages.forEach(u => usedUrls.add(u))
+          }
+          if (p.images && Array.isArray(p.images)) {
+            p.images.forEach(u => usedUrls.add(u))
+          }
+        }
+      }
+
+      // 2. Quét danh mục
+      const cats = await getWebCategories()
+      cats.forEach(c => { if (c.image) usedUrls.add(c.image) })
+
+      // 3. Quét Hero slides
+      heroSlidesList.forEach(s => {
+        if (s.img) usedUrls.add(s.img)
+        if (s.defaultImg) usedUrls.add(s.defaultImg)
+      })
+
+      // So sánh với danh sách Storage
+      const orphans = storageFiles.filter(file => {
+        if (!file.url && !file.name) return false
+        for (const u of usedUrls) {
+          if (typeof u === 'string' && (u.includes(file.name) || u === file.url)) {
+            return false
+          }
+        }
+        return true
+      })
+
+      setOrphanFiles(orphans)
+      if (orphans.length === 0) {
+        toast('Tuyệt vời! Không có file rác thừa nào trong Cloud Storage.', 'success')
+      } else {
+        const orphanMB = (orphans.reduce((s, f) => s + (f.size || 0), 0) / (1024 * 1024)).toFixed(2)
+        toast(`Phát hiện ${orphans.length} file rác (${orphanMB} MB) không gắn với sản phẩm nào!`, 'info')
+      }
+    } catch (e) {
+      toast('Lỗi quét file thừa: ' + e.message, 'error')
+    } finally {
+      setScanningOrphans(false)
+    }
+  }
+
+  const handleDeleteStorageFile = async (file) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa file "${file.name}" khỏi Cloud Storage?`)) return
+    try {
+      await deleteCloudStorageFile(file.fullPath)
+      setStorageFiles(prev => prev.filter(f => f.fullPath !== file.fullPath))
+      setOrphanFiles(prev => prev.filter(f => f.fullPath !== file.fullPath))
+      toast('Đã xóa file khỏi Cloud thành công!', 'success')
+    } catch (e) {
+      toast('Lỗi xóa file: ' + e.message, 'error')
+    }
+  }
+
+  const handleCleanAllOrphans = async () => {
+    if (orphanFiles.length === 0) return
+    if (!window.confirm(`Bạn có chắc chắn muốn dọn dẹp và xóa vĩnh viễn ${orphanFiles.length} file rác này khỏi Cloud Storage?`)) return
+    setCleaningOrphans(true)
+    try {
+      let deletedCount = 0
+      for (const f of orphanFiles) {
+        try {
+          await deleteCloudStorageFile(f.fullPath)
+          deletedCount++
+        } catch {}
+      }
+      toast(`Đã dọn dẹp thành công ${deletedCount} file rác!`, 'success')
+      setOrphanFiles([])
+      fetchStorageData()
+    } catch (e) {
+      toast('Lỗi dọn dẹp: ' + e.message, 'error')
+    } finally {
+      setCleaningOrphans(false)
+    }
+  }
 
   const handleSaveHeroSlides = async () => {
     setSavingHeroSlides(true)
@@ -1155,6 +1308,23 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
         >
           🖼️ Banner Hero Carousel ({heroSlidesList.length} Banner)
         </button>
+        {isMasterAdmin && (
+          <button 
+            onClick={() => setActiveAdminTab('cloud_storage')}
+            style={{
+              padding: '14px 20px', background: 'none', border: 'none',
+              borderBottom: activeAdminTab === 'cloud_storage' ? '2.5px solid var(--accent)' : '2.5px solid transparent',
+              color: activeAdminTab === 'cloud_storage' ? 'var(--accent)' : 'var(--text2)',
+              fontWeight: 'bold', fontSize: 13, cursor: 'pointer', transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', gap: 6
+            }}
+          >
+            ☁️ Dung lượng Cloud
+            <span style={{ fontSize: 10, background: 'var(--accent-s)', color: 'var(--accent)', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>
+              {storageStats.totalMB} MB
+            </span>
+          </button>
+        )}
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
@@ -1306,7 +1476,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
               </div>
             )}
           </div>
-        ) : (
+        ) : activeAdminTab === 'hero_slides' ? (
           /* Tab 3: Hero Slides Banner Management (Unlimited Slides + Custom Text Positioning) */
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Top Header Controls */}
@@ -1611,7 +1781,323 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
               })}
             </div>
           </div>
-        )}
+        ) : activeAdminTab === 'cloud_storage' && isMasterAdmin ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            
+            {/* Header section with actions */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  ☁️ Quản Lý Dung Lượng Cloud Storage
+                  <span style={{ fontSize: 11, background: '#e0f2fe', color: '#0369a1', padding: '3px 8px', borderRadius: 6, fontWeight: 700 }}>
+                    Master Admin: tunbebong1126@gmail.com
+                  </span>
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--text2)' }}>
+                  Theo dõi dung lượng lưu trữ ảnh máy bơm, file PDF catalog và dọn dẹp file rác trên máy chủ Google Firebase.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn sm"
+                  onClick={handleScanOrphans}
+                  disabled={scanningOrphans || loadingStorage}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  {scanningOrphans ? '⏳ Đang quét...' : '🔍 Quét file rác thừa'}
+                </button>
+                <button
+                  type="button"
+                  className="btn sm primary"
+                  onClick={fetchStorageData}
+                  disabled={loadingStorage}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  {loadingStorage ? '⏳ Đang tải...' : '🔄 Làm mới'}
+                </button>
+              </div>
+            </div>
+
+            {/* Orphan Scanner Alert Banner if found */}
+            {orphanFiles.length > 0 && (
+              <div style={{
+                background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 12, padding: '16px 20px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 28 }}>🧹</span>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: '#92400e' }}>
+                      Phát hiện {orphanFiles.length} file rác thừa không thuộc sản phẩm nào!
+                    </div>
+                    <div style={{ fontSize: 12.5, color: '#b45309', marginTop: 2 }}>
+                      Tổng dung lượng có thể giải phóng: <strong>{(orphanFiles.reduce((s, f) => s + (f.size || 0), 0) / (1024 * 1024)).toFixed(2)} MB</strong>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn sm"
+                  onClick={handleCleanAllOrphans}
+                  disabled={cleaningOrphans}
+                  style={{ background: '#d97706', color: '#fff', border: 'none', fontWeight: 800 }}
+                >
+                  {cleaningOrphans ? '⏳ Đang dọn dẹp...' : '🧹 Dọn dẹp tất cả file rác'}
+                </button>
+              </div>
+            )}
+
+            {/* Storage Progress Overview Bar */}
+            <div className="card" style={{ padding: '20px 24px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                  📊 Dung lượng Firebase Storage: <strong>{storageStats.totalMB} MB</strong> / {storageStats.maxMB} MB (5 GB Miễn Phí)
+                </span>
+                <span style={{
+                  fontSize: 12, fontWeight: 800,
+                  color: storageStats.percent > 90 ? 'var(--danger)' : storageStats.percent > 70 ? 'var(--warning)' : 'var(--success)'
+                }}>
+                  {storageStats.percent}% đã dùng
+                </span>
+              </div>
+
+              {/* Progress Track */}
+              <div style={{
+                width: '100%', height: 12, borderRadius: 6, background: 'var(--surface2)', overflow: 'hidden',
+                border: '1px solid var(--border)', display: 'flex', marginBottom: 16
+              }}>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${Math.max(storageStats.percent, 0.5)}%`,
+                    background: storageStats.percent > 90 ? '#ef4444' : storageStats.percent > 70 ? '#f59e0b' : '#10b981',
+                    borderRadius: 6,
+                    transition: 'width 0.4s ease',
+                  }}
+                />
+              </div>
+
+              {/* Quick stats mini grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+                <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>
+                    🖼️ Ảnh Sản Phẩm
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent)' }}>
+                    {storageStats.productCount} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>ảnh</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 2 }}>{storageStats.productMB} MB</div>
+                </div>
+
+                <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>
+                    📑 Catalog PDF
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#8b5cf6' }}>
+                    {storageStats.catalogCount} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>tài liệu</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 2 }}>{storageStats.catalogMB} MB</div>
+                </div>
+
+                <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>
+                    🏷️ Danh Mục & Khác
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b' }}>
+                    {storageStats.categoryCount + storageStats.otherCount} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>file</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 2 }}>{(storageStats.categoryMB + storageStats.otherMB).toFixed(2)} MB</div>
+                </div>
+
+                <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>
+                    💾 Còn Trống
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--success)' }}>
+                    {(storageStats.maxMB - storageStats.totalMB).toFixed(1)} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>MB</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 2 }}>Gói Google Free Tier</div>
+                </div>
+              </div>
+            </div>
+
+            {/* File Explorer Table */}
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <h4 style={{ margin: 0 }}>Danh sách file trên Cloud ({storageFiles.length})</h4>
+                  <div style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
+                    {[
+                      { id: 'all', label: 'Tất cả' },
+                      { id: 'products', label: 'Ảnh sản phẩm' },
+                      { id: 'catalogs', label: 'Catalog PDF' },
+                      { id: 'categories', label: 'Danh mục' },
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        className={`btn xs ${storageFilter === tab.id ? 'primary' : 'ghost'}`}
+                        onClick={() => setStorageFilter(tab.id)}
+                        style={{ fontSize: 11 }}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Tìm tên file..."
+                  value={storageSearch}
+                  onChange={e => setStorageSearch(e.target.value)}
+                  style={{ maxWidth: 220, fontSize: 12, padding: '6px 10px' }}
+                />
+              </div>
+
+              {loadingStorage ? (
+                <div style={{ textAlign: 'center', padding: '50px 0' }}>
+                  <span className="spinner" style={{ width: 28, height: 28 }} />
+                  <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text2)' }}>Đang quét danh sách tệp trên Cloud Storage...</div>
+                </div>
+              ) : storageFiles.length === 0 ? (
+                <div className="empty" style={{ padding: '40px 0' }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>📁</div>
+                  <div>Chưa có file nào trên Cloud Storage hoặc bấm "Làm mới" để tải lại.</div>
+                </div>
+              ) : (
+                <MobileTableWrap>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 60, textAlign: 'center' }}>Xem</th>
+                        <th>Tên file & Đường dẫn</th>
+                        <th>Thư mục</th>
+                        <th style={{ textAlign: 'right' }}>Dung lượng</th>
+                        <th style={{ textAlign: 'center' }}>Ngày tải lên</th>
+                        <th style={{ width: 110, textAlign: 'center' }}>Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {storageFiles
+                        .filter(f => {
+                          if (storageFilter === 'products') return (f.name || '').includes('products_') || (f.folder || '').includes('products')
+                          if (storageFilter === 'catalogs') return (f.name || '').toLowerCase().endsWith('.pdf') || f.contentType === 'application/pdf'
+                          if (storageFilter === 'categories') return (f.name || '').includes('category_')
+                          return true
+                        })
+                        .filter(f => !storageSearch || (f.name || '').toLowerCase().includes(storageSearch.toLowerCase()) || (f.fullPath || '').toLowerCase().includes(storageSearch.toLowerCase()))
+                        .map((f, fIdx) => {
+                          const sizeKB = (f.size / 1024).toFixed(1)
+                          const sizeMB = (f.size / (1024 * 1024)).toFixed(2)
+                          const isPDF = (f.name || '').toLowerCase().endsWith('.pdf') || f.contentType === 'application/pdf'
+                          const isImage = !isPDF && (f.contentType.startsWith('image/') || (f.name || '').match(/\.(jpg|jpeg|png|webp|gif)$/i))
+
+                          return (
+                            <tr key={f.fullPath || fIdx}>
+                              <td style={{ textAlign: 'center' }}>
+                                {isImage && f.url ? (
+                                  <img
+                                    src={f.url}
+                                    alt={f.name}
+                                    onClick={() => setPreviewFile(f)}
+                                    style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer', background: '#f8fafc' }}
+                                  />
+                                ) : isPDF ? (
+                                  <span style={{ fontSize: 20 }}>📑</span>
+                                ) : (
+                                  <span style={{ fontSize: 20 }}>📁</span>
+                                )}
+                              </td>
+                              <td>
+                                <div style={{ fontWeight: 600, fontSize: 12.5, wordBreak: 'break-all' }}>{f.name}</div>
+                                <div style={{ fontSize: 10.5, color: 'var(--text3)', fontFamily: 'monospace' }}>{f.fullPath}</div>
+                              </td>
+                              <td>
+                                <span className="badge" style={{ fontSize: 10 }}>{f.folder}</span>
+                              </td>
+                              <td style={{ textAlign: 'right', fontWeight: 700, fontFamily: 'monospace', fontSize: 12 }}>
+                                {f.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`}
+                              </td>
+                              <td style={{ textAlign: 'center', fontSize: 11, color: 'var(--text2)' }}>
+                                {f.timeCreated ? new Date(f.timeCreated).toLocaleDateString('vi-VN') : '—'}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
+                                  {f.url && (
+                                    <a
+                                      href={f.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="btn xs ghost"
+                                      title="Mở liên kết file"
+                                      style={{ padding: '4px 6px' }}
+                                    >
+                                      🔗
+                                    </a>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="btn xs ghost"
+                                    onClick={() => handleDeleteStorageFile(f)}
+                                    title="Xóa file khỏi Cloud"
+                                    style={{ color: '#ef4444', padding: '4px 6px' }}
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                    </tbody>
+                  </table>
+                </MobileTableWrap>
+              )}
+            </div>
+
+            {/* Image Preview Lightbox Modal */}
+            {previewFile && (
+              <div
+                style={{
+                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 12000,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(4px)'
+                }}
+                onClick={() => setPreviewFile(null)}
+              >
+                <div
+                  style={{
+                    background: '#fff', borderRadius: 14, maxWidth: 600, width: '100%', padding: 20,
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.3)', position: 'relative'
+                  }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, wordBreak: 'break-all' }}>{previewFile.name}</div>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewFile(null)}
+                      style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text3)' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 350, background: '#f8fafc', borderRadius: 8, padding: 10 }}>
+                    <img src={previewFile.url} alt={previewFile.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  </div>
+                  <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--text2)' }}>
+                    <span>Dung lượng: <strong>{(previewFile.size / 1024).toFixed(1)} KB</strong></span>
+                    <a href={previewFile.url} target="_blank" rel="noreferrer" className="btn sm primary">Tải về / Mở tab mới</a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        ) : null}
       </div>
 
       {/* New Order Realtime Toast Alert */}

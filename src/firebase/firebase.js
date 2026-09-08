@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore'
 export { Timestamp }
 import {
-  getStorage, ref, uploadString, uploadBytes, getDownloadURL, deleteObject,
+  getStorage, ref, uploadString, uploadBytes, getDownloadURL, deleteObject, listAll, getMetadata
 } from 'firebase/storage'
 import { sanitizeFirestoreId } from '../utils/excelParse'
 
@@ -567,4 +567,82 @@ export const updateWebOrderStatus = (id, status) =>
 
 export const deleteWebOrder = (id) =>
   deleteDoc(doc(db, 'webOrders', id))
+
+// ── CLOUD STORAGE MANAGEMENT ────────────────────────────────────────────────
+export const getCloudStorageFiles = async () => {
+  const folders = ['catalogs', 'products']
+  const allFiles = []
+
+  for (const folder of folders) {
+    try {
+      const folderRef = ref(storage, folder)
+      const res = await listAll(folderRef)
+
+      const filePromises = res.items.map(async (itemRef) => {
+        try {
+          const meta = await getMetadata(itemRef)
+          const url = await getDownloadURL(itemRef).catch(() => '')
+          return {
+            name: meta.name,
+            fullPath: meta.fullPath,
+            size: meta.size || 0,
+            contentType: meta.contentType || '',
+            timeCreated: meta.timeCreated ? new Date(meta.timeCreated) : new Date(),
+            url,
+            folder,
+          }
+        } catch {
+          return {
+            name: itemRef.name,
+            fullPath: itemRef.fullPath,
+            size: 0,
+            contentType: '',
+            timeCreated: new Date(),
+            url: '',
+            folder,
+          }
+        }
+      })
+
+      const files = await Promise.all(filePromises)
+      allFiles.push(...files)
+
+      // Also check sub-folders if any
+      for (const prefixRef of res.prefixes) {
+        try {
+          const subRes = await listAll(prefixRef)
+          const subPromises = subRes.items.map(async (itemRef) => {
+            try {
+              const meta = await getMetadata(itemRef)
+              const url = await getDownloadURL(itemRef).catch(() => '')
+              return {
+                name: meta.name,
+                fullPath: meta.fullPath,
+                size: meta.size || 0,
+                contentType: meta.contentType || '',
+                timeCreated: meta.timeCreated ? new Date(meta.timeCreated) : new Date(),
+                url,
+                folder: prefixRef.fullPath,
+              }
+            } catch {
+              return null
+            }
+          })
+          const subFiles = (await Promise.all(subPromises)).filter(Boolean)
+          allFiles.push(...subFiles)
+        } catch {}
+      }
+    } catch (e) {
+      console.warn(`listAll on ${folder} failed:`, e)
+    }
+  }
+
+  return allFiles.sort((a, b) => (b.size || 0) - (a.size || 0))
+}
+
+export const deleteCloudStorageFile = async (fullPath) => {
+  const fileRef = ref(storage, fullPath)
+  await deleteObject(fileRef)
+}
+
 

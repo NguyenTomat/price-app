@@ -571,6 +571,16 @@ export const deleteWebOrder = (id) =>
 // ── CLOUD STORAGE MANAGEMENT ────────────────────────────────────────────────
 export const parseStorageUrl = (url) => {
   if (!url || typeof url !== 'string') return null
+  if (url.startsWith('data:image/')) {
+    const approxBytes = Math.round((url.length - (url.indexOf(',') + 1)) * 0.75)
+    return {
+      fullPath: `base64_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      name: 'Ảnh nén tải lên',
+      folder: 'products',
+      size: approxBytes,
+      isBase64: true
+    }
+  }
   if (!url.includes('firebasestorage.googleapis.com') && !url.includes('storage.googleapis.com')) {
     return null
   }
@@ -610,14 +620,14 @@ export const getCloudStorageFiles = async () => {
     const catSnap = await getDocs(collection(db, 'catalogs'))
     catSnap.docs.forEach(d => {
       const data = d.data()
-      if (data.url && (data.url.includes('firebasestorage') || data.storagePath)) {
-        const parsed = parseStorageUrl(data.url) || { fullPath: data.storagePath || data.name, name: data.fileName || data.name, folder: 'catalogs' }
+      if (data.url && (data.url.includes('firebasestorage') || data.storagePath || data.url.startsWith('data:'))) {
+        const parsed = parseStorageUrl(data.url) || { fullPath: data.storagePath || data.name, name: data.fileName || data.name, folder: 'catalogs', size: data.fileSize || 0 }
         addFile({
           id: d.id,
           name: data.name || data.fileName || parsed.name,
           rawFileName: data.fileName || parsed.name,
           fullPath: data.storagePath || parsed.fullPath,
-          size: data.fileSize || 0,
+          size: data.fileSize || parsed.size || 0,
           contentType: 'application/pdf',
           timeCreated: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
           url: data.url,
@@ -650,7 +660,7 @@ export const getCloudStorageFiles = async () => {
                 name: `${p.code ? p.code + ' - ' : ''}Ảnh ${idx + 1} (${parsed.name})`,
                 rawFileName: parsed.name,
                 fullPath: parsed.fullPath,
-                size: 0,
+                size: parsed.size || 0,
                 contentType: 'image/jpeg',
                 timeCreated: p.updatedAt?.toDate ? p.updatedAt.toDate() : new Date(),
                 url: imgUrl,
@@ -683,7 +693,7 @@ export const getCloudStorageFiles = async () => {
             name: `Danh mục: ${c.name} (${parsed.name})`,
             rawFileName: parsed.name,
             fullPath: parsed.fullPath,
-            size: 0,
+            size: parsed.size || 0,
             contentType: 'image/jpeg',
             timeCreated: new Date(),
             url: c.image,
@@ -710,7 +720,7 @@ export const getCloudStorageFiles = async () => {
             name: `Banner: ${s.headline || s.title || `Slide ${idx + 1}`} (${parsed.name})`,
             rawFileName: parsed.name,
             fullPath: parsed.fullPath,
-            size: 0,
+            size: parsed.size || 0,
             contentType: 'image/jpeg',
             timeCreated: new Date(),
             url: img,

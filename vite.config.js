@@ -1,10 +1,34 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import fs from 'fs'
+import path from 'path'
+
+const buildTimestamp = Date.now().toString()
+
+function generateVersionPlugin() {
+  return {
+    name: 'generate-version-json',
+    writeBundle() {
+      const outDir = path.resolve(__dirname, 'dist')
+      if (!fs.existsSync(outDir)) {
+        fs.mkdirSync(outDir, { recursive: true })
+      }
+      fs.writeFileSync(
+        path.join(outDir, 'version.json'),
+        JSON.stringify({ version: buildTimestamp, time: new Date().toISOString() })
+      )
+    }
+  }
+}
 
 export default defineConfig(({ mode }) => ({
+  define: {
+    __APP_BUILD_TIME__: JSON.stringify(buildTimestamp),
+  },
   plugins: [
     react(),
+    generateVersionPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',

@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       injectRegister: 'auto',
       includeAssets: ['icons/favicon.png', 'icons/apple-touch-icon.png'],
       manifest: {
@@ -44,6 +44,9 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,xlsx}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },

@@ -363,7 +363,7 @@ export default function WebManagePage() {
   const storageStats = useMemo(() => {
     const totalBytes = storageFiles.reduce((sum, f) => sum + (f.size || 0), 0)
     const totalMB = totalBytes / (1024 * 1024)
-    const maxMB = 5000 // 5 GB Firebase Free Tier
+    const maxMB = 1000 // 1 GB (1.000 MB) Firestore Spark Free Tier
     const percent = Math.min(100, Math.round((totalMB / maxMB) * 1000) / 10)
 
     const productImages = storageFiles.filter(f => (f.name || '').includes('products_') || (f.folder || '').includes('products'))
@@ -1859,7 +1859,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
             <div className="card" style={{ padding: '20px 24px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                  📊 Dung lượng Firebase Storage: <strong>{storageStats.totalMB} MB</strong> / {storageStats.maxMB} MB (5 GB Miễn Phí)
+                  📊 Dung lượng Đám Mây & Ảnh: <strong>{storageStats.totalMB} MB</strong> / {storageStats.maxMB} MB (1 GB Gói Miễn Phí)
                 </span>
                 <span style={{
                   fontSize: 12, fontWeight: 800,

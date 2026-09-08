@@ -205,70 +205,51 @@ const localAIEngine = (promptText, products) => {
   return { responseText, suggestedProducts }
 }
 
-// Category Product Slider Component with Smooth Auto-slide, Hover Pause & Controls
+// Category Product Slider Component: Shows 4 products per slide, auto-slides to next 4 products (looping), static if <= 4 products
 function CategoryProductSlider({ catName, catProducts, renderProductCard, onSelectCategory }) {
-  const containerRef = useRef(null)
+  const [currentPage, setCurrentPage] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
-  const [touchActive, setTouchActive] = useState(false)
 
-  // Auto slide effect: smooth continuous / step auto-scroll
+  const itemsPerPage = 4
+  const shouldSlide = catProducts && catProducts.length > itemsPerPage
+  const totalPages = Math.ceil((catProducts?.length || 0) / itemsPerPage)
+
+  // Auto slide 4 by 4 smoothly every 4 seconds (pauses on hover)
   useEffect(() => {
-    if (isHovered || touchActive || catProducts.length <= 1) return
+    if (!shouldSlide || isHovered) return
 
-    const interval = setInterval(() => {
-      const el = containerRef.current
-      if (!el) return
+    const timer = setInterval(() => {
+      setCurrentPage(prev => (prev + 1) % totalPages)
+    }, 4000)
 
-      const firstCard = el.querySelector('.slider-card-item')
-      const step = firstCard ? (firstCard.offsetWidth + 18) : 260
-      const maxScroll = el.scrollWidth - el.clientWidth
-
-      if (maxScroll <= 5) return
-
-      if (el.scrollLeft >= maxScroll - 15) {
-        el.scrollTo({ left: 0, behavior: 'smooth' })
-      } else {
-        el.scrollBy({ left: step, behavior: 'smooth' })
-      }
-    }, 3500)
-
-    return () => clearInterval(interval)
-  }, [isHovered, touchActive, catProducts.length])
+    return () => clearInterval(timer)
+  }, [shouldSlide, isHovered, totalPages])
 
   const handlePrev = (e) => {
     e?.stopPropagation()
-    const el = containerRef.current
-    if (!el) return
-    const firstCard = el.querySelector('.slider-card-item')
-    const step = firstCard ? (firstCard.offsetWidth + 18) : 260
-    if (el.scrollLeft <= 10) {
-      el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' })
-    } else {
-      el.scrollBy({ left: -step, behavior: 'smooth' })
-    }
+    setCurrentPage(prev => (prev - 1 + totalPages) % totalPages)
   }
 
   const handleNext = (e) => {
     e?.stopPropagation()
-    const el = containerRef.current
-    if (!el) return
-    const firstCard = el.querySelector('.slider-card-item')
-    const step = firstCard ? (firstCard.offsetWidth + 18) : 260
-    const maxScroll = el.scrollWidth - el.clientWidth
-    if (el.scrollLeft >= maxScroll - 10) {
-      el.scrollTo({ left: 0, behavior: 'smooth' })
-    } else {
-      el.scrollBy({ left: step, behavior: 'smooth' })
-    }
+    setCurrentPage(prev => (prev + 1) % totalPages)
   }
+
+  // Chunks of 4 products
+  const pages = useMemo(() => {
+    if (!catProducts || catProducts.length === 0) return []
+    const chunks = []
+    for (let i = 0; i < catProducts.length; i += itemsPerPage) {
+      chunks.push(catProducts.slice(i, i + itemsPerPage))
+    }
+    return chunks
+  }, [catProducts, itemsPerPage])
 
   return (
     <section
       className="category-section"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onTouchStart={() => setTouchActive(true)}
-      onTouchEnd={() => setTimeout(() => setTouchActive(false), 2500)}
     >
       <div className="category-header">
         <div className="category-header-left">
@@ -278,22 +259,25 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {catProducts.length > 3 && (
+          {shouldSlide && (
             <div className="slider-header-controls desktop-only-flex" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button
                 type="button"
                 className="slider-nav-btn"
                 onClick={handlePrev}
-                title="Sản phẩm trước"
+                title="4 sản phẩm trước"
                 aria-label="Previous"
               >
                 <ChevronLeft size={13} />
               </button>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748B', minWidth: 32, textAlign: 'center' }}>
+                {currentPage + 1}/{totalPages}
+              </span>
               <button
                 type="button"
                 className="slider-nav-btn"
                 onClick={handleNext}
-                title="Sản phẩm tiếp theo"
+                title="4 sản phẩm tiếp theo"
                 aria-label="Next"
               >
                 <ChevronRight size={13} />
@@ -309,41 +293,86 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
         </div>
       </div>
 
-      <div className="category-slider-wrapper">
-        {catProducts.length > 4 && (
-          <>
-            <button
-              type="button"
-              className="slider-floating-arrow left desktop-only"
-              onClick={handlePrev}
-              title="Trượt sang trái"
-              aria-label="Previous"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              type="button"
-              className="slider-floating-arrow right desktop-only"
-              onClick={handleNext}
-              title="Trượt sang phải"
-              aria-label="Next"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </>
-        )}
-
-        <div
-          ref={containerRef}
-          className="category-slider-track"
-        >
-          {catProducts.map(p => (
-            <div key={p.id} className="slider-card-item">
-              {renderProductCard(p)}
-            </div>
-          ))}
+      {!shouldSlide ? (
+        // Dòng có <= 4 con: Để im hoàn toàn (static grid 4 con)
+        <div className="catalog-grid" style={{ marginBottom: 0 }}>
+          {catProducts.map(p => renderProductCard(p))}
         </div>
-      </div>
+      ) : (
+        // Dòng có > 4 con: Show 4 con 1 lượt, tự động slide qua 4 con khác mượt mà
+        <div className="category-carousel-viewport" style={{ overflow: 'hidden', position: 'relative', width: '100%' }}>
+          {/* Side floating navigation arrows on desktop hover */}
+          <button
+            type="button"
+            className="slider-floating-arrow left desktop-only"
+            onClick={handlePrev}
+            title="4 sản phẩm trước"
+            aria-label="Previous"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            type="button"
+            className="slider-floating-arrow right desktop-only"
+            onClick={handleNext}
+            title="4 sản phẩm tiếp theo"
+            aria-label="Next"
+          >
+            <ChevronRight size={16} />
+          </button>
+
+          <div
+            className="category-carousel-track"
+            style={{
+              display: 'flex',
+              width: '100%',
+              transform: `translateX(-${currentPage * 100}%)`,
+              transition: 'transform 0.65s cubic-bezier(0.25, 1, 0.5, 1)',
+            }}
+          >
+            {pages.map((chunk, pIdx) => (
+              <div
+                key={pIdx}
+                className="category-carousel-page"
+                style={{
+                  flex: '0 0 100%',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <div className="catalog-grid" style={{ marginBottom: 0 }}>
+                  {chunk.map(p => renderProductCard(p))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Dots indicator */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 12 }}>
+              {pages.map((_, dotIdx) => (
+                <button
+                  key={dotIdx}
+                  type="button"
+                  onClick={() => setCurrentPage(dotIdx)}
+                  style={{
+                    width: currentPage === dotIdx ? 22 : 6,
+                    height: 6,
+                    borderRadius: 3,
+                    background: currentPage === dotIdx ? '#0878D9' : '#CBD5E1',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                  }}
+                  title={`Trang ${dotIdx + 1}`}
+                  aria-label={`Trang ${dotIdx + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </section>
   )
 }
@@ -6972,7 +7001,8 @@ export default function WebCatalog() {
           opacity: 0;
           pointer-events: none;
         }
-        .category-slider-wrapper:hover .slider-floating-arrow {
+        .category-section:hover .slider-floating-arrow,
+        .category-carousel-viewport:hover .slider-floating-arrow {
           opacity: 1;
           pointer-events: auto;
         }

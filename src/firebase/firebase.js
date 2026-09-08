@@ -741,8 +741,8 @@ export const getCloudStorageFiles = async () => {
   // 6. Tính dung lượng chính xác qua HEAD request (hoặc ước lượng nếu bị chặn CORS)
   await Promise.all(allFiles.map(async (file) => {
     if (file.size && file.size > 0) return file
-    if (!file.url) {
-      file.size = 180 * 1024
+    if (!file.url || file.url.startsWith('data:')) {
+      if (!file.size) file.size = 180 * 1024
       return file
     }
     try {

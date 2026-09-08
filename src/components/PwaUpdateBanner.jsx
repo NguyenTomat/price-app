@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
-/** Tự động cập nhật ứng dụng PWA / Web app nền ngầm khi có bản mới (không hỏi người dùng) */
+/** Tự động cập nhật ứng dụng PWA / Web app nền ngầm ngay khi mở app */
 export default function PwaUpdateBanner() {
   const isElectron = typeof window !== 'undefined' && window.electronUpdater
   const {
@@ -10,28 +10,51 @@ export default function PwaUpdateBanner() {
   } = useRegisterSW({
     onRegisteredSW(swUrl, r) {
       if (r) {
-        // Tự động kiểm tra bản cập nhật mỗi 2 phút hoặc khi mở lại app
+        // Kiểm tra ngay khi khởi động
+        r.update().catch(() => {})
+
+        // Kiểm tra định kỳ mỗi 15 giây
         setInterval(() => {
           r.update().catch(() => {})
-        }, 2 * 60 * 1000)
+        }, 15 * 1000)
 
-        const handleVisibilityChange = () => {
+        // Kiểm tra khi người dùng mở lại app / tab
+        const handleCheck = () => {
           if (document.visibilityState === 'visible') {
             r.update().catch(() => {})
           }
         }
-        document.addEventListener('visibilitychange', handleVisibilityChange)
+        document.addEventListener('visibilitychange', handleCheck)
+        window.addEventListener('focus', handleCheck)
       }
     },
   })
 
-  // Tự động cập nhật ngầm ngay lập tức khi phát hiện có bản build mới
+  // Tự động kích hoạt bản mới ngay lập tức
   useEffect(() => {
     if (needRefresh && !isElectron) {
       updateServiceWorker(true)
     }
   }, [needRefresh, isElectron, updateServiceWorker])
 
+  // Lắng nghe sự kiện controllerchange khi Service Worker mới đã tải xong -> Tự reload trang mượt mà
+  useEffect(() => {
+    if ('serviceWorker' in navigator && !isElectron) {
+      let refreshing = false
+      const onControllerChange = () => {
+        if (!refreshing) {
+          refreshing = true
+          window.location.reload()
+        }
+      }
+      navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
+      return () => {
+        navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
+      }
+    }
+  }, [isElectron])
+
   return null
 }
+
 

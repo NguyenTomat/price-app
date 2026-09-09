@@ -299,25 +299,31 @@ function ProductImage({ src, alt, style = {}, className = '', fallbackTitle = ''
   )
 }
 
-// Category Product Slider Component: Shows 4 products per slide, auto-slides to next 4 products (looping), static if <= 4 products
+// Category Product Slider Component: Shows 4 products per slide, supports touch swiping / mouse dragging and auto-slides
 function CategoryProductSlider({ catName, catProducts, renderProductCard, onSelectCategory }) {
   const [currentPage, setCurrentPage] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
+  const [touchOffset, setTouchOffset] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
+
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 })
+  const touchDeltaRef = useRef({ x: 0, y: 0 })
+  const containerRef = useRef(null)
 
   const itemsPerPage = 4
   const shouldSlide = catProducts && catProducts.length > itemsPerPage
   const totalPages = Math.ceil((catProducts?.length || 0) / itemsPerPage)
 
-  // Auto slide 4 by 4 smoothly every 4 seconds (pauses on hover)
+  // Auto slide 4 by 4 smoothly every 4.5 seconds (pauses on hover/touch)
   useEffect(() => {
-    if (!shouldSlide || isHovered) return
+    if (!shouldSlide || isHovered || isSwiping) return
 
     const timer = setInterval(() => {
       setCurrentPage(prev => (prev + 1) % totalPages)
-    }, 4000)
+    }, 4500)
 
     return () => clearInterval(timer)
-  }, [shouldSlide, isHovered, totalPages])
+  }, [shouldSlide, isHovered, isSwiping, totalPages])
 
   const handlePrev = (e) => {
     e?.stopPropagation()
@@ -338,6 +344,54 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
     }
     return chunks
   }, [catProducts, itemsPerPage])
+
+  // Touch Swipe Handlers for mobile & tablet
+  const handleTouchStart = (e) => {
+    if (!shouldSlide) return
+    const touch = e.touches[0]
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
+    touchDeltaRef.current = { x: 0, y: 0 }
+    setIsHovered(true)
+  }
+
+  const handleTouchMove = (e) => {
+    if (!shouldSlide || !touchStartRef.current.time) return
+    const touch = e.touches[0]
+    const dx = touch.clientX - touchStartRef.current.x
+    const dy = touch.clientY - touchStartRef.current.y
+    touchDeltaRef.current = { x: dx, y: dy }
+
+    // If more horizontal than vertical, engage swiping
+    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+      setIsSwiping(true)
+      setTouchOffset(dx)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (!shouldSlide) return
+    const { time } = touchStartRef.current
+    const dx = touchDeltaRef.current.x
+    const dy = touchDeltaRef.current.y
+    const elapsed = Date.now() - time
+
+    // If swipe distance > 35px or quick flick
+    if (Math.abs(dx) > 35 && (Math.abs(dx) > Math.abs(dy) || elapsed < 250)) {
+      if (dx < 0) {
+        // Swiped left -> next page
+        setCurrentPage(prev => (prev + 1) % totalPages)
+      } else {
+        // Swiped right -> prev page
+        setCurrentPage(prev => (prev - 1 + totalPages) % totalPages)
+      }
+    }
+
+    touchStartRef.current = { x: 0, y: 0, time: 0 }
+    touchDeltaRef.current = { x: 0, y: 0 }
+    setTouchOffset(0)
+    setIsSwiping(false)
+    setTimeout(() => setIsHovered(false), 2500)
+  }
 
   return (
     <section
@@ -388,13 +442,25 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
       </div>
 
       {!shouldSlide ? (
-        // Dòng có <= 4 con: Để im hoàn toàn (static grid 4 con)
         <div className="catalog-grid" style={{ marginBottom: 0 }}>
           {catProducts.map(p => renderProductCard(p))}
         </div>
       ) : (
-        // Dòng có > 4 con: Show 4 con 1 lượt, tự động slide qua 4 con khác mượt mà
-        <div className="category-carousel-viewport" style={{ overflow: 'hidden', position: 'relative', width: '100%' }}>
+        <div
+          ref={containerRef}
+          className="category-carousel-viewport"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
+          style={{
+            overflow: 'hidden',
+            position: 'relative',
+            width: '100%',
+            touchAction: 'pan-y',
+            cursor: isSwiping ? 'grabbing' : 'grab'
+          }}
+        >
           {/* Side floating navigation arrows on desktop hover */}
           <button
             type="button"
@@ -420,8 +486,11 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
             style={{
               display: 'flex',
               width: '100%',
-              transform: `translateX(-${currentPage * 100}%)`,
-              transition: 'transform 0.65s cubic-bezier(0.25, 1, 0.5, 1)',
+              transform: isSwiping && touchOffset
+                ? `translateX(calc(-${currentPage * 100}% + ${touchOffset}px))`
+                : `translateX(-${currentPage * 100}%)`,
+              transition: isSwiping ? 'none' : 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
+              willChange: 'transform'
             }}
           >
             {pages.map((chunk, pIdx) => (
@@ -443,21 +512,21 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
 
           {/* Dots indicator */}
           {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 14 }}>
               {pages.map((_, dotIdx) => (
                 <button
                   key={dotIdx}
                   type="button"
                   onClick={() => setCurrentPage(dotIdx)}
                   style={{
-                    width: currentPage === dotIdx ? 22 : 6,
+                    width: currentPage === dotIdx ? 24 : 6,
                     height: 6,
                     borderRadius: 3,
                     background: currentPage === dotIdx ? '#0878D9' : '#CBD5E1',
                     border: 'none',
                     padding: 0,
                     cursor: 'pointer',
-                    transition: 'all 0.3s ease',
+                    transition: 'all 0.25s ease',
                   }}
                   title={`Trang ${dotIdx + 1}`}
                   aria-label={`Trang ${dotIdx + 1}`}

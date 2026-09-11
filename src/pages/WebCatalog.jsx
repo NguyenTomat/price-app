@@ -850,29 +850,6 @@ export default function WebCatalog() {
   const [chatLoading, setChatLoading] = useState(false)
   const [chatSuggestions, setChatSuggestions] = useState([])
   const [showContactMenu, setShowContactMenu] = useState(false)
-  const [isForceUpdating, setIsForceUpdating] = useState(false)
-
-  const handleForceRefreshApp = async () => {
-    setIsForceUpdating(true)
-    try {
-      localStorage.removeItem('tt_web_products_cache')
-      localStorage.removeItem('tt_web_products_cache_time')
-      localStorage.removeItem('tt_web_categories_cache')
-      localStorage.removeItem('tt_catalog_offline_v1')
-      if ('caches' in window) {
-        const keys = await caches.keys()
-        await Promise.all(keys.map(k => caches.delete(k)))
-      }
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations()
-        for (const reg of regs) {
-          await reg.update().catch(() => {})
-          if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' })
-        }
-      }
-    } catch (e) {}
-    window.location.reload()
-  }
 
   useEffect(() => {
     const closed = localStorage.getItem('tt_ai_chat_closed')
@@ -2659,21 +2636,7 @@ export default function WebCatalog() {
           </div>
 
           {/* Hotline & Action */}
-          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button 
-              onClick={handleForceRefreshApp}
-              disabled={isForceUpdating}
-              style={{
-                background: '#EFF6FF', color: '#0878D9', border: '1.5px solid #BFDBFE', padding: '0 12px',
-                height: 38, fontSize: 12, fontWeight: 800, cursor: isForceUpdating ? 'wait' : 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6,
-                boxShadow: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
-              }}
-              title="Làm mới bộ nhớ đệm và cập nhật phiên bản web mới nhất"
-              className="brand-btn"
-            >
-              <span>{isForceUpdating ? '⏳' : '🔄'}</span>
-              <span>{isForceUpdating ? 'Đang tải...' : 'Cập nhật web (v1.5.3)'}</span>
-            </button>
+          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <a href="tel:0984273806" style={{ textDecoration: 'none', color: '#071A2F', fontSize: 12.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }} className="brand-btn">
               <span style={{ color: '#0878D9' }}>📞</span> 0984 273 806
             </a>
@@ -2681,7 +2644,7 @@ export default function WebCatalog() {
               onClick={() => setShowCartDrawer(true)}
               style={{
                 background: '#0878D9', color: '#fff', border: 'none', padding: '0 18px',
-                height: 38, fontSize: 12, fontWeight: 800, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6,
+                height: 40, fontSize: 12, fontWeight: 800, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6,
                 boxShadow: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
               }}
               onMouseOver={e => e.currentTarget.style.background = '#065da9'}
@@ -2692,47 +2655,26 @@ export default function WebCatalog() {
             </button>
           </div>
 
-          {/* Mobile Right Controls: Update button + Hamburger */}
-          <div style={{ display: 'none', alignItems: 'center', gap: 8 }} className="mobile-only-flex">
-            <button
-              onClick={handleForceRefreshApp}
-              disabled={isForceUpdating}
-              style={{
-                background: '#EFF6FF',
-                border: '1.5px solid #BFDBFE',
-                borderRadius: 6,
-                padding: '5px 10px',
-                fontSize: 11.5,
-                fontWeight: 800,
-                color: '#0878D9',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                cursor: isForceUpdating ? 'wait' : 'pointer'
-              }}
-              title="Cập nhật phiên bản mới"
-            >
-              <span>{isForceUpdating ? '⏳' : '🔄'}</span> Cập nhật
-            </button>
-            <button
-              className="header-menu-btn"
-              onClick={() => setShowMobileMenu(true)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 6,
-                fontSize: 24,
-                color: '#102A43',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}
-              aria-label="Mở menu điều hướng"
-            >
-              ☰
-            </button>
-          </div>
+          {/* Hamburger Menu Button for Mobile */}
+          <button
+            className="header-menu-btn"
+            onClick={() => setShowMobileMenu(true)}
+            style={{
+              display: 'none',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 6,
+              fontSize: 24,
+              color: '#102A43',
+              justifyContent: 'center',
+              alignItems: 'center',
+              justifySelf: 'end'
+            }}
+            aria-label="Mở menu điều hướng"
+          >
+            ☰
+          </button>
         </div>
       </header>
 
@@ -2839,33 +2781,6 @@ export default function WebCatalog() {
                 <span style={{ fontSize: 14, color: item.active ? '#0878D9' : '#94A3B8' }}>›</span>
               </div>
             ))}
-          </div>
-
-          {/* Mobile Drawer Update Button */}
-          <div style={{ padding: '0 12px 10px' }}>
-            <button
-              onClick={handleForceRefreshApp}
-              disabled={isForceUpdating}
-              style={{
-                width: '100%',
-                padding: '11px 14px',
-                background: '#EFF6FF',
-                color: '#0878D9',
-                border: '1.5px solid #BFDBFE',
-                borderRadius: 8,
-                fontSize: 12.5,
-                fontWeight: 800,
-                cursor: isForceUpdating ? 'wait' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                boxShadow: '0 2px 6px rgba(8, 120, 217, 0.08)'
-              }}
-            >
-              <span>{isForceUpdating ? '⏳' : '🚀'}</span>
-              <span>{isForceUpdating ? 'ĐANG CẬP NHẬT...' : 'CẬP NHẬT BẢN MỚI (v1.5.3)'}</span>
-            </button>
           </div>
 
           {/* Bottom Quick Contact Box */}

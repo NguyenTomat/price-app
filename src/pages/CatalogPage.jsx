@@ -11,13 +11,16 @@ const fmtSize = (bytes) => {
 
 /** Chuyển link Google Drive share → embed URL */
 const toEmbedUrl = (raw) => {
-  if (!raw) return raw
-  // https://drive.google.com/file/d/FILE_ID/view?...
+  if (!raw) return ''
+  // https://drive.google.com/file/d/FILE_ID/...
   const m = raw.match(/\/file\/d\/([^/?\s]+)/)
   if (m) return `https://drive.google.com/file/d/${m[1]}/preview`
   // https://drive.google.com/open?id=FILE_ID
   const m2 = raw.match(/[?&]id=([^&\s]+)/)
   if (m2) return `https://drive.google.com/file/d/${m2[1]}/preview`
+  if (raw.includes('drive.google.com') && raw.includes('/view')) {
+    return raw.replace(/\/view.*$/, '/preview')
+  }
   return raw
 }
 
@@ -294,23 +297,35 @@ export default function CatalogPage() {
       {viewing && (
         <div className="overlay" onClick={e => e.target === e.currentTarget && setViewing(null)}>
           <div style={{
-            width: '90vw', height: '90vh', background: 'var(--surface)',
+            width: '94vw', height: '92vh', background: 'var(--surface)',
             borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column',
-            overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.3)',
+            overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.4)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{viewing.name}</div>
-                {viewing.brand && <div style={{ fontSize: 12, color: 'var(--accent)' }}>{viewing.brand}</div>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{viewing.name}</div>
+                {viewing.brand && <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>{viewing.brand}</div>}
               </div>
-              <a href={viewing.url} target="_blank" rel="noreferrer" className="btn sm">↗ Mở ngoài</a>
-              <button className="btn ghost sm" onClick={() => setViewing(null)}>✕</button>
+              <a
+                href={viewing.url}
+                target="_blank"
+                rel="noreferrer"
+                className="btn sm primary"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+              >
+                <span>↗</span> Mở tab ngoài / Tải về
+              </a>
+              <button className="btn ghost sm" onClick={() => setViewing(null)} style={{ fontSize: 16, padding: '4px 10px' }}>✕</button>
             </div>
-            <iframe
-              src={isGoogleDriveUrl(viewing.url) ? viewing.url : (viewing.url + '#toolbar=1&navpanes=0')}
-              style={{ flex: 1, border: 'none', width: '100%' }}
-              title={viewing.name}
-            />
+            <div style={{ flex: 1, position: 'relative', background: '#1e293b' }}>
+              <iframe
+                src={toEmbedUrl(viewing.url)}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none', background: '#ffffff' }}
+                title={viewing.name}
+                allow="autoplay; encrypted-media"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              />
+            </div>
           </div>
         </div>
       )}

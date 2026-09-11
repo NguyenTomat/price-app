@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { logout } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
-import { useToast } from './Toast'
 
 const Icon = ({ d, size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -36,58 +35,6 @@ export default function Layout({ page, setPage, children, onSpotlight }) {
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
   }, [menuOpen])
-
-  const toast = useToast()
-  const [checkingUpdate, setCheckingUpdate] = useState(false)
-
-  const handleCheckUpdate = async () => {
-    setCheckingUpdate(true)
-    try {
-      if (typeof window !== 'undefined' && window.electronUpdater) {
-        window.electronUpdater.check()
-        toast('Đang kiểm tra bản cập nhật mới...', 'info')
-        return
-      }
-
-      const res = await fetch(`/version.json?t=${Date.now()}`, {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
-      })
-      if (res.ok) {
-        const data = await res.json()
-        const serverVersion = data?.version
-        const currentVersion = typeof __APP_BUILD_TIME__ !== 'undefined' ? __APP_BUILD_TIME__ : null
-        if (serverVersion && currentVersion && serverVersion !== currentVersion) {
-          toast('🎉 Phát hiện bản mới! Đang cập nhật...', 'success')
-          if ('caches' in window) {
-            const keys = await caches.keys()
-            await Promise.all(keys.map(k => caches.delete(k)))
-          }
-          if ('serviceWorker' in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations()
-            for (const reg of regs) {
-              await reg.update().catch(() => {})
-              if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' })
-            }
-          }
-          setTimeout(() => window.location.reload(), 600)
-          return
-        }
-      }
-
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations()
-        for (const reg of regs) {
-          await reg.update().catch(() => {})
-        }
-      }
-      toast('✅ Bạn đang sử dụng phiên bản mới nhất (v1.5.3)!', 'success')
-    } catch (e) {
-      toast('✅ Đang ở phiên bản mới nhất (v1.5.3)', 'info')
-    } finally {
-      setCheckingUpdate(false)
-    }
-  }
 
   const currentEmail = (user?.email || profile?.email || '').trim().toLowerCase()
 
@@ -177,32 +124,6 @@ export default function Layout({ page, setPage, children, onSpotlight }) {
               Đăng xuất
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={handleCheckUpdate}
-            disabled={checkingUpdate}
-            style={{
-              width: '100%',
-              marginTop: 10,
-              padding: '8px 12px',
-              borderRadius: 8,
-              border: '1px solid rgba(56, 189, 248, 0.4)',
-              background: 'rgba(14, 165, 233, 0.12)',
-              color: '#38BDF8',
-              fontSize: 11.5,
-              fontWeight: 700,
-              cursor: checkingUpdate ? 'wait' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              transition: 'all 0.15s'
-            }}
-          >
-            <span style={{ fontSize: 13 }}>{checkingUpdate ? '⏳' : '🚀'}</span>
-            <span>{checkingUpdate ? 'Đang cập nhật...' : 'Cập nhật bản mới (v1.5.3)'}</span>
-          </button>
         </div>
       </aside>
 
@@ -216,21 +137,9 @@ export default function Layout({ page, setPage, children, onSpotlight }) {
               <img src="./icons/icon-192.png" alt="" className="mobile-topbar-logo" />
               <span>{currentPage?.label || 'Bảng Giá T&T'}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <button
-                type="button"
-                className="mobile-icon-btn"
-                onClick={handleCheckUpdate}
-                disabled={checkingUpdate}
-                title="Cập nhật phiên bản mới"
-                style={{ fontSize: 16, color: '#38BDF8' }}
-              >
-                {checkingUpdate ? '⏳' : '🔄'}
-              </button>
-              <button type="button" className="mobile-icon-btn" onClick={() => onSpotlight?.()} aria-label="Tìm kiếm">
-                🔍
-              </button>
-            </div>
+            <button type="button" className="mobile-icon-btn" onClick={() => onSpotlight?.()} aria-label="Tìm kiếm">
+              🔍
+            </button>
           </header>
         )}
 

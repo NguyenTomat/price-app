@@ -50,6 +50,18 @@ function createWindow() {
     shell.openExternal(url)
     return { action: 'deny' }
   })
+
+  // Ngăn chặn trang con / iframe / redirect ngoài điều hướng làm trắng app
+  mainWin.webContents.on('will-navigate', (event, url) => {
+    const isAppUrl = url.startsWith('https://bang-gia-tandt.web.app') ||
+                     url.startsWith('https://maybomtandt.com.vn') ||
+                     url.startsWith('http://localhost') ||
+                     url.startsWith('file://')
+    if (!isAppUrl) {
+      event.preventDefault()
+      shell.openExternal(url)
+    }
+  })
 }
 
 // ── Clipboard / lưu ảnh (dev + production) ───────────────────────────────────

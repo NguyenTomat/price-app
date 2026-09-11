@@ -9,7 +9,7 @@ const fmtSize = (bytes) => {
   return (bytes / 1024 / 1024).toFixed(1) + ' MB'
 }
 
-/** Chuyển link Google Drive share → embed URL */
+/** Chuyển link Google Drive share hoặc PDF → embed URL */
 const toEmbedUrl = (raw) => {
   if (!raw) return ''
   // https://drive.google.com/file/d/FILE_ID/...
@@ -21,7 +21,16 @@ const toEmbedUrl = (raw) => {
   if (raw.includes('drive.google.com') && raw.includes('/view')) {
     return raw.replace(/\/view.*$/, '/preview')
   }
+  // Nếu là file PDF từ Firebase hoặc link trực tiếp, dùng Google Docs Viewer để hiển thị được trong iframe trên mọi nền tảng
+  if (raw.includes('firebasestorage.googleapis.com') || raw.toLowerCase().includes('.pdf')) {
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(raw)}&embedded=true`
+  }
   return raw
+}
+
+const openCatalog = (cat) => {
+  if (!cat || !cat.url) return
+  window.open(cat.url, '_blank', 'noopener,noreferrer')
 }
 
 const isGoogleDriveUrl = (url) => url && url.includes('drive.google.com')
@@ -249,21 +258,21 @@ export default function CatalogPage() {
               >
                 {/* PDF preview area */}
                 <div
-                  onClick={() => setViewing(cat)}
+                  onClick={() => openCatalog(cat)}
                   style={{
                     height: 160, background: 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     gap: 8, position: 'relative',
                   }}>
                   <div style={{ fontSize: 48 }}>📋</div>
-                  <div style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 500 }}>PDF</div>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 500 }}>PDF Catalog</div>
                   <div style={{ position: 'absolute', top: 8, right: 8, background: cat.isExternalLink ? '#e8f5e9' : 'rgba(0,0,0,.06)', borderRadius: 4, padding: '2px 6px', fontSize: 10, color: cat.isExternalLink ? '#2e7d32' : 'var(--text2)', fontWeight: cat.isExternalLink ? 600 : 400 }}>
                     {cat.isExternalLink ? '🔗 Drive' : fmtSize(cat.fileSize)}
                   </div>
                 </div>
 
                 {/* Info */}
-                <div style={{ padding: '10px 12px', flex: 1 }}>
+                <div style={{ padding: '10px 12px', flex: 1 }} onClick={() => openCatalog(cat)}>
                   <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3, lineHeight: 1.3 }}>{cat.name}</div>
                   {cat.brand && (
                     <div style={{ display: 'inline-block', background: 'var(--accent-s)', color: 'var(--accent)', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
@@ -275,12 +284,21 @@ export default function CatalogPage() {
 
                 {/* Actions */}
                 <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', display: 'flex', gap: 6 }}>
-                  <button className="btn sm primary" style={{ flex: 1, fontSize: 12 }} onClick={() => setViewing(cat)}>
-                    👁 Xem
+                  <button
+                    className="btn sm primary"
+                    style={{ flex: 1, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                    onClick={() => openCatalog(cat)}
+                  >
+                    <span>👁</span> Mở Catalog
                   </button>
-                  <a href={cat.url} target="_blank" rel="noreferrer" className="btn sm" style={{ fontSize: 12 }} title="Mở tab mới">
-                    ↗
-                  </a>
+                  <button
+                    className="btn sm"
+                    style={{ fontSize: 12 }}
+                    onClick={() => setViewing(cat)}
+                    title="Xem nhanh trong App"
+                  >
+                    🔍 Xem nhanh
+                  </button>
                   {isAdmin && (
                     <button className="btn sm ghost" style={{ color: 'var(--danger)', fontSize: 12 }} onClick={() => handleDelete(cat)} title="Xóa">
                       🗑
@@ -306,16 +324,24 @@ export default function CatalogPage() {
                 <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{viewing.name}</div>
                 {viewing.brand && <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>{viewing.brand}</div>}
               </div>
-              <a
-                href={viewing.url}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                onClick={() => openCatalog(viewing)}
                 className="btn sm primary"
                 style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
               >
                 <span>↗</span> Mở tab ngoài / Tải về
-              </a>
+              </button>
               <button className="btn ghost sm" onClick={() => setViewing(null)} style={{ fontSize: 16, padding: '4px 10px' }}>✕</button>
+            </div>
+            <div style={{ padding: '8px 16px', background: '#f8fafc', borderBottom: '1px solid var(--border)', fontSize: 12, color: 'var(--text2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>💡 Nếu file PDF tải chậm hoặc hiển thị trắng:</span>
+              <button
+                onClick={() => openCatalog(viewing)}
+                style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 700, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+              >
+                Bấm vào đây để mở trực tiếp trên Trình duyệt ↗
+              </button>
             </div>
             <div style={{ flex: 1, position: 'relative', background: '#1e293b' }}>
               <iframe
@@ -323,7 +349,6 @@ export default function CatalogPage() {
                 style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none', background: '#ffffff' }}
                 title={viewing.name}
                 allow="autoplay; encrypted-media"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               />
             </div>
           </div>

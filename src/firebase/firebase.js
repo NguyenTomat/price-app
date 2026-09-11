@@ -6,7 +6,7 @@ import {
 import {
   getFirestore, collection, doc, getDoc, getDocs,
   setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp,
-  writeBatch, onSnapshot, query, orderBy, where, limit, Timestamp
+  writeBatch, onSnapshot, query, orderBy, where, limit, Timestamp, increment
 } from 'firebase/firestore'
 export { Timestamp }
 import {
@@ -169,42 +169,101 @@ export const getAllProductsFlat = async () => {
   return chunks.flat()
 }
 
-// Lấy danh sách sản phẩm đăng lên Web Catalog công cộng siêu tốc (tối ưu payload)
+export const sanitizeWebProduct = (p, listId, listName) => {
+  const rawImages = p.webImages || p.images || []
+  let webImages = []
+  if (Array.isArray(rawImages)) {
+    webImages = rawImages.filter(img => typeof img === 'string' && img.trim().length > 0)
+  }
+  return {
+    id: p.id || '',
+    name: p.name || '',
+    code: p.code || '',
+    powerKw: p.powerKw || (p.webSpecs?.power ? p.webSpecs.power : ''),
+    powerHp: p.powerHp || '',
+    head: p.head || (p.webSpecs?.specs ? p.webSpecs.specs : ''),
+    flow: p.flow || '',
+    price: p.price || 0,
+    listId: listId || p.listId || '',
+    listName: listName || p.listName || '',
+    webBrand: p.webBrand || p.brand || '',
+    group: p.group || '',
+    category: p.category || '',
+    featured: p.featured || false,
+    showOnWeb: p.showOnWeb === true,
+    voltage: p.voltage || p.webSpecs?.voltage || '',
+    pipe: p.pipe || '',
+    webDesc: p.webDesc || p.desc || p.description || '',
+    desc: p.desc || p.description || '',
+    webSpecs: p.webSpecs || {
+      power: p.powerKw ? `${p.powerKw} kW` : (p.powerHp ? `${p.powerHp} HP` : ''),
+      specs: p.specs || (p.head || p.flow ? `H: ${p.head || ''}m - Q: ${p.flow || ''}m3/h` : ''),
+      voltage: p.voltage || ''
+    },
+    specs: p.specs || (p.webSpecs?.specs ? p.webSpecs.specs : ''),
+    webImages: webImages,
+    hasFullImages: webImages.length > 1
+  }
+}
+
+// Lấy danh sách sản phẩm đăng lên Web Catalog công cộng siêu tốc (tối ưu payload & CDN)
 export const getWebCatalogProducts = async () => {
+  // 1. Tải siêu tốc từ static CDN bundle /web_catalog.json (chứa 100% đầy đủ ảnh sản phẩm, load trong 0.1s)
   try {
-    const q = query(collectionGroup(db, 'products'), where('showOnWeb', '==', true))
-    const snap = await getDocs(q)
-    return snap.docs.map(d => {
-      const data = d.data()
-      const rawImages = data.webImages || data.images || []
-      return {
-        id: d.id,
-        listId: d.ref.parent?.parent ? d.ref.parent.parent.id : null,
-        ...data,
-        webImages: rawImages.slice(0, 1), // Chỉ lấy 1 ảnh đầu cho grid để web load ngay lập tức
-        hasFullImages: rawImages.length > 1
+    const res = await fetch('/web_catalog.json')
+    if (res.ok) {
+      const data = await res.json()
+      if (Array.isArray(data) && data.length > 0) {
+        return data
       }
-    })
+    }
+  } catch (e) {
+    console.warn('Lỗi đọc web_catalog.json, fallback Firestore:', e)
+  }
+
+  // 2. Fallback đọc từ Firestore snapshot
+  try {
+    const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
+    const snapshotSnap = await getDoc(snapshotRef)
+    if (snapshotSnap.exists() && snapshotSnap.data().products?.length > 0) {
+      return snapshotSnap.data().products
+    }
   } catch (err) {
-    console.warn('CollectionGroup fallback to priceLists scan:', err)
+    console.warn('Lỗi đọc web_catalog_snapshot:', err)
+  }
+
+  // 3. Quét Firestore nếu chưa có cache
+  return await refreshWebCatalogSnapshot()
+}
+
+export const refreshWebCatalogSnapshot = async () => {
+  try {
     const lists = await getPriceLists()
     const chunks = await Promise.all(
       lists.map(l =>
         getProducts(l.id).then(ps =>
-          ps.filter(p => p.showOnWeb === true).map(p => {
-            const rawImages = p.webImages || p.images || []
-            return {
-              ...p,
-              listId: l.id,
-              listName: l.name,
-              webImages: rawImages.slice(0, 1),
-              hasFullImages: rawImages.length > 1
-            }
-          })
+          ps.filter(p => p.showOnWeb === true).map(p => sanitizeWebProduct(p, l.id, l.name))
         )
       )
     )
-    return chunks.flat()
+    const allWebProducts = chunks.flat()
+    if (allWebProducts.length > 0) {
+      try {
+        // Loại bỏ base64 khổng lồ trong snapshot lưu trên Firestore để tránh vượt trần 1MB của Firestore
+        const lightweightProducts = allWebProducts.map(p => ({
+          ...p,
+          webImages: p.webImages?.map(img => (typeof img === 'string' && img.length > 50000 && img.startsWith('data:')) ? '' : img).filter(Boolean)
+        }))
+        const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
+        await setDoc(snapshotRef, { products: lightweightProducts, updatedAt: Date.now() })
+      } catch (saveErr) {
+        console.warn('Không lưu được web_catalog_snapshot lên Firestore (vẫn dùng data trực tiếp):', saveErr)
+      }
+    }
+    return allWebProducts
+  } catch (err) {
+    console.error('Lỗi refreshWebCatalogSnapshot:', err)
+    return []
   }
 }
 
@@ -819,6 +878,94 @@ export const deleteCloudStorageFile = async (fileObj) => {
     } catch (e) {
       console.warn('Firestore doc reference cleanup notice:', e)
     }
+  }
+}
+
+// ── WEB ANALYTICS TELEMETRY ──────────────────────────────────────────────────
+const getVNFormattedDate = () => {
+  const d = new Date()
+  const vnTime = new Date(d.getTime() + (7 * 60 + d.getTimezoneOffset()) * 60000)
+  const yyyy = vnTime.getFullYear()
+  const mm = String(vnTime.getMonth() + 1).padStart(2, '0')
+  const dd = String(vnTime.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+export const logWebAnalyticsEvent = async ({ type = 'page_view', path = '/', title = 'Trang chủ', isNewSession = false, meta = {} }) => {
+  try {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator?.userAgent || '')
+    const deviceType = isMobile ? 'Mobile' : 'Desktop'
+    const dateKey = getVNFormattedDate()
+
+    // 1. Cập nhật thống kê tổng hợp theo ngày
+    const dailyRef = doc(db, 'web_analytics_daily', dateKey)
+    const dailyUpdate = {
+      date: dateKey,
+      updatedAt: Date.now(),
+      totalViews: increment(1),
+      ...(isNewSession ? { uniqueVisitors: increment(1) } : {}),
+      ...(isMobile ? { mobileViews: increment(1) } : { desktopViews: increment(1) }),
+      ...(type === 'zalo_click' ? { zaloClicks: increment(1) } : {}),
+      ...(type === 'call_click' ? { callClicks: increment(1) } : {}),
+      ...(type === 'product_view' ? { productViews: increment(1) } : {}),
+      ...(type === 'order_created' ? { orderCount: increment(1) } : {})
+    }
+
+    if (type === 'product_view' && meta.productId) {
+      const pKey = sanitizeFirestoreId(meta.productId || meta.code || 'prod')
+      dailyUpdate[`topProducts.${pKey}.name`] = meta.name || title
+      dailyUpdate[`topProducts.${pKey}.code`] = meta.code || ''
+      dailyUpdate[`topProducts.${pKey}.brand`] = meta.brand || ''
+      dailyUpdate[`topProducts.${pKey}.count`] = increment(1)
+    }
+
+    await setDoc(dailyRef, dailyUpdate, { merge: true })
+
+    // 2. Ghi nhận log chi tiết thời gian thực
+    const logData = {
+      type,
+      path,
+      title: title || 'Trang chủ',
+      device: deviceType,
+      isMobile,
+      userAgent: (navigator?.userAgent || '').substring(0, 120),
+      createdAt: Date.now(),
+      date: dateKey,
+      ...meta
+    }
+
+    await addDoc(collection(db, 'web_analytics_logs'), logData)
+  } catch (err) {
+    console.warn('Analytics log skipped:', err)
+  }
+}
+
+export const getWebAnalyticsSummary = async (daysLimit = 14) => {
+  try {
+    const q = query(collection(db, 'web_analytics_daily'), orderBy('date', 'desc'), limit(daysLimit))
+    const snap = await getDocs(q)
+    const list = []
+    snap.forEach(d => list.push({ id: d.id, ...d.data() }))
+    return list.reverse()
+  } catch (err) {
+    console.error('Lỗi tải web_analytics_daily:', err)
+    return []
+  }
+}
+
+export const subscribeWebAnalyticsLogs = (onUpdate, maxLogs = 50) => {
+  try {
+    const q = query(collection(db, 'web_analytics_logs'), orderBy('createdAt', 'desc'), limit(maxLogs))
+    return onSnapshot(q, snap => {
+      const logs = []
+      snap.forEach(d => logs.push({ id: d.id, ...d.data() }))
+      onUpdate(logs)
+    }, err => {
+      console.warn('Lỗi lắng nghe web_analytics_logs:', err)
+    })
+  } catch (err) {
+    console.error('Lỗi subscribeWebAnalyticsLogs:', err)
+    return () => {}
   }
 }
 

@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "bang-gia-tandt"
-  }
+  },
+  "targets": {
+    "bang-gia-tandt": {
+      "hosting": {
+        "[tên_target_trên_json]": [
+          "bang-gia-tandt"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

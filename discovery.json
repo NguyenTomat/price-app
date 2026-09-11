@@ -1,0 +1,155 @@
+{
+  "methods": {
+    "list": {
+      "id": "firebasehosting.sites.domains.list",
+      "flatPath": "v1beta1/sites/{sitesId}/domains",
+      "response": {
+        "$ref": "ListDomainsResponse"
+      },
+      "parameters": {
+        "pageToken": {
+          "location": "query",
+          "description": "The next_page_token from a previous request, if provided.",
+          "type": "string"
+        },
+        "pageSize": {
+          "description": "The page size to return. Defaults to 50.",
+          "format": "int32",
+          "type": "integer",
+          "location": "query"
+        },
+        "parent": {
+          "description": "Required. The parent for which to list domains, in the format: sites/ site-name",
+          "type": "string",
+          "required": true,
+          "pattern": "^sites/[^/]+$",
+          "location": "path"
+        }
+      },
+      "parameterOrder": [
+        "parent"
+      ],
+      "httpMethod": "GET",
+      "path": "v1beta1/{+parent}/domains",
+      "scopes": [
+        "https://www.googleapis.com/auth/cloud-platform",
+        "https://www.googleapis.com/auth/cloud-platform.read-only",
+        "https://www.googleapis.com/auth/firebase",
+        "https://www.googleapis.com/auth/firebase.readonly"
+      ],
+      "description": "Lists the domains for the specified site."
+    },
+    "delete": {
+      "id": "firebasehosting.sites.domains.delete",
+      "path": "v1beta1/{+name}",
+      "description": "Deletes the existing domain mapping on the specified site.",
+      "parameterOrder": [
+        "name"
+      ],
+      "scopes": [
+        "https://www.googleapis.com/auth/cloud-platform",
+        "https://www.googleapis.com/auth/firebase"
+      ],
+      "httpMethod": "DELETE",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "description": "Required. The name of the domain association to delete.",
+          "required": true,
+          "pattern": "^sites/[^/]+/domains/[^/]+$",
+          "location": "path"
+        }
+      },
+      "flatPath": "v1beta1/sites/{sitesId}/domains/{domainsId}",
+      "response": {
+        "$ref": "Empty"
+      }
+    },
+    "get": {
+      "parameterOrder": [
+        "name"
+      ],
+      "id": "firebasehosting.sites.domains.get",
+      "flatPath": "v1beta1/sites/{sitesId}/domains/{domainsId}",
+      "response": {
+        "$ref": "Domain"
+      },
+      "path": "v1beta1/{+name}",
+      "scopes": [
+        "https://www.googleapis.com/auth/cloud-platform",
+        "https://www.googleapis.com/auth/cloud-platform.read-only",
+        "https://www.googleapis.com/auth/firebase",
+        "https://www.googleapis.com/auth/firebase.readonly"
+      ],
+      "parameters": {
+        "name": {
+          "pattern": "^sites/[^/]+/domains/[^/]+$",
+          "description": "Required. The name of the domain configuration to get.",
+          "required": true,
+          "type": "string",
+          "location": "path"
+        }
+      },
+      "description": "Gets a domain mapping on the specified site.",
+      "httpMethod": "GET"
+    },
+    "create": {
+      "path": "v1beta1/{+parent}/domains",
+      "scopes": [
+        "https://www.googleapis.com/auth/cloud-platform",
+        "https://www.googleapis.com/auth/firebase"
+      ],
+      "id": "firebasehosting.sites.domains.create",
+      "flatPath": "v1beta1/sites/{sitesId}/domains",
+      "response": {
+        "$ref": "Domain"
+      },
+      "request": {
+        "$ref": "Domain"
+      },
+      "parameters": {
+        "parent": {
+          "required": true,
+          "description": "Required. The parent to create the domain association for, in the format: sites/site-name",
+          "type": "string",
+          "pattern": "^sites/[^/]+$",
+          "location": "path"
+        }
+      },
+      "parameterOrder": [
+        "parent"
+      ],
+      "description": "Creates a domain mapping on the specified site.",
+      "httpMethod": "POST"
+    },
+    "update": {
+      "path": "v1beta1/{+name}",
+      "scopes": [
+        "https://www.googleapis.com/auth/cloud-platform",
+        "https://www.googleapis.com/auth/firebase"
+      ],
+      "request": {
+        "$ref": "Domain"
+      },
+      "parameterOrder": [
+        "name"
+      ],
+      "id": "firebasehosting.sites.domains.update",
+      "flatPath": "v1beta1/sites/{sitesId}/domains/{domainsId}",
+      "response": {
+        "$ref": "Domain"
+      },
+      "parameters": {
+        "name": {
+          "location": "path",
+          "pattern": "^sites/[^/]+/domains/[^/]+$",
+          "description": "Required. The name of the domain association to update or create, if an association doesn't already exist.",
+          "type": "string",
+          "required": true
+        }
+      },
+      "httpMethod": "PUT",
+      "description": "Updates the specified domain mapping, creating the mapping as if it does not exist."
+    }
+  }
+}

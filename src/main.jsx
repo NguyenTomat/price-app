@@ -1,8 +1,9 @@
 import React, { StrictMode, useState, useEffect, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 
+import WebCatalog from './pages/WebCatalog.jsx'
+import PwaUpdateBanner from './components/PwaUpdateBanner.jsx'
 const App = lazy(() => import('./App.jsx'))
-const WebCatalog = lazy(() => import('./pages/WebCatalog.jsx'))
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -77,37 +78,55 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const WEB_HASH_PREFIXES = ['#web', '#home', '#products', '#applications', '#brands', '#about', '#contact', '#policy', '#catalog', '#intro']
+const APP_HASH_PREFIXES = ['#app', '#login', '#dashboard', '#prices', '#orders', '#cost', '#inventory', '#admin', '#bus', '#revenue', '#manage', '#catalog']
+const WEB_HASH_PREFIXES = ['#web', '#products', '#applications', '#brands', '#about', '#contact', '#policy', '#intro']
 
 function isWebRoute(hash) {
-  if (!hash) return false
-  return WEB_HASH_PREFIXES.some(prefix => hash.startsWith(prefix))
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
+  const isCustomWebDomain = hostname.includes('maybomtandt.com.vn')
+
+  if (isCustomWebDomain) {
+    // Trên tên miền maybomtandt.com.vn: Mặc định vào Website, trừ khi có hash #app
+    const isAppExplicit = APP_HASH_PREFIXES.some(prefix => hash.startsWith(prefix))
+    return !isAppExplicit
+  } else {
+    // Trên app điện thoại / bang-gia-tandt.web.app: Mặc định vào App Bảng Giá, trừ khi có hash #web
+    const isWebExplicit = WEB_HASH_PREFIXES.some(prefix => hash.startsWith(prefix))
+    return isWebExplicit
+  }
 }
 
 function RootRouter() {
   const [isWeb, setIsWeb] = useState(() => {
-    return typeof window !== 'undefined' && (isWebRoute(window.location.hash) || window.location.hash.startsWith('#web'))
+    return isWebRoute(typeof window !== 'undefined' ? window.location.hash : '')
   })
 
   useEffect(() => {
     const handleHashChange = () => {
-      setIsWeb(isWebRoute(window.location.hash) || window.location.hash.startsWith('#web'))
+      setIsWeb(isWebRoute(window.location.hash))
     }
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
   return (
-    <Suspense fallback={
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', fontFamily: 'system-ui, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div className="spinner" style={{ width: 36, height: 36, borderWidth: 3, borderColor: '#0878D9', margin: '0 auto 14px' }} />
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#64748B' }}>Đang nạp Máy Bơm T&T...</div>
-        </div>
-      </div>
-    }>
-      {isWeb ? <WebCatalog /> : <App />}
-    </Suspense>
+    <>
+      <PwaUpdateBanner />
+      {isWeb ? (
+        <WebCatalog />
+      ) : (
+        <Suspense fallback={
+          <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', fontFamily: 'system-ui, sans-serif' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div className="spinner" style={{ width: 36, height: 36, borderWidth: 3, borderColor: '#0878D9', margin: '0 auto 14px' }} />
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#64748B' }}>Đang nạp Bảng Giá T&T...</div>
+            </div>
+          </div>
+        }>
+          <App />
+        </Suspense>
+      )}
+    </>
   )
 }
 

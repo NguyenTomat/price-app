@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getPriceLists, getProducts, updateProduct, uploadProductImageFile, uploadWebCategoryImage, getProductDetail, getWebCategories, saveWebCategories, getWebHeroSlides, saveWebHeroSlides, subscribeWebOrders, updateWebOrderStatus, deleteWebOrder, ensureProductStorageUrls, getCloudStorageFiles, deleteCloudStorageFile } from '../firebase/firebase'
+import { getPriceLists, getProducts, updateProduct, uploadProductImageFile, uploadWebCategoryImage, getProductDetail, getWebCategories, saveWebCategories, getWebHeroSlides, saveWebHeroSlides, subscribeWebOrders, updateWebOrderStatus, deleteWebOrder, ensureProductStorageUrls, getCloudStorageFiles, deleteCloudStorageFile, getWebAnalyticsSummary, subscribeWebAnalyticsLogs } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import MobileTableWrap from '../components/MobileTableWrap'
@@ -334,6 +334,36 @@ export default function WebManagePage() {
       }
     }).catch(err => console.warn('Lỗi tải hero slides từ firebase:', err))
   }, [])
+
+  // Web Analytics States
+  const [analyticsSummary, setAnalyticsSummary] = useState([])
+  const [analyticsLogs, setAnalyticsLogs] = useState([])
+  const [analyticsDays, setAnalyticsDays] = useState(14)
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
+
+  const fetchAnalytics = async (days = analyticsDays) => {
+    setLoadingAnalytics(true)
+    try {
+      const summary = await getWebAnalyticsSummary(days)
+      setAnalyticsSummary(summary)
+    } catch (e) {
+      console.warn('Lỗi tải analytics summary:', e)
+    } finally {
+      setLoadingAnalytics(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeAdminTab === 'analytics') {
+      fetchAnalytics(analyticsDays)
+      const unsubscribe = subscribeWebAnalyticsLogs(logs => {
+        setAnalyticsLogs(logs)
+      }, 50)
+      return () => {
+        if (typeof unsubscribe === 'function') unsubscribe()
+      }
+    }
+  }, [activeAdminTab, analyticsDays])
   // Load Cloud Storage Data on demand
   const fetchStorageData = async () => {
     if (!isMasterAdmin) return
@@ -1314,6 +1344,21 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
         >
           🖼️ Banner Hero Carousel ({heroSlidesList.length} Banner)
         </button>
+        <button 
+          onClick={() => setActiveAdminTab('analytics')}
+          style={{
+            padding: '14px 20px', background: 'none', border: 'none',
+            borderBottom: activeAdminTab === 'analytics' ? '2.5px solid var(--accent)' : '2.5px solid transparent',
+            color: activeAdminTab === 'analytics' ? 'var(--accent)' : 'var(--text2)',
+            fontWeight: 'bold', fontSize: 13, cursor: 'pointer', transition: 'all 0.2s',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}
+        >
+          📊 Thống kê truy cập
+          <span style={{ fontSize: 9.5, background: '#10B981', color: '#fff', padding: '1px 6px', borderRadius: 8, fontWeight: 800 }}>
+            Live
+          </span>
+        </button>
         {isMasterAdmin && (
           <button 
             onClick={() => setActiveAdminTab('cloud_storage')}
@@ -2101,6 +2146,339 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                 </div>
               </div>
             )}
+
+          </div>
+        ) : activeAdminTab === 'analytics' ? (
+          <div>
+            {/* Top Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+              <div>
+                <h2 style={{ margin: '0 0 4px 0', fontSize: 18, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>📊 Thống Kê Truy Cập &amp; Tương Tác Khách Hàng</span>
+                  <span style={{ fontSize: 11, background: '#10B981', color: '#fff', padding: '2px 8px', borderRadius: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'inline-block' }} /> Live
+                  </span>
+                </h2>
+                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text3)' }}>
+                  Theo dõi số lượt xem, khách truy cập duy nhất, số lần bấm Gọi Hotline &amp; Chat Zalo theo thời gian thực.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+                  {[
+                    { days: 7, label: '7 ngày' },
+                    { days: 14, label: '14 ngày' },
+                    { days: 30, label: '30 ngày' }
+                  ].map(tab => (
+                    <button
+                      key={tab.days}
+                      onClick={() => setAnalyticsDays(tab.days)}
+                      style={{
+                        background: analyticsDays === tab.days ? 'var(--accent)' : 'transparent',
+                        color: analyticsDays === tab.days ? '#fff' : 'var(--text2)',
+                        border: 'none', borderRadius: 6, padding: '6px 12px',
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s'
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => fetchAnalytics(analyticsDays)}
+                  className="btn sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}
+                  title="Tải lại dữ liệu thống kê"
+                >
+                  🔄 Làm mới
+                </button>
+              </div>
+            </div>
+
+            {/* Compute KPI statistics */}
+            {(() => {
+              const totalViews = analyticsSummary.reduce((sum, d) => sum + (d.totalViews || 0), 0);
+              const totalVisitors = analyticsSummary.reduce((sum, d) => sum + (d.uniqueVisitors || 0), 0);
+              const totalZalo = analyticsSummary.reduce((sum, d) => sum + (d.zaloClicks || 0), 0);
+              const totalCalls = analyticsSummary.reduce((sum, d) => sum + (d.callClicks || 0), 0);
+              const totalOrders = analyticsSummary.reduce((sum, d) => sum + (d.orderCount || 0), 0);
+              const totalMobile = analyticsSummary.reduce((sum, d) => sum + (d.mobileViews || 0), 0);
+              const totalDesktop = analyticsSummary.reduce((sum, d) => sum + (d.desktopViews || 0), 0);
+
+              const todayStr = (() => {
+                const d = new Date();
+                const vnTime = new Date(d.getTime() + (7 * 60 + d.getTimezoneOffset()) * 60000);
+                const yyyy = vnTime.getFullYear();
+                const mm = String(vnTime.getMonth() + 1).padStart(2, '0');
+                const dd = String(vnTime.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+              })();
+
+              const todayData = analyticsSummary.find(d => d.date === todayStr) || {};
+              const todayViews = todayData.totalViews || 0;
+              const todayVisitors = todayData.uniqueVisitors || 0;
+              const todayZalo = todayData.zaloClicks || 0;
+              const todayCalls = todayData.callClicks || 0;
+
+              const mobilePct = (totalMobile + totalDesktop > 0) ? Math.round((totalMobile / (totalMobile + totalDesktop)) * 100) : 75;
+
+              // Aggregate Top Products viewed
+              const productMap = {};
+              analyticsSummary.forEach(d => {
+                if (d.topProducts) {
+                  Object.entries(d.topProducts).forEach(([k, v]) => {
+                    const name = v?.name || k;
+                    const count = v?.count || 0;
+                    if (!productMap[name]) productMap[name] = { name, code: v?.code || '', brand: v?.brand || '', count: 0 };
+                    productMap[name].count += count;
+                  });
+                }
+              });
+              analyticsLogs.forEach(l => {
+                if (l.type === 'product_view' && l.title) {
+                  if (!productMap[l.title]) productMap[l.title] = { name: l.title, code: l.code || '', brand: l.brand || '', count: 0 };
+                  if (Object.keys(productMap).length <= 5) productMap[l.title].count += 1;
+                }
+              });
+
+              const topProductsList = Object.values(productMap).sort((a, b) => b.count - a.count).slice(0, 8);
+              const maxProdCount = topProductsList.length > 0 ? Math.max(...topProductsList.map(p => p.count), 1) : 1;
+
+              const maxDayViews = Math.max(...analyticsSummary.map(d => d.totalViews || 0), 5);
+
+              return (
+                <>
+                  {/* 4 KPI Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, marginBottom: 20 }}>
+                    
+                    {/* Card 1: Pageviews */}
+                    <div className="card" style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.08), rgba(37,99,235,0.02))', border: '1px solid rgba(37,99,235,0.2)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tổng lượt xem trang</span>
+                        <span style={{ fontSize: 20 }}>👁️</span>
+                      </div>
+                      <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
+                        {totalViews.toLocaleString('vi-VN')}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: '#10B981', fontWeight: 700, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span>↑ Hôm nay:</span> <strong>+{todayViews} lượt</strong>
+                      </div>
+                    </div>
+
+                    {/* Card 2: Unique Visitors */}
+                    <div className="card" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02))', border: '1px solid rgba(16,185,129,0.2)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Khách duy nhất (Visitors)</span>
+                        <span style={{ fontSize: 20 }}>👥</span>
+                      </div>
+                      <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
+                        {totalVisitors.toLocaleString('vi-VN')}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6 }}>
+                        Hôm nay: <strong>+{todayVisitors} khách mới</strong>
+                      </div>
+                    </div>
+
+                    {/* Card 3: Leads / Conversions */}
+                    <div className="card" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02))', border: '1px solid rgba(245,158,11,0.2)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tương tác Zalo &amp; Hotline</span>
+                        <span style={{ fontSize: 20 }}>📞</span>
+                      </div>
+                      <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
+                        {(totalZalo + totalCalls + totalOrders).toLocaleString('vi-VN')}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6, display: 'flex', gap: 8 }}>
+                        <span>💬 Zalo: <strong>{totalZalo}</strong></span>
+                        <span>•</span>
+                        <span>📞 Gọi: <strong>{totalCalls}</strong></span>
+                        <span>•</span>
+                        <span>🛒 Đơn: <strong>{totalOrders}</strong></span>
+                      </div>
+                    </div>
+
+                    {/* Card 4: Device Breakdown */}
+                    <div className="card" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(139,92,246,0.02))', border: '1px solid rgba(139,92,246,0.2)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Thiết bị truy cập</span>
+                        <span style={{ fontSize: 20 }}>📱</span>
+                      </div>
+                      <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
+                        {mobilePct}% <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text3)' }}>Mobile</span>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6 }}>
+                        📱 Điện thoại: <strong>{totalMobile}</strong> | 💻 PC: <strong>{totalDesktop}</strong>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* VISITOR TRAFFIC CHART */}
+                  <div className="card" style={{ marginBottom: 20, padding: 20 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+                      <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>📈 Biểu Đồ Lượng Truy Cập Theo Ngày</span>
+                      </h4>
+                      <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                        Tổng {analyticsSummary.length} ngày gần nhất
+                      </span>
+                    </div>
+
+                    {analyticsSummary.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text3)', fontSize: 13 }}>
+                        Đang ghi nhận dữ liệu truy cập thời gian thực... Khách hàng truy cập web sẽ hiển thị ngay tại đây.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 160, padding: '10px 0 0', overflowX: 'auto' }}>
+                        {analyticsSummary.map((item, idx) => {
+                          const count = item.totalViews || 0;
+                          const heightPct = Math.max(Math.round((count / maxDayViews) * 100), 8);
+                          const isToday = item.date === todayStr;
+                          const displayDate = item.date ? item.date.split('-').slice(1).reverse().join('/') : `D${idx+1}`;
+
+                          return (
+                            <div key={idx} style={{ flex: '1 0 36px', minWidth: 36, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: isToday ? 'var(--accent)' : 'var(--text2)', marginBottom: 4 }}>
+                                {count}
+                              </span>
+                              <div
+                                style={{
+                                  width: '100%',
+                                  height: `${heightPct}%`,
+                                  background: isToday ? 'var(--accent)' : 'linear-gradient(180deg, #38bdf8, #0284c7)',
+                                  borderRadius: '6px 6px 0 0',
+                                  transition: 'all 0.3s ease',
+                                  boxShadow: isToday ? '0 4px 12px rgba(8,120,217,0.3)' : 'none',
+                                  cursor: 'pointer'
+                                }}
+                                title={`Ngày: ${item.date} | Lượt xem: ${count} | Khách: ${item.uniqueVisitors || 0} | Zalo: ${item.zaloClicks || 0}`}
+                              />
+                              <span style={{ fontSize: 10.5, fontWeight: isToday ? 800 : 500, color: isToday ? 'var(--accent)' : 'var(--text3)', marginTop: 6, whiteSpace: 'nowrap' }}>
+                                {displayDate}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2-COLUMN SECTION: TOP PRODUCTS & REALTIME LOGS */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
+                    
+                    {/* LEFT: Top Products */}
+                    <div className="card" style={{ padding: 20 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+                          🏆 Top Sản Phẩm Xem Nhiều Nhất
+                        </h4>
+                        <span style={{ fontSize: 11.5, color: 'var(--text3)' }}>Lượt xem</span>
+                      </div>
+
+                      {topProductsList.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text3)', fontSize: 12.5 }}>
+                          Chưa có lượt xem sản phẩm nào được ghi nhận.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {topProductsList.map((p, idx) => {
+                            const pct = Math.round((p.count / maxProdCount) * 100);
+                            const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+                            return (
+                              <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+                                  <span style={{ fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span>{medal}</span>
+                                    <span>{p.name}</span>
+                                  </span>
+                                  <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{p.count} lượt</span>
+                                </div>
+                                <div style={{ width: '100%', height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                                  <div style={{ width: `${pct}%`, height: '100%', background: idx === 0 ? '#10B981' : 'var(--accent)', borderRadius: 3 }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* RIGHT: Live Stream Activity Log */}
+                    <div className="card" style={{ padding: 20 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>⚡ Nhật Ký Truy Cập Thời Gian Thực</span>
+                        </h4>
+                        <span style={{ fontSize: 11.5, color: '#10B981', fontWeight: 700 }}>
+                          ● Cập nhật liên tục
+                        </span>
+                      </div>
+
+                      {analyticsLogs.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text3)', fontSize: 12.5 }}>
+                          Đang chờ phiên truy cập tiếp theo...
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
+                          {analyticsLogs.slice(0, 30).map((log, idx) => {
+                            const timeStr = log.createdAt ? new Date(log.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--';
+                            const dateStr = log.createdAt ? new Date(log.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : '';
+                            
+                            let badgeBg = '#E0F2FE';
+                            let badgeColor = '#0369A1';
+                            let actionLabel = 'Xem trang';
+
+                            if (log.type === 'zalo_click') {
+                              badgeBg = '#DBEAFE';
+                              badgeColor = '#1D4ED8';
+                              actionLabel = '💬 Chat Zalo';
+                            } else if (log.type === 'call_click') {
+                              badgeBg = '#FEF3C7';
+                              badgeColor = '#B45309';
+                              actionLabel = '📞 Gọi Hotline';
+                            } else if (log.type === 'product_view') {
+                              badgeBg = '#D1FAE5';
+                              badgeColor = '#047857';
+                              actionLabel = '🔍 Xem máy bơm';
+                            } else if (log.type === 'order_created') {
+                              badgeBg = '#FEE2E2';
+                              badgeColor = '#B91C1C';
+                              actionLabel = '🛒 Đặt hàng';
+                            }
+
+                            return (
+                              <div
+                                key={idx}
+                                style={{
+                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                  padding: '8px 10px', borderRadius: 8, background: 'var(--surface)',
+                                  border: '1px solid var(--border)', fontSize: 12
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                                  <span style={{ fontSize: 13 }}>{log.device === 'Mobile' ? '📱' : '💻'}</span>
+                                  <span style={{ background: badgeBg, color: badgeColor, padding: '2px 6px', borderRadius: 4, fontWeight: 700, fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                                    {actionLabel}
+                                  </span>
+                                  <span style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 }}>
+                                    {log.title || log.path || 'Trang chủ'}
+                                  </span>
+                                </div>
+                                <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                  {timeStr} {dateStr ? `(${dateStr})` : ''}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                </>
+              );
+            })()}
 
           </div>
         ) : null}

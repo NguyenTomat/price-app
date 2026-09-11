@@ -35,9 +35,9 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ['icons/favicon.png', 'icons/apple-touch-icon.png'],
       manifest: {
         id: '/',
-        name: 'Bảng Giá T&T',
-        short_name: 'Bảng Giá T&T',
-        description: 'Hệ thống quản lý bảng giá sản phẩm',
+        name: 'Máy Bơm T&T',
+        short_name: 'Máy Bơm T&T',
+        description: 'Tổng kho phân phối máy bơm nước chính hãng toàn quốc',
         theme_color: '#1e3a5f',
         background_color: '#f5f5f3',
         display: 'standalone',
@@ -76,7 +76,7 @@ export default defineConfig(({ mode }) => ({
       },
     }),
   ],
-  base: mode === 'web' ? '/' : './',
+  base: '/',
   build: {
     outDir: 'dist',
     emptyOutDir: true,

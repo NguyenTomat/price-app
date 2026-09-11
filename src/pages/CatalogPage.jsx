@@ -307,7 +307,7 @@ export default function CatalogPage() {
               <button className="btn ghost sm" onClick={() => setViewing(null)}>✕</button>
             </div>
             <iframe
-              src={viewing.url + '#toolbar=1&navpanes=0'}
+              src={isGoogleDriveUrl(viewing.url) ? viewing.url : (viewing.url + '#toolbar=1&navpanes=0')}
               style={{ flex: 1, border: 'none', width: '100%' }}
               title={viewing.name}
             />

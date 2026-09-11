@@ -34,7 +34,7 @@ service cloud.firestore {
 
     match /priceLists/{listId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdmin() || listId == 'web_catalog_snapshot' || listId == 'categories_settings' || listId == 'hero_slides_settings';
       match /products/{productId} {
         allow read: if true;
         allow create, delete: if isAdmin();
@@ -79,6 +79,16 @@ service cloud.firestore {
 
     match /expenses/{expenseId} {
       allow read, write: if isAdmin();
+    }
+
+    match /web_analytics_daily/{dateKey} {
+      allow write: if true;
+      allow read: if request.auth != null || isAdmin();
+    }
+
+    match /web_analytics_logs/{logId} {
+      allow write: if true;
+      allow read: if request.auth != null || isAdmin();
     }
   }
 }

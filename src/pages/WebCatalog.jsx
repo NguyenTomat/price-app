@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder, getProductDetail } from '../firebase/firebase'
+import { getWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder, getProductDetail, logWebAnalyticsEvent } from '../firebase/firebase'
 import PwaUpdateBanner from '../components/PwaUpdateBanner'
 import { DEFAULT_HERO_SLIDES, normalizeHeroSlides } from './WebManagePage'
 
@@ -38,6 +38,37 @@ const BRAND_METADATA = {
     badgeColor: '#991b1b'
   }
 }
+
+// Danh sách từ khóa tìm kiếm nhanh phổ biến
+const POPULAR_SEARCH_KEYWORDS = [
+  'Bơm hỏa tiễn',
+  'Bơm chìm giếng khoan',
+  'Bơm chìm nước thải',
+  'Bơm ly tâm trục đứng',
+  'Bơm ly tâm trục ngang',
+  'Bơm tăng áp',
+  'Máy sục khí',
+  'UPTI PUMP',
+  'SELANNI',
+  'MASTRA',
+  'BERATI',
+  '380V',
+  '220V'
+];
+
+// Hàm chuẩn hóa chuỗi tìm kiếm tiếng Việt không dấu
+const normalizeSearchStr = (str) => {
+  if (!str) return '';
+  return String(str)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .replace(/[^\w\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
 
 // Sleek vector SVG icon components
 const FolderIcon = ({ size = 18, color = 'currentColor' }) => (
@@ -561,7 +592,13 @@ export default function WebCatalog() {
   const [hoveredBtnId, setHoveredBtnId] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState('TẤT CẢ')
   const [activeTab, setActiveTab] = useState('home')
-  const [dbCategories, setDbCategories] = useState([])
+  const [dbCategories, setDbCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tt_web_categories_cache')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return []
+  })
   const [catPages, setCatPages] = useState({}) // { [catIdx]: pageNum }
   const [filterGroups, setFilterGroups] = useState(new Set()) // multi-select product type filter
 
@@ -582,8 +619,8 @@ export default function WebCatalog() {
   const [showMegaMenu, setShowMegaMenu] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
-  const [sliderHead, setSliderHead] = useState(60)
-  const [sliderFlow, setSliderFlow] = useState(50)
+  const [sliderHead, setSliderHead] = useState(150)
+  const [sliderFlow, setSliderFlow] = useState(200)
 
   // Contact page form states
   const [contactName, setContactName] = useState('')
@@ -813,6 +850,29 @@ export default function WebCatalog() {
   const [chatLoading, setChatLoading] = useState(false)
   const [chatSuggestions, setChatSuggestions] = useState([])
   const [showContactMenu, setShowContactMenu] = useState(false)
+  const [isForceUpdating, setIsForceUpdating] = useState(false)
+
+  const handleForceRefreshApp = async () => {
+    setIsForceUpdating(true)
+    try {
+      localStorage.removeItem('tt_web_products_cache')
+      localStorage.removeItem('tt_web_products_cache_time')
+      localStorage.removeItem('tt_web_categories_cache')
+      localStorage.removeItem('tt_catalog_offline_v1')
+      if ('caches' in window) {
+        const keys = await caches.keys()
+        await Promise.all(keys.map(k => caches.delete(k)))
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        for (const reg of regs) {
+          await reg.update().catch(() => {})
+          if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+        }
+      }
+    } catch (e) {}
+    window.location.reload()
+  }
 
   useEffect(() => {
     const closed = localStorage.getItem('tt_ai_chat_closed')
@@ -923,117 +983,113 @@ export default function WebCatalog() {
     } catch {}
   }, [cart])
   // Smart Pump Calculator Helper Logic
-  const parsePumpSpecs = (specStr) => {
-    if (!specStr) return { hMin: 12, hMax: 45, qMin: 3.0, qMax: 12.0 };
+  const parsePumpSpecs = (specInput, prod) => {
+    let specStr = (typeof specInput === 'string' ? specInput : '') || (prod?.specs || prod?.webSpecs?.specs || '');
+    const directHead = prod?.head ? String(prod.head) : '';
+    const directFlow = prod?.flow ? String(prod.flow) : '';
+    if (directHead || directFlow) {
+      specStr = `H: ${directHead} Q: ${directFlow} ${specStr}`;
+    }
+
+    if (!specStr || !specStr.trim()) {
+      return { hMin: 0, hMax: 0, qMin: 0, qMax: 0 };
+    }
+
+    // Normalize comma decimals (e.g. "2,1" -> "2.1")
+    const cleanStr = specStr.replace(/(\d+),(\d+)/g, '$1.$2');
+
     let hMin = 0, hMax = 0, qMin = 0, qMax = 0;
 
-    // 1. Try to parse Hmax directly (e.g., "Hmax 134 m" or "Hmax: 134")
-    const hMaxMatch = specStr.match(/Hmax\s*:?\s*([\d.]+)/i);
+    // 1. Try to parse Hmax directly (e.g., "Hmax 31 m" or "Hmax: 31" or "Hmax 31")
+    const hMaxMatch = cleanStr.match(/H\s*max\s*:?\s*([\d.]+)/i);
     if (hMaxMatch) {
       hMax = parseFloat(hMaxMatch[1]);
     }
 
-    // 2. Try to parse H range (e.g. "H(m): 30-10" or "H: 30-10" or "cột áp: 8-32")
-    const hRangeMatch = specStr.match(/(?:H\(m\)|H|cột áp)\s*:?\s*([\d.]+)\s*-\s*([\d.]+)/i);
+    // 2. Try to parse H range (e.g. "H(m): 30-10" or "H: 12-45" or "cột áp: 8-32")
+    const hRangeMatch = cleanStr.match(/(?:H\(m\)|H|cột\s*áp|Cột\s*Áp)\s*:?\s*([\d.]+)\s*-\s*([\d.]+)/i);
     if (hRangeMatch) {
       const val1 = parseFloat(hRangeMatch[1]);
       const val2 = parseFloat(hRangeMatch[2]);
       hMin = Math.min(val1, val2);
-      if (hMax <= 0) hMax = Math.max(val1, val2);
+      hMax = Math.max(val1, val2);
     } else if (hMax <= 0) {
       // Try single H value
-      const hSingleMatch = specStr.match(/(?:H\(m\)|H|cột áp)\s*:?\s*([\d.]+)/i);
+      const hSingleMatch = cleanStr.match(/(?:H\(m\)|H|cột\s*áp)\s*:?\s*([\d.]+)/i);
       if (hSingleMatch) {
-        const val = parseFloat(hSingleMatch[1]);
-        hMin = val * 0.5;
-        hMax = val;
+        hMax = parseFloat(hSingleMatch[1]);
       }
     }
 
-    // 3. Try to parse Qmax directly (e.g., "Qmax 3.5 m3/h" or "Qmax: 3.5")
-    const qMaxMatch = specStr.match(/Qmax\s*:?\s*([\d.]+)/i);
+    // 3. Try to parse Qmax directly (e.g., "Qmax 2.1 m3/h" or "Qmax: 2.1")
+    const qMaxMatch = cleanStr.match(/Q\s*max\s*:?\s*([\d.]+)/i);
     if (qMaxMatch) {
       qMax = parseFloat(qMaxMatch[1]);
     }
 
-    // 4. Try to parse Q range (e.g. "Q(m3/h): 15-5" or "Q: 15-5")
-    const qRangeMatch = specStr.match(/(?:Q\(m3\/h\)|Q|lưu lượng)\s*:?\s*([\d.]+)\s*-\s*([\d.]+)/i);
+    // 4. Try to parse Q range (e.g. "Q(m3/h): 15-5" or "Q: 3-12" or "lưu lượng: 3-12")
+    const qRangeMatch = cleanStr.match(/(?:Q\(m3\/h\)|Q|lưu\s*lượng|Lưu\s*Lượng)\s*:?\s*([\d.]+)\s*-\s*([\d.]+)/i);
     if (qRangeMatch) {
       const val1 = parseFloat(qRangeMatch[1]);
       const val2 = parseFloat(qRangeMatch[2]);
       qMin = Math.min(val1, val2);
-      if (qMax <= 0) qMax = Math.max(val1, val2);
+      qMax = Math.max(val1, val2);
     } else if (qMax <= 0) {
       // Try single Q value
-      const qSingleMatch = specStr.match(/(?:Q\(m3\/h\)|Q|lưu lượng)\s*:?\s*([\d.]+)/i);
+      const qSingleMatch = cleanStr.match(/(?:Q\(m3\/h\)|Q|lưu\s*lượng)\s*:?\s*([\d.]+)/i);
       if (qSingleMatch) {
-        const val = parseFloat(qSingleMatch[1]);
-        qMin = val * 0.3;
-        qMax = val;
-      }
-    }
-
-    // Dynamic fallback if parsed max specs are still 0
-    if (hMax <= 0.1 || qMax <= 0.1) {
-      const powerStr = specStr.toLowerCase();
-      let powerkW = 0.75; // Default average power 1 HP
-      const kwMatch = powerStr.match(/([\d.]+)\s*(?:kw|kilowatt)/i);
-      const hpMatch = powerStr.match(/([\d.]+)\s*(?:hp|ngựa|luc|lực)/i);
-      if (kwMatch) {
-        powerkW = parseFloat(kwMatch[1]);
-      } else if (hpMatch) {
-        powerkW = parseFloat(hpMatch[1]) * 0.75;
-      }
-
-      if (powerkW <= 0.4) {
-        if (hMax <= 0.1) { hMin = 4; hMax = 18; }
-        if (qMax <= 0.1) { qMin = 1.2; qMax = 4.8; }
-      } else if (powerkW <= 0.8) {
-        if (hMax <= 0.1) { hMin = 8; hMax = 32; }
-        if (qMax <= 0.1) { qMin = 2.0; qMax = 8.5; }
-      } else if (powerkW <= 1.2) {
-        if (hMax <= 0.1) { hMin = 12; hMax = 45; }
-        if (qMax <= 0.1) { qMin = 3.0; qMax = 12.0; }
-      } else if (powerkW <= 1.8) {
-        if (hMax <= 0.1) { hMin = 16; hMax = 55; }
-        if (qMax <= 0.1) { qMin = 3.6; qMax = 16.0; }
-      } else if (powerkW <= 2.5) {
-        if (hMax <= 0.1) { hMin = 20; hMax = 72; }
-        if (qMax <= 0.1) { qMin = 4.5; qMax = 22.0; }
-      } else if (powerkW <= 4.5) {
-        if (hMax <= 0.1) { hMin = 24; hMax = 95; }
-        if (qMax <= 0.1) { qMin = 6.0; qMax = 36.0; }
-      } else if (powerkW <= 8.0) {
-        if (hMax <= 0.1) { hMin = 32; hMax = 125; }
-        if (qMax <= 0.1) { qMin = 8.0; qMax = 60.0; }
-      } else {
-        if (hMax <= 0.1) { hMin = 40; hMax = 160; }
-        if (qMax <= 0.1) { qMin = 12.0; qMax = 120.0; }
+        qMax = parseFloat(qSingleMatch[1]);
       }
     }
 
     return { hMin, hMax, qMin, qMax };
-  }
+  };
+
+  const formatSpecNumber = (val) => {
+    if (val === undefined || val === null || val === '') return '';
+    const num = parseFloat(val);
+    if (isNaN(num)) return String(val);
+    return Number(num.toFixed(1)).toString();
+  };
+
+  const getProductSpecInfo = (p) => {
+    if (!p) return { pow: '', volt: '', hRange: 'Liên hệ', qRange: 'Liên hệ', hMax: 0, qMax: 0 };
+    const pow = p.webSpecs?.power ? formatPower(p.webSpecs.power) : (p.powerKw ? formatPower(p.powerKw) : (p.powerHp ? formatPower(p.powerHp) : ''));
+    const volt = p.webSpecs?.voltage ? formatVoltage(p.webSpecs.voltage) : (p.voltage ? formatVoltage(p.voltage) : '');
+    const parsed = parsePumpSpecs(p.webSpecs?.specs, p);
+
+    const qMin = parsed.qMin > 0 ? formatSpecNumber(parsed.qMin) : '';
+    const qMax = parsed.qMax > 0 ? formatSpecNumber(parsed.qMax) : '';
+    const hMin = parsed.hMin > 0 ? formatSpecNumber(parsed.hMin) : '';
+    const hMax = parsed.hMax > 0 ? formatSpecNumber(parsed.hMax) : '';
+
+    let hRange = '';
+    if (hMin && hMax && hMin !== hMax) {
+      hRange = `${hMin} - ${hMax} m`;
+    } else if (hMax) {
+      hRange = `${hMax} m`;
+    } else if (p.head) {
+      hRange = `${p.head} m`;
+    }
+
+    let qRange = '';
+    if (qMin && qMax && qMin !== qMax) {
+      qRange = `${qMin} - ${qMax} m³/h`;
+    } else if (qMax) {
+      qRange = `${qMax} m³/h`;
+    } else if (p.flow) {
+      qRange = `${p.flow} m³/h`;
+    }
+
+    return { pow, volt, hRange: hRange || 'Liên hệ', qRange: qRange || 'Liên hệ', hMax: parsed.hMax, qMax: parsed.qMax };
+  };
 
   const renderProductCard = (p) => {
-    const pow = p.webSpecs?.power ? formatPower(p.webSpecs.power) : '';
-    const volt = p.webSpecs?.voltage ? formatVoltage(p.webSpecs.voltage) : '';
-    const parsedSpecs = parsePumpSpecs(p.webSpecs?.specs);
-
-    const formatSpecNumber = (val) => {
-      if (val === undefined || val === null) return '';
-      const num = parseFloat(val);
-      if (isNaN(num)) return val;
-      return Number(num.toFixed(1)).toString();
-    };
-
-    const qMin = parsedSpecs ? formatSpecNumber(parsedSpecs.qMin) : '';
-    const qMax = parsedSpecs ? formatSpecNumber(parsedSpecs.qMax) : '';
-    const hMin = parsedSpecs ? formatSpecNumber(parsedSpecs.hMin) : '';
-    const hMax = parsedSpecs ? formatSpecNumber(parsedSpecs.hMax) : '';
-
-    const qRange = qMax ? `${qMax} m³/h` : '';
-    const hRange = hMax ? `${hMax} m` : '';
+    const specInfo = getProductSpecInfo(p);
+    const pow = specInfo.pow;
+    const volt = specInfo.volt;
+    const qRange = specInfo.qRange !== 'Liên hệ' ? specInfo.qRange : '';
+    const hRange = specInfo.hRange !== 'Liên hệ' ? specInfo.hRange : '';
     
     const mainTitle = p.code && pow ? `${p.code} - ${pow}` : (p.code || pow || '');
 
@@ -1469,6 +1525,9 @@ export default function WebCatalog() {
       try {
         const cats = await getWebCategories()
         setDbCategories(cats)
+        if (cats && cats.length) {
+          localStorage.setItem('tt_web_categories_cache', JSON.stringify(cats))
+        }
       } catch (err) {
         console.warn('Lỗi tải danh mục từ db:', err)
       }
@@ -1477,9 +1536,29 @@ export default function WebCatalog() {
     const fetchAndCache = async () => {
       try {
         const data = await getWebCatalogProducts()
-        setProducts(data)
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data))
-        localStorage.setItem(CACHE_TIME_KEY, Date.now().toString())
+        if (Array.isArray(data) && data.length > 0) {
+          setProducts(data)
+          try {
+            // Lưu dữ liệu nhẹ (1 ảnh thumbnail) vào cache để không bao giờ bị QuotaExceededError
+            const lightData = data.map(p => ({
+              id: p.id,
+              listId: p.listId,
+              name: p.name,
+              code: p.code,
+              price: p.price,
+              webBrand: p.webBrand,
+              group: p.group,
+              category: p.category,
+              voltage: p.voltage,
+              webSpecs: p.webSpecs,
+              webImages: (p.webImages && p.webImages.length > 0) ? [p.webImages[0]] : []
+            }))
+            localStorage.setItem(CACHE_KEY, JSON.stringify(lightData))
+            localStorage.setItem(CACHE_TIME_KEY, Date.now().toString())
+          } catch (storageErr) {
+            console.warn('LocalStorage quota exceeded, skipping local storage cache:', storageErr)
+          }
+        }
       } catch (err) {
         console.error('Không tải được sản phẩm công cộng:', err)
       } finally {
@@ -1489,16 +1568,37 @@ export default function WebCatalog() {
 
     fetchCategories()
 
-    const cachedData = localStorage.getItem(CACHE_KEY)
-    if (cachedData) {
-      setProducts(JSON.parse(cachedData))
-      setLoading(false)
-    } else {
+    try {
+      const cachedData = localStorage.getItem(CACHE_KEY)
+      if (cachedData) {
+        setProducts(JSON.parse(cachedData))
+        setLoading(false)
+      } else {
+        setLoading(true)
+      }
+    } catch (e) {
       setLoading(true)
     }
 
     // Always fetch fresh data in background to stay up to date
     fetchAndCache()
+  }, [])
+
+  // Analytics Tracking for Web Visits
+  useEffect(() => {
+    try {
+      const isTracked = sessionStorage.getItem('tt_web_session_v1')
+      const isNew = !isTracked
+      if (isNew) {
+        sessionStorage.setItem('tt_web_session_v1', '1')
+      }
+      logWebAnalyticsEvent({
+        type: 'page_view',
+        path: window.location.pathname + (window.location.hash || '#home'),
+        title: 'Khách xem Web',
+        isNewSession: isNew
+      })
+    } catch (e) {}
   }, [])
 
   // Get current active product for detail page view
@@ -1507,20 +1607,36 @@ export default function WebCatalog() {
     return products.find(p => p.id === detailProductId) || null
   }, [detailProductId, products])
 
-  // When a product detail is opened, fetch full gallery images in background if needed
+  // Track product view when detail opened
+  useEffect(() => {
+    if (!detailProductId || !currentProduct) return
+    logWebAnalyticsEvent({
+      type: 'product_view',
+      path: `#product/${detailProductId}`,
+      title: currentProduct.name,
+      meta: {
+        productId: detailProductId,
+        name: currentProduct.name,
+        code: currentProduct.code || '',
+        brand: currentProduct.webBrand || 'UPTI PUMP'
+      }
+    })
+  }, [detailProductId, currentProduct?.id])
+
+  // When a product detail is opened, fetch full product specs and images in background
   useEffect(() => {
     if (!detailProductId) return
     let isCancelled = false
     const prod = products.find(p => p.id === detailProductId)
-    if (prod && prod.listId && prod.hasFullImages && prod.webImages?.length <= 1) {
+    if (prod && prod.listId) {
       getProductDetail(prod.listId, prod.id).then(fullProd => {
-        if (!isCancelled && fullProd && fullProd.webImages && fullProd.webImages.length > 1) {
-          setProducts(prev => prev.map(p => p.id === detailProductId ? { ...p, webImages: fullProd.webImages, hasFullImages: false } : p))
+        if (!isCancelled && fullProd) {
+          setProducts(prev => prev.map(p => p.id === detailProductId ? { ...p, ...fullProd } : p))
         }
       }).catch(() => {})
     }
     return () => { isCancelled = true }
-  }, [detailProductId, products])
+  }, [detailProductId])
 
   // Get categories (custom settings list entered by the user)
   const categories = useMemo(() => {
@@ -1535,26 +1651,47 @@ export default function WebCatalog() {
       result = result.filter(p => (p.webBrand || '').toUpperCase() === activeBrand.toUpperCase())
     }
 
-    if (selectedCategory !== 'TẤT CẢ') {
-      result = result.filter(p =>
-        (p.group || '').trim().toLowerCase() === selectedCategory.trim().toLowerCase()
-      )
+    if (selectedCategory && selectedCategory !== 'TẤT CẢ') {
+      const normSelected = normalizeSearchStr(selectedCategory);
+      result = result.filter(p => {
+        const normGroup = normalizeSearchStr(p.group);
+        const normCat = normalizeSearchStr(p.category);
+        const normListName = normalizeSearchStr(p.listName);
+        return normGroup === normSelected ||
+               normCat === normSelected ||
+               (normGroup && (normGroup.includes(normSelected) || normSelected.includes(normGroup))) ||
+               (normCat && (normCat.includes(normSelected) || normSelected.includes(normCat))) ||
+               (p.group || '').replace(/\s+/g, ' ').trim().toLowerCase() === selectedCategory.replace(/\s+/g, ' ').trim().toLowerCase() ||
+               (p.category || '').replace(/\s+/g, ' ').trim().toLowerCase() === selectedCategory.replace(/\s+/g, ' ').trim().toLowerCase();
+      })
     }
 
     // Multi-select group filter (sidebar)
     if (filterGroups.size > 0) {
-      result = result.filter(p => filterGroups.has((p.group || '').trim()))
+      const normFilters = Array.from(filterGroups).map(g => normalizeSearchStr(g));
+      result = result.filter(p => {
+        const normGroup = normalizeSearchStr(p.group);
+        return filterGroups.has((p.group || '').trim()) ||
+               normFilters.some(nf => nf === normGroup);
+      })
     }
 
     if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase().trim()
-      result = result.filter(p =>
-        (p.name || '').toLowerCase().includes(term) ||
-        (p.webDesc || '').toLowerCase().includes(term) ||
-        (p.webBrand || '').toLowerCase().includes(term) ||
-        (p.group || '').toLowerCase().includes(term) ||
-        (p.id || '').toLowerCase().includes(term)
-      )
+      const rawTerm = searchTerm.toLowerCase().trim();
+      const normTerm = normalizeSearchStr(searchTerm);
+      const tokens = normTerm.split(/\s+/).filter(Boolean);
+
+      result = result.filter(p => {
+        const fullSearchTarget = normalizeSearchStr(
+          `${p.name || ''} ${p.code || ''} ${p.id || ''} ${p.webBrand || ''} ${p.group || ''} ${p.category || ''} ${p.webSpecs?.power || ''} ${p.powerKw || ''} ${p.powerHp || ''} ${p.webSpecs?.voltage || ''} ${p.voltage || ''} ${p.webSpecs?.specs || ''} ${p.specs || ''} ${p.head || ''} ${p.flow || ''} ${p.webDesc || ''} ${p.desc || ''}`
+        );
+        const matchesTokens = tokens.length === 0 || tokens.every(token => fullSearchTarget.includes(token));
+        const matchesRaw = (p.name && p.name.toLowerCase().includes(rawTerm)) ||
+                           (p.code && p.code.toLowerCase().includes(rawTerm)) ||
+                           (p.webBrand && p.webBrand.toLowerCase().includes(rawTerm)) ||
+                           (p.webDesc && p.webDesc.toLowerCase().includes(rawTerm));
+        return matchesTokens || matchesRaw;
+      });
     }
 
     if (filterPower !== 'ALL') {
@@ -2522,7 +2659,21 @@ export default function WebCatalog() {
           </div>
 
           {/* Hotline & Action */}
-          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button 
+              onClick={handleForceRefreshApp}
+              disabled={isForceUpdating}
+              style={{
+                background: '#EFF6FF', color: '#0878D9', border: '1.5px solid #BFDBFE', padding: '0 12px',
+                height: 38, fontSize: 12, fontWeight: 800, cursor: isForceUpdating ? 'wait' : 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6,
+                boxShadow: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
+              }}
+              title="Làm mới bộ nhớ đệm và cập nhật phiên bản web mới nhất"
+              className="brand-btn"
+            >
+              <span>{isForceUpdating ? '⏳' : '🔄'}</span>
+              <span>{isForceUpdating ? 'Đang tải...' : 'Cập nhật web (v1.5.3)'}</span>
+            </button>
             <a href="tel:0984273806" style={{ textDecoration: 'none', color: '#071A2F', fontSize: 12.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }} className="brand-btn">
               <span style={{ color: '#0878D9' }}>📞</span> 0984 273 806
             </a>
@@ -2530,7 +2681,7 @@ export default function WebCatalog() {
               onClick={() => setShowCartDrawer(true)}
               style={{
                 background: '#0878D9', color: '#fff', border: 'none', padding: '0 18px',
-                height: 40, fontSize: 12, fontWeight: 800, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6,
+                height: 38, fontSize: 12, fontWeight: 800, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6,
                 boxShadow: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
               }}
               onMouseOver={e => e.currentTarget.style.background = '#065da9'}
@@ -2541,26 +2692,47 @@ export default function WebCatalog() {
             </button>
           </div>
 
-          {/* Hamburger Menu Button for Mobile */}
-          <button
-            className="header-menu-btn"
-            onClick={() => setShowMobileMenu(true)}
-            style={{
-              display: 'none',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 6,
-              fontSize: 24,
-              color: '#102A43',
-              justifyContent: 'center',
-              alignItems: 'center',
-              justifySelf: 'end'
-            }}
-            aria-label="Mở menu điều hướng"
-          >
-            ☰
-          </button>
+          {/* Mobile Right Controls: Update button + Hamburger */}
+          <div style={{ display: 'none', alignItems: 'center', gap: 8 }} className="mobile-only-flex">
+            <button
+              onClick={handleForceRefreshApp}
+              disabled={isForceUpdating}
+              style={{
+                background: '#EFF6FF',
+                border: '1.5px solid #BFDBFE',
+                borderRadius: 6,
+                padding: '5px 10px',
+                fontSize: 11.5,
+                fontWeight: 800,
+                color: '#0878D9',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                cursor: isForceUpdating ? 'wait' : 'pointer'
+              }}
+              title="Cập nhật phiên bản mới"
+            >
+              <span>{isForceUpdating ? '⏳' : '🔄'}</span> Cập nhật
+            </button>
+            <button
+              className="header-menu-btn"
+              onClick={() => setShowMobileMenu(true)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 6,
+                fontSize: 24,
+                color: '#102A43',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+              aria-label="Mở menu điều hướng"
+            >
+              ☰
+            </button>
+          </div>
         </div>
       </header>
 
@@ -2667,6 +2839,33 @@ export default function WebCatalog() {
                 <span style={{ fontSize: 14, color: item.active ? '#0878D9' : '#94A3B8' }}>›</span>
               </div>
             ))}
+          </div>
+
+          {/* Mobile Drawer Update Button */}
+          <div style={{ padding: '0 12px 10px' }}>
+            <button
+              onClick={handleForceRefreshApp}
+              disabled={isForceUpdating}
+              style={{
+                width: '100%',
+                padding: '11px 14px',
+                background: '#EFF6FF',
+                color: '#0878D9',
+                border: '1.5px solid #BFDBFE',
+                borderRadius: 8,
+                fontSize: 12.5,
+                fontWeight: 800,
+                cursor: isForceUpdating ? 'wait' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                boxShadow: '0 2px 6px rgba(8, 120, 217, 0.08)'
+              }}
+            >
+              <span>{isForceUpdating ? '⏳' : '🚀'}</span>
+              <span>{isForceUpdating ? 'ĐANG CẬP NHẬT...' : 'CẬP NHẬT BẢN MỚI (v1.5.3)'}</span>
+            </button>
           </div>
 
           {/* Bottom Quick Contact Box */}
@@ -3529,19 +3728,18 @@ export default function WebCatalog() {
                     <h3 
                       className="cat-title"
                       style={{ 
-                        fontSize: 12, 
-                        fontWeight: 800, 
-                        color: '#071A2F', 
+                        fontSize: 12.5, 
+                        fontWeight: 600, 
+                        color: '#1E293B', 
                         margin: '0 0 4px 0', 
-                        textTransform: 'uppercase', 
-                        letterSpacing: '0.1px', 
                         lineHeight: 1.35,
-                        minHeight: 46,
+                        minHeight: 36,
                         display: '-webkit-box',
                         WebkitLineClamp: 3,
                         WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
-                        transition: 'color 0.2s'
+                        transition: 'color 0.2s',
+                        wordBreak: 'break-word'
                       }}
                     >
                       {name}
@@ -3550,7 +3748,7 @@ export default function WebCatalog() {
                       className="cat-link"
                       style={{
                         fontSize: 11.5,
-                        fontWeight: 700,
+                        fontWeight: 600,
                         color: '#0878D9',
                         display: 'flex',
                         alignItems: 'center',
@@ -3596,22 +3794,22 @@ export default function WebCatalog() {
                       flexDirection: 'column',
                       alignItems: 'center',
                       cursor: 'pointer',
-                      flex: '0 0 88px',
-                      width: 88,
+                      flex: '0 0 92px',
+                      width: 92,
                       boxSizing: 'border-box',
                       textAlign: 'center',
                     }}
                   >
                     <div style={{
-                      width: 72,
-                      height: 72,
+                      width: 68,
+                      height: 68,
                       borderRadius: '50%',
-                      background: '#F1F5F9',
+                      background: '#F8FAFC',
                       border: '1.5px solid #E2E8F0',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      padding: 7,
+                      padding: 6,
                       boxSizing: 'border-box',
                       marginBottom: 6,
                       overflow: 'hidden',
@@ -3631,17 +3829,17 @@ export default function WebCatalog() {
                       />
                     </div>
                     <span style={{ 
-                      fontSize: 10.5, 
-                      fontWeight: 800, 
-                      color: '#071A2F', 
-                      lineHeight: 1.25,
-                      textTransform: 'uppercase',
+                      fontSize: 11.5, 
+                      fontWeight: 550, 
+                      color: '#1E293B', 
+                      lineHeight: 1.3,
                       display: '-webkit-box',
-                      WebkitLineClamp: 2,
+                      WebkitLineClamp: 3,
                       WebkitBoxOrient: 'vertical',
                       overflow: 'hidden',
-                      height: 27,
-                      width: '100%'
+                      minHeight: 32,
+                      width: '100%',
+                      wordBreak: 'break-word'
                     }}>
                       {name}
                     </span>
@@ -4183,6 +4381,64 @@ export default function WebCatalog() {
                   style={{ border: 'none', background: 'transparent', color: '#64748B', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: 6 }}
                 >
                   ✕
+                </button>
+              )}
+            </div>
+
+            {/* Quick search keywords bar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 10, padding: '0 2px' }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}>
+                🔥 Gợi ý:
+              </span>
+              {POPULAR_SEARCH_KEYWORDS.map((kw, i) => {
+                const isActive = searchTerm.toLowerCase().trim() === kw.toLowerCase().trim();
+                return (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      if (isActive) {
+                        setSearchTerm('');
+                      } else {
+                        setSearchTerm(kw);
+                        if (viewMode !== 'catalog') {
+                          setViewMode('catalog');
+                          setActiveTab('products');
+                        }
+                      }
+                    }}
+                    style={{
+                      background: isActive ? '#0878D9' : '#F1F5F9',
+                      color: isActive ? '#FFFFFF' : '#334155',
+                      border: '1px solid',
+                      borderColor: isActive ? '#0878D9' : '#E2E8F0',
+                      borderRadius: 16,
+                      padding: '3px 10px',
+                      fontSize: 11.5,
+                      fontWeight: 550,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {kw}
+                  </button>
+                );
+              })}
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  style={{
+                    background: '#FEE2E2',
+                    color: '#DC2626',
+                    border: '1px solid #FECACA',
+                    borderRadius: 16,
+                    padding: '3px 10px',
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  ✕ Xóa lọc
                 </button>
               )}
             </div>
@@ -5551,8 +5807,8 @@ export default function WebCatalog() {
                     <span style={{ fontSize: 20, background: '#EFF6FF', width: 42, height: 42, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🌐</span>
                     <div>
                       <div style={{ fontSize: 11.5, color: '#64748B', textTransform: 'uppercase', fontWeight: 700 }}>Website chính thức:</div>
-                      <a href="https://maybomnuocnhapkhautt.com" target="_blank" rel="noreferrer" style={{ fontWeight: 700, fontSize: 14, color: '#071A2F', textDecoration: 'none', display: 'block', marginTop: 2 }}>
-                        maybomnuocnhapkhautt.com
+                      <a href="https://maybomtandt.com.vn" target="_blank" rel="noreferrer" style={{ fontWeight: 700, fontSize: 14, color: '#071A2F', textDecoration: 'none', display: 'block', marginTop: 2 }}>
+                        maybomtandt.com.vn
                       </a>
                     </div>
                   </div>
@@ -6086,57 +6342,48 @@ export default function WebCatalog() {
           </div>
         ) : (() => {
           const brandInfo = (currentProduct.webBrand && BRAND_METADATA[currentProduct.webBrand]) || BRAND_METADATA['UPTI PUMP'] || {};
-          const pow = currentProduct.webSpecs?.power ? formatPower(currentProduct.webSpecs.power) : '';
-          const volt = currentProduct.webSpecs?.voltage ? formatVoltage(currentProduct.webSpecs.voltage) : '';
-          const parsedSpecs = parsePumpSpecs(currentProduct.webSpecs?.specs);
-          
-          const formatSpecNumber = (val) => {
-            if (val === undefined || val === null) return '';
-            const num = parseFloat(val);
-            if (isNaN(num)) return val;
-            return Number(num.toFixed(1)).toString();
-          };
-          const qMin = parsedSpecs ? formatSpecNumber(parsedSpecs.qMin) : '';
-          const qMax = parsedSpecs ? formatSpecNumber(parsedSpecs.qMax) : '';
-          const hMin = parsedSpecs ? formatSpecNumber(parsedSpecs.hMin) : '';
-          const hMax = parsedSpecs ? formatSpecNumber(parsedSpecs.hMax) : '';
-          
-          const qRange = (qMin && qMax) ? `${qMin} - ${qMax} m³/h` : (qMax ? `Tối đa ${qMax} m³/h` : 'Liên hệ');
-          const hRange = (hMin && hMax) ? `${hMin} - ${hMax} m` : (hMax ? `Tối đa ${hMax} m` : 'Liên hệ');
+          const specInfo = getProductSpecInfo(currentProduct);
+          const pow = specInfo.pow;
+          const volt = specInfo.volt;
+          const hRange = specInfo.hRange;
+          const qRange = specInfo.qRange;
 
           return (
             <div className="product-detail-page">
-              <div style={{ marginBottom: 24 }}>
+              <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
                 <button
                   onClick={goBackToCatalog}
                   className="product-detail-back-btn"
                   style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
                     background: 'transparent', border: 'none', color: '#0878D9',
-                    fontWeight: 700, fontSize: 13.5, cursor: 'pointer', padding: 0
+                    fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0
                   }}
                 >
-                  ← VỀ DANH SÁCH SẢN PHẨM
+                  ← QUAY LẠI DANH MỤC
                 </button>
+                <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }} className="desktop-only">
+                  <span style={{ cursor: 'pointer' }} onClick={() => handleNavHome()}>Trang chủ</span> / <span style={{ cursor: 'pointer' }} onClick={goBackToCatalog}>Sản phẩm</span> / <span style={{ fontWeight: 700, color: '#082B4C' }}>{currentProduct.name}</span>
+                </div>
               </div>
 
               {/* Breadcrumb for Mobile */}
-              <div style={{ display: 'none', borderBottom: '1px solid #F1F5F9', paddingBottom: 12, marginBottom: 20, alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }} className="mobile-only-flex">
+              <div style={{ display: 'none', borderBottom: '1px solid #F1F5F9', paddingBottom: 10, marginBottom: 16, alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }} className="mobile-only-flex">
                 <span style={{ color: '#64748B', cursor: 'pointer' }} onClick={goBackToCatalog}>← DANH SÁCH SẢN PHẨM</span>
               </div>
 
-              {/* PRODUCT HERO (Two Columns: 50% / 50%) */}
-              <div className="product-hero-container" style={{ marginBottom: 48, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 40 }}>
+              {/* PRODUCT HERO (Two Columns: 420px / 1fr on Desktop) */}
+              <div className="product-hero-container" style={{ marginBottom: 36 }}>
                 
-                {/* LEFT COLUMN: Large Product Image Gallery */}
+                {/* LEFT COLUMN: Product Image Gallery */}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <div 
                     onClick={() => setShowLightbox(true)}
                     className="product-detail-img-wrap"
                     style={{ 
-                      border: 'none', borderRadius: 16, background: '#F7F9FC', marginBottom: 16,
+                      borderRadius: 12, background: '#FAFAFA', border: '1px solid #E2E8F0', marginBottom: 14,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', 
-                      position: 'relative', cursor: 'zoom-in', minHeight: 340
+                      position: 'relative', cursor: 'zoom-in'
                     }}
                   >
                     <ProductImage 
@@ -6147,25 +6394,25 @@ export default function WebCatalog() {
                       style={{ maxWidth: '88%', maxHeight: '88%', objectFit: 'contain' }} 
                     />
                     <div style={{
-                      position: 'absolute', bottom: 16, right: 16, background: 'rgba(11, 31, 58, 0.85)', color: '#FFFFFF',
-                      padding: '6px 12px', borderRadius: 4, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4,
+                      position: 'absolute', bottom: 12, right: 12, background: 'rgba(11, 31, 58, 0.8)', color: '#FFFFFF',
+                      padding: '5px 12px', borderRadius: 4, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4,
                       backdropFilter: 'blur(4px)', zIndex: 3
                     }}>
-                      🔍 Xem rõ ảnh
+                      🔍 Phóng to
                     </div>
                   </div>
                   
                   {/* Thumbnails list */}
                   {currentProduct.webImages && currentProduct.webImages.length > 1 && (
-                    <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-start' }}>
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
                       {currentProduct.webImages.map((url, idx) => (
                         <div
                           key={idx}
                           onClick={() => setActiveImageIndex(idx)}
                           style={{
-                            width: 64, height: 64, borderRadius: 8,
+                            width: 58, height: 58, borderRadius: 8,
                             border: idx === activeImageIndex ? '2px solid #0878D9' : '1px solid #E2E8F0',
-                            background: '#FFFFFF', padding: 4, cursor: 'pointer', transition: 'all 0.2s',
+                            background: '#FFFFFF', padding: 4, cursor: 'pointer', transition: 'all 0.15s',
                             overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center'
                           }}
                         >
@@ -6183,149 +6430,150 @@ export default function WebCatalog() {
 
                 {/* RIGHT COLUMN: Product Information */}
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    {currentProduct.group || 'MÁY BƠM NƯỚC'} / {currentProduct.webBrand || 'UPTI PUMP'}
-                  </span>
-                  {brandInfo.logo && <img src={brandInfo.logo} alt={brandInfo.name} style={{ height: 32, objectFit: 'contain' }} />}
-                </div>
-
-                <h1 style={{ fontSize: 'clamp(22px, 2.8vw, 30px)', fontWeight: 900, color: '#082B4C', textTransform: 'uppercase', margin: '0 0 8px 0', lineHeight: 1.2 }}>
-                  {currentProduct.name}
-                </h1>
-
-                {currentProduct.code && (
-                  <div style={{ fontSize: 13, color: '#475569', fontWeight: 750, fontFamily: 'monospace', marginBottom: 20 }}>
-                    MODEL / PRODUCT CODE: <span style={{ color: '#0878D9' }}>{currentProduct.code}</span>
-                  </div>
-                )}
-
-                {/* Short Value Proposition */}
-                <p style={{ fontSize: 15, color: '#475569', lineHeight: 1.6, marginBottom: 28, fontWeight: 500 }}>
-                  {currentProduct.webDesc?.split('\n')?.[0] || 'Dòng sản phẩm máy bơm nước chất lượng cao, hoạt động bền bỉ, tiết kiệm năng lượng, phù hợp cho mọi công trình cấp thoát nước.'}
-                </p>
-
-                {/* KEY TECHNICAL DATA GRID (datasheet-style) */}
-                <div style={{
-                  display: 'grid', gridTemplateColumns: '140px 1fr', rowGap: 12, padding: '20px 0',
-                  borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', marginBottom: 28
-                }}>
-                  {pow && (
-                    <>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: '#64748B', letterSpacing: '0.8px', display: 'flex', alignItems: 'center' }}>CÔNG SUẤT</span>
-                      <span style={{ fontSize: 14, color: '#1E293B', fontWeight: 800 }}>{pow}</span>
-                    </>
-                  )}
-                  {volt && (
-                    <>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: '#64748B', letterSpacing: '0.8px', display: 'flex', alignItems: 'center' }}>ĐIỆN ÁP</span>
-                      <span style={{ fontSize: 14, color: '#1E293B', fontWeight: 800 }}>{volt}</span>
-                    </>
-                  )}
-                  {hRange && (
-                    <>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: '#64748B', letterSpacing: '0.8px', display: 'flex', alignItems: 'center' }}>CỘT ÁP MAX (HMAX)</span>
-                      <span style={{ fontSize: 14, color: '#0878D9', fontWeight: 800 }}>{hRange}</span>
-                    </>
-                  )}
-                  {qRange && (
-                    <>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: '#64748B', letterSpacing: '0.8px', display: 'flex', alignItems: 'center' }}>LƯU LƯỢNG MAX (QMAX)</span>
-                      <span style={{ fontSize: 14, color: '#0878D9', fontWeight: 800 }}>{qRange}</span>
-                    </>
-                  )}
-                  {(() => {
-                    const isSubmersible = (currentProduct.group || '').toLowerCase().includes('chìm') || 
-                                          (currentProduct.name || '').toLowerCase().includes('chìm') ||
-                                          (currentProduct.group || '').toLowerCase().includes('giếng') ||
-                                          (currentProduct.name || '').toLowerCase().includes('hỏa tiễn');
-                    if (!isSubmersible) {
-                      return (
-                        <>
-                          <span style={{ fontSize: 10, fontWeight: 800, color: '#64748B', letterSpacing: '0.8px', display: 'flex', alignItems: 'center' }}>HÚT SÂU TỐI ĐA</span>
-                          <span style={{ fontSize: 14, color: '#10B981', fontWeight: 800 }}>Tối đa 8 m</span>
-                        </>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-
-                {/* CONTACT / CTA BLOCK */}
-                <div style={{
-                  background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: '24px',
-                  boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 16
-                }}>
-                  <div>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', letterSpacing: '0.8px', textTransform: 'uppercase' }}>TƯ VẤN KỸ THUẬT & BÁO GIÁ</span>
-                    <div style={{ fontSize: 24, fontWeight: 900, color: '#082B4C', marginTop: 4 }}>0984 273 806</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                      {currentProduct.group || 'MÁY BƠM NƯỚC'} &bull; {currentProduct.webBrand || 'UPTI PUMP'}
+                    </span>
+                    {brandInfo.logo && <img src={brandInfo.logo} alt={brandInfo.name} style={{ height: 28, objectFit: 'contain' }} />}
                   </div>
 
-                  {/* Bullet points */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 24px', fontSize: 13, fontWeight: 700, color: '#475569' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ color: '#0878D9' }}>✓</span> Hàng chính hãng</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ color: '#0878D9' }}>✓</span> CO/CQ đầy đủ</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ color: '#0878D9' }}>✓</span> Bảo hành 12 tháng</span>
+                  <h1 style={{ fontSize: 'clamp(19px, 2.2vw, 24px)', fontWeight: 850, color: '#082B4C', textTransform: 'uppercase', margin: '0 0 8px 0', lineHeight: 1.25 }}>
+                    {currentProduct.name}
+                  </h1>
+
+                  {currentProduct.code && (
+                    <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 700, fontFamily: 'monospace', marginBottom: 14 }}>
+                      MÃ SẢN PHẨM: <span style={{ color: '#0878D9' }}>{currentProduct.code}</span>
+                    </div>
+                  )}
+
+                  {/* Short Value Proposition */}
+                  <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.6, marginBottom: 18, fontWeight: 500 }}>
+                    {currentProduct.webDesc?.split('\n')?.[0] || 'Dòng sản phẩm máy bơm nước chất lượng cao, hoạt động bền bỉ, tiết kiệm năng lượng, phù hợp cho mọi công trình cấp thoát nước.'}
+                  </p>
+
+                  {/* KEY TECHNICAL DATA GRID (datasheet-style) */}
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: '130px 1fr', rowGap: 9, padding: '14px 16px',
+                    background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, marginBottom: 20
+                  }}>
+                    {pow && (
+                      <>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: '#64748B', letterSpacing: '0.5px', display: 'flex', alignItems: 'center' }}>CÔNG SUẤT</span>
+                        <span style={{ fontSize: 13.5, color: '#1E293B', fontWeight: 800 }}>{pow}</span>
+                      </>
+                    )}
+                    {volt && (
+                      <>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: '#64748B', letterSpacing: '0.5px', display: 'flex', alignItems: 'center' }}>ĐIỆN ÁP</span>
+                        <span style={{ fontSize: 13.5, color: '#1E293B', fontWeight: 800 }}>{volt}</span>
+                      </>
+                    )}
+                    {hRange && (
+                      <>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: '#64748B', letterSpacing: '0.5px', display: 'flex', alignItems: 'center' }}>CỘT ÁP (HMAX)</span>
+                        <span style={{ fontSize: 13.5, color: '#0878D9', fontWeight: 800 }}>{hRange}</span>
+                      </>
+                    )}
+                    {qRange && (
+                      <>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: '#64748B', letterSpacing: '0.5px', display: 'flex', alignItems: 'center' }}>LƯU LƯỢNG (QMAX)</span>
+                        <span style={{ fontSize: 13.5, color: '#0878D9', fontWeight: 800 }}>{qRange}</span>
+                      </>
+                    )}
+                    {(() => {
+                      const isSubmersible = (currentProduct.group || '').toLowerCase().includes('chìm') || 
+                                            (currentProduct.name || '').toLowerCase().includes('chìm') ||
+                                            (currentProduct.group || '').toLowerCase().includes('giếng') ||
+                                            (currentProduct.name || '').toLowerCase().includes('hỏa tiễn');
+                      if (!isSubmersible) {
+                        return (
+                          <>
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: '#64748B', letterSpacing: '0.5px', display: 'flex', alignItems: 'center' }}>HÚT SÂU TỐI ĐA</span>
+                            <span style={{ fontSize: 13.5, color: '#10B981', fontWeight: 800 }}>Tối đa 8 m</span>
+                          </>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
 
-                  {/* Add to Cart Primary Button */}
-                  <button
-                    onClick={() => handleAddToCart(currentProduct, 1)}
-                    className="cta-btn"
-                    style={{
-                      background: '#10B981',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      padding: '14px 12px',
-                      fontSize: 13,
-                      fontWeight: 800,
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      letterSpacing: '0.5px',
-                      textTransform: 'uppercase',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                      width: '100%',
-                      boxShadow: '0 4px 12px rgba(16,185,129,0.15)'
-                    }}
-                    onMouseOver={e => e.currentTarget.style.background = '#0d9488'}
-                    onMouseOut={e => e.currentTarget.style.background = '#10B981'}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="9" cy="21" r="1"></circle>
-                      <circle cx="20" cy="21" r="1"></circle>
-                      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                    </svg>
-                    THÊM VÀO GIỎ HÀNG
-                  </button>
+                  {/* CONTACT / CTA BLOCK */}
+                  <div style={{
+                    background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10, padding: '18px 20px',
+                    boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 14
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                      <div>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: '#64748B', letterSpacing: '0.6px', textTransform: 'uppercase' }}>TƯ VẤN KỸ THUẬT &amp; BÁO GIÁ</span>
+                        <div style={{ fontSize: 21, fontWeight: 900, color: '#082B4C', marginTop: 1 }}>0984 273 806</div>
+                      </div>
+                      {/* Bullet points */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', fontSize: 12, fontWeight: 700, color: '#475569' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ color: '#0878D9' }}>✓</span> Chính hãng</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ color: '#0878D9' }}>✓</span> CO/CQ</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ color: '#0878D9' }}>✓</span> BH 12 tháng</span>
+                      </div>
+                    </div>
 
-                  {/* Zalo / Hotline CTA buttons */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 4 }}>
-                    <button 
-                      onClick={() => window.open(`https://zalo.me/0984273806?text=${encodeURIComponent('Chào bạn, tôi cần báo giá máy bơm: ' + currentProduct.name)}`, '_blank')}
+                    {/* Add to Cart Primary Button */}
+                    <button
+                      onClick={() => handleAddToCart(currentProduct, 1)}
                       className="cta-btn"
-                      style={{ background: '#0878D9', color: '#FFFFFF', border: 'none', padding: '14px 12px', fontSize: 12.5, fontWeight: 800, borderRadius: 4, cursor: 'pointer', letterSpacing: '0.5px' }}
+                      style={{
+                        background: '#10B981',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        padding: '13px 18px',
+                        fontSize: 13.5,
+                        fontWeight: 800,
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        letterSpacing: '0.4px',
+                        textTransform: 'uppercase',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        width: '100%',
+                        boxShadow: '0 2px 8px rgba(16,185,129,0.2)'
+                      }}
+                      onMouseOver={e => e.currentTarget.style.background = '#0d9488'}
+                      onMouseOut={e => e.currentTarget.style.background = '#10B981'}
                     >
-                      CHAT ZALO BÁO GIÁ
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                      </svg>
+                      THÊM VÀO GIỎ HÀNG
                     </button>
-                    <a 
-                      href="tel:0984273806"
-                      className="cta-btn"
-                      style={{ background: '#082B4C', color: '#FFFFFF', border: 'none', padding: '14px 12px', fontSize: 12.5, fontWeight: 800, borderRadius: 4, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', letterSpacing: '0.5px' }}
-                    >
-                      📞 GỌI NGAY HỖ TRỢ
-                    </a>
+
+                    {/* Zalo / Hotline CTA buttons */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <button 
+                        onClick={() => window.open(`https://zalo.me/0984273806?text=${encodeURIComponent('Chào bạn, tôi cần báo giá máy bơm: ' + currentProduct.name)}`, '_blank')}
+                        className="cta-btn"
+                        style={{ background: '#0878D9', color: '#FFFFFF', border: 'none', padding: '11px 14px', fontSize: 12.5, fontWeight: 800, borderRadius: 6, cursor: 'pointer', letterSpacing: '0.3px' }}
+                      >
+                        CHAT ZALO BÁO GIÁ
+                      </button>
+                      <a 
+                        href="tel:0984273806"
+                        className="cta-btn"
+                        style={{ background: '#082B4C', color: '#FFFFFF', border: 'none', padding: '11px 14px', fontSize: 12.5, fontWeight: 800, borderRadius: 6, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', letterSpacing: '0.3px' }}
+                      >
+                        📞 GỌI NGAY HỖ TRỢ
+                      </a>
+                    </div>
                   </div>
+
                 </div>
 
               </div>
 
-            </div>
-
-            {/* DESCRIPTION & TABS */}
+              {/* DESCRIPTION & TABS */}
             <div style={{ marginBottom: 48 }}>
               {/* Tab Header */}
               <div style={{ display: 'flex', borderBottom: '1px solid #EEF1F4', gap: 24, marginBottom: 24 }}>
@@ -6357,25 +6605,33 @@ export default function WebCatalog() {
               {/* Tab Content */}
               <div style={{ background: '#FFFFFF', border: '1px solid #EEF1F4', borderRadius: 6, padding: '32px', boxSizing: 'border-box' }}>
                 {detailTab === 'desc' && (
-                  <div style={{ fontSize: 14, lineHeight: 1.7, color: '#667085' }}>
-                    <p style={{ whiteSpace: 'pre-wrap', marginBottom: 28, fontWeight: 500 }}>
-                      {currentProduct.webDesc || `Là dòng sản phẩm mũi nhọn nhập khẩu, các sản phẩm máy bơm của thương hiệu ${currentProduct.webBrand || 'T&T'} được chế tạo với độ chính xác cơ khí cực cao, đảm bảo hiệu suất làm việc bền bỉ trong môi trường khắc nghiệt.\n\nSản phẩm sở hữu ưu điểm vượt trội về hiệu năng thủy lực, tiết kiệm điện năng tiêu thụ, giảm thiểu tiếng ồn và đặc biệt dễ dàng lắp đặt, bảo dưỡng định kỳ.`}
-                    </p>
-                    
-                    <h4 style={{ color: '#071A2F', fontWeight: 800, fontSize: 14, marginBottom: 12, borderBottom: '1px solid #EEF1F4', paddingBottom: 8, textTransform: 'uppercase' }}>⚙️ ƯU ĐIỂM CẤU TẠO NỔI BẬT</h4>
-                    <ul style={{ paddingLeft: 20, marginBottom: 28, fontWeight: 500 }}>
-                      <li style={{ marginBottom: 8 }}>Chất liệu thân bơm và cánh bơm chế tạo từ vật liệu chống ăn mòn (Inox/Gang đúc chất lượng cao).</li>
-                      <li style={{ marginBottom: 8 }}>Động cơ quấn dây đồng 100%, tích hợp cảm biến nhiệt tự ngắt bảo vệ khi quá tải.</li>
-                      <li style={{ marginBottom: 8 }}>Trục bơm bằng thép không gỉ cường độ cao, phớt cơ khí chống thấm nước tuyệt đối.</li>
-                      <li style={{ marginBottom: 8 }}>Đạt tiêu chuẩn lớp cách điện F và tiêu chuẩn chống bụi/nước IP68/IP55 quốc tế.</li>
-                    </ul>
+                  <div style={{ fontSize: 14.5, lineHeight: 1.8, color: '#334155' }}>
+                    {currentProduct.webDesc ? (
+                      <div style={{ whiteSpace: 'pre-wrap', fontWeight: 500, color: '#334155', fontSize: 14.5, lineHeight: 1.8 }}>
+                        {currentProduct.webDesc}
+                      </div>
+                    ) : (
+                      <>
+                        <p style={{ whiteSpace: 'pre-wrap', marginBottom: 28, fontWeight: 500 }}>
+                          {`Là dòng sản phẩm mũi nhọn nhập khẩu, các sản phẩm máy bơm của thương hiệu ${currentProduct.webBrand || 'T&T'} được chế tạo với độ chính xác cơ khí cực cao, đảm bảo hiệu suất làm việc bền bỉ trong môi trường khắc nghiệt.\n\nSản phẩm sở hữu ưu điểm vượt trội về hiệu năng thủy lực, tiết kiệm điện năng tiêu thụ, giảm thiểu tiếng ồn và đặc biệt dễ dàng lắp đặt, bảo dưỡng định kỳ.`}
+                        </p>
+                        
+                        <h4 style={{ color: '#071A2F', fontWeight: 800, fontSize: 14, marginBottom: 12, borderBottom: '1px solid #EEF1F4', paddingBottom: 8, textTransform: 'uppercase' }}>⚙️ ƯU ĐIỂM CẤU TẠO NỔI BẬT</h4>
+                        <ul style={{ paddingLeft: 20, marginBottom: 28, fontWeight: 500 }}>
+                          <li style={{ marginBottom: 8 }}>Chất liệu thân bơm và cánh bơm chế tạo từ vật liệu chống ăn mòn (Inox/Gang đúc chất lượng cao).</li>
+                          <li style={{ marginBottom: 8 }}>Động cơ quấn dây đồng 100%, tích hợp cảm biến nhiệt tự ngắt bảo vệ khi quá tải.</li>
+                          <li style={{ marginBottom: 8 }}>Trục bơm bằng thép không gỉ cường độ cao, phớt cơ khí chống thấm nước tuyệt đối.</li>
+                          <li style={{ marginBottom: 8 }}>Đạt tiêu chuẩn lớp cách điện F và tiêu chuẩn chống bụi/nước IP68/IP55 quốc tế.</li>
+                        </ul>
 
-                    <h4 style={{ color: '#071A2F', fontWeight: 800, fontSize: 14, marginBottom: 12, borderBottom: '1px solid #EEF1F4', paddingBottom: 8, textTransform: 'uppercase' }}>💧 ỨNG DỤNG THỰC TẾ TIÊU BIỂU</h4>
-                    <ul style={{ paddingLeft: 20, margin: 0, fontWeight: 500 }}>
-                      <li style={{ marginBottom: 8 }}>Bơm cấp nước sạch sinh hoạt gia đình, tòa nhà chung cư cao tầng, khách sạn.</li>
-                      <li style={{ marginBottom: 8 }}>Sử dụng trong nông nghiệp: tưới tiêu tự động vườn cây, cấp thoát nước ao hồ thủy sản.</li>
-                      <li style={{ marginBottom: 8 }}>Sử dụng trong công nghiệp: hệ thống làm mát tuần hoàn, trạm cứu hỏa PCCC, xử lý nước thải công nghiệp.</li>
-                    </ul>
+                        <h4 style={{ color: '#071A2F', fontWeight: 800, fontSize: 14, marginBottom: 12, borderBottom: '1px solid #EEF1F4', paddingBottom: 8, textTransform: 'uppercase' }}>💧 ỨNG DỤNG THỰC TẾ TIÊU BIỂU</h4>
+                        <ul style={{ paddingLeft: 20, margin: 0, fontWeight: 500 }}>
+                          <li style={{ marginBottom: 8 }}>Bơm cấp nước sạch sinh hoạt gia đình, tòa nhà chung cư cao tầng, khách sạn.</li>
+                          <li style={{ marginBottom: 8 }}>Sử dụng trong nông nghiệp: tưới tiêu tự động vườn cây, cấp thoát nước ao hồ thủy sản.</li>
+                          <li style={{ marginBottom: 8 }}>Sử dụng trong công nghiệp: hệ thống làm mát tuần hoàn, trạm cứu hỏa PCCC, xử lý nước thải công nghiệp.</li>
+                        </ul>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -6635,12 +6891,12 @@ export default function WebCatalog() {
             <h4 style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', marginBottom: 20 }}>LIÊN HỆ</h4>
             <p style={{ fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>
               Hotline: <strong style={{ color: '#FFFFFF' }}>0984 273 806</strong><br />
-              Website: <a href="https://maybomnuocnhapkhautt.com" target="_blank" rel="noreferrer" style={{ color: '#94A3B8', textDecoration: 'none' }} onMouseOver={e => e.currentTarget.style.color = '#FFFFFF'} onMouseOut={e => e.currentTarget.style.color = '#94A3B8'}>maybomnuocnhapkhautt.com</a>
+              Website: <a href="https://maybomtandt.com.vn" target="_blank" rel="noreferrer" style={{ color: '#94A3B8', textDecoration: 'none' }} onMouseOver={e => e.currentTarget.style.color = '#FFFFFF'} onMouseOut={e => e.currentTarget.style.color = '#94A3B8'}>maybomtandt.com.vn</a>
             </p>
           </div>
         </div>
         <div style={{ textAlign: 'center', fontSize: 11.5, color: '#667085', borderTop: '1px solid #1A2E44', paddingTop: 24 }}>
-          Copyright © 2026 maybomnuocnhapkhautt.com. All rights reserved.
+          Copyright © 2026 maybomtandt.com.vn. All rights reserved.
         </div>
       </footer>
 
@@ -7676,27 +7932,56 @@ export default function WebCatalog() {
           }
         }
         
+        .product-detail-page {
+          max-width: 1160px !important;
+          margin: 16px auto 60px !important;
+          padding: 0 20px !important;
+          box-sizing: border-box !important;
+        }
         .product-hero-container {
           display: grid !important;
-          grid-template-columns: 1fr 1fr !important;
-          gap: 48px !important;
+          grid-template-columns: 420px 1fr !important;
+          gap: 36px !important;
+          align-items: start !important;
+          background: #FFFFFF !important;
+          border: 1px solid #E2E8F0 !important;
+          border-radius: 14px !important;
+          padding: 30px !important;
+          box-sizing: border-box !important;
+          box-shadow: 0 4px 16px rgba(15,23,42,0.03) !important;
+        }
+        .product-detail-img-wrap {
+          width: 100% !important;
+          height: 440px !important;
+          min-height: 440px !important;
+          max-height: 440px !important;
+          border: 1px solid #E2E8F0 !important;
+          border-radius: 12px !important;
+          background: #FAFAFA !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 16px !important;
+          box-sizing: border-box !important;
         }
         @media (max-width: 900px) {
+          .product-detail-page {
+            padding: 0 12px !important;
+            margin-top: 8px !important;
+          }
           .product-hero-container {
             grid-template-columns: 1fr !important;
-            gap: 28px !important;
+            gap: 20px !important;
+            padding: 16px !important;
+            border-radius: 10px !important;
           }
-        }
-
-        .product-detail-img-wrap {
-          min-height: 480px !important;
-          height: 480px !important;
         }
         @media (max-width: 768px) {
           .product-detail-img-wrap {
             width: 100% !important;
             height: auto !important;
             min-height: auto !important;
+            max-height: unset !important;
             aspect-ratio: 1 / 1 !important;
             padding: 12px !important;
           }

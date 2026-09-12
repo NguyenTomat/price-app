@@ -309,8 +309,27 @@ export default function WebManagePage() {
   // Web Admin tabs: 'products' | 'orders' | 'hero_slides' | 'cloud_storage'
   const [activeAdminTab, setActiveAdminTab] = useState('products')
   const [orders, setOrders] = useState([])
+  const [orderFilter, setOrderFilter] = useState('all') // 'all' | 'pending' | 'contacted' | 'done' | 'cancelled'
+  const [orderSearch, setOrderSearch] = useState('')
   const [newOrderAlert, setNewOrderAlert] = useState(null)
   const isFirstLoad = useRef(true)
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter(o => {
+      if (orderFilter !== 'all' && (o.status || 'pending') !== orderFilter) return false
+      if (orderSearch.trim()) {
+        const q = orderSearch.trim().toLowerCase()
+        const matchName = (o.customerName || '').toLowerCase().includes(q)
+        const matchPhone = (o.customerPhone || '').toLowerCase().includes(q)
+        const matchAddr = (o.customerAddress || '').toLowerCase().includes(q)
+        const matchId = (o.id || '').toLowerCase().includes(q)
+        const matchNote = (o.orderNote || '').toLowerCase().includes(q)
+        const matchItems = (o.items || []).some(item => (item.name || '').toLowerCase().includes(q))
+        if (!matchName && !matchPhone && !matchAddr && !matchId && !matchNote && !matchItems) return false
+      }
+      return true
+    })
+  }, [orders, orderFilter, orderSearch])
 
   // Hero Slides Banner Config (Unlimited list with custom text & position)
   const [heroSlidesList, setHeroSlidesList] = useState(() => {
@@ -671,6 +690,33 @@ export default function WebManagePage() {
       toast('Đã xóa đơn hàng thành công!', 'success')
     } catch (err) {
       toast('Lỗi xóa đơn hàng: ' + err.message, 'error')
+    }
+  }
+
+  const handleCopyOrderDetails = (order) => {
+    const timeStr = order.createdAt?.toDate ? order.createdAt.toDate().toLocaleString('vi-VN') : (order.createdAt ? new Date(order.createdAt).toLocaleString('vi-VN') : 'Mới gửi')
+    let text = `📦 ĐƠN BÁO GIÁ WEB - #${(order.id || '').slice(0, 8).toUpperCase()}\n`
+    text += `⏱️ Thời gian: ${timeStr}\n`
+    text += `👤 Khách hàng: ${order.customerName || 'Chưa có tên'}\n`
+    text += `📞 Số điện thoại: ${order.customerPhone || 'Chưa có SĐT'}\n`
+    text += `📍 Địa chỉ: ${order.customerAddress || 'Chưa cung cấp'}\n`
+    if (order.orderNote) {
+      text += `📝 Ghi chú: ${order.orderNote}\n`
+    }
+    if (order.items && order.items.length > 0) {
+      text += `\n🛒 Danh sách sản phẩm yêu cầu:\n`
+      order.items.forEach((it, idx) => {
+        text += `${idx + 1}. ${it.name} (${it.brand || 'UPTI PUMP'}) - SL: ${it.quantity} x ${fmt(it.price)} = ${fmt((it.price || 0) * (it.quantity || 1))}\n`
+      })
+      text += `💰 TỔNG CỘNG: ${fmt(order.totalAmount || 0)}\n`
+    } else {
+      text += `📌 Loại yêu cầu: Khách yêu cầu chuyên viên gọi lại tư vấn kỹ thuật.\n`
+    }
+    try {
+      navigator.clipboard.writeText(text)
+      toast('Đã sao chép toàn bộ thông tin đơn hàng!', 'success')
+    } catch {
+      toast('Không thể tự động sao chép', 'warning')
     }
   }
 
@@ -1460,76 +1506,381 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
           </>
         ) : activeAdminTab === 'orders' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0 }}>Danh sách đơn đặt hàng & yêu cầu gọi lại ({orders.length})</h3>
+            {/* Header & Metric Summary */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>📋 Quản lý Đơn Báo Giá & Yêu Cầu Từ Web ({orders.length})</span>
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text3)' }}>
+                  Xem chi tiết khách hàng muốn nhận báo giá, đặt hàng hoặc yêu cầu chuyên viên tư vấn gọi lại.
+                </p>
+              </div>
+
+              {/* Status summary counters */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <span className="badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '4px 10px', fontSize: 12, borderRadius: 20 }}>
+                  ⏳ Chờ xử lý: {orders.filter(o => (o.status || 'pending') === 'pending').length}
+                </span>
+                <span className="badge" style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '4px 10px', fontSize: 12, borderRadius: 20 }}>
+                  ✅ Hoàn thành: {orders.filter(o => o.status === 'done').length}
+                </span>
+              </div>
             </div>
 
-            {orders.length === 0 ? (
-              <div className="card empty" style={{ padding: '60px 0', textAlign: 'center' }}>
-                <div style={{ fontSize: 40, marginBottom: 10 }}>📭</div>
-                <div style={{ fontSize: 14, color: 'var(--text2)', fontWeight: 600 }}>Chưa có đơn đặt hàng hoặc yêu cầu nào từ Web.</div>
-                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Khi khách hàng gửi đơn trên Web, thông báo sẽ lập tức hiển thị tại đây.</div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {orders.map(order => (
-                  <div 
-                    key={order.id} 
-                    className="card" 
+            {/* Filter and Search Bar */}
+            <div className="card" style={{ padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Filter pills */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {[
+                  { id: 'all', label: `Tất cả (${orders.length})` },
+                  { id: 'pending', label: `⏳ Chờ xử lý (${orders.filter(o => (o.status || 'pending') === 'pending').length})` },
+                  { id: 'contacted', label: `📞 Đã liên hệ (${orders.filter(o => o.status === 'contacted').length})` },
+                  { id: 'done', label: `✅ Hoàn thành (${orders.filter(o => o.status === 'done').length})` },
+                  { id: 'cancelled', label: `❌ Đã hủy (${orders.filter(o => o.status === 'cancelled').length})` }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setOrderFilter(tab.id)}
+                    className="btn xs"
                     style={{
-                      background: order.status === 'pending' ? 'rgba(59,130,246,0.03)' : 'var(--surface)',
-                      border: order.status === 'pending' ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-                      padding: 16, display: 'flex', flexDirection: 'column', gap: 12, borderRadius: 12
+                      borderRadius: 20,
+                      fontWeight: orderFilter === tab.id ? 700 : 500,
+                      background: orderFilter === tab.id ? 'var(--accent)' : 'var(--bg)',
+                      color: orderFilter === tab.id ? '#fff' : 'var(--text2)',
+                      borderColor: orderFilter === tab.id ? 'var(--accent)' : 'var(--border)',
+                      padding: '5px 12px',
+                      fontSize: 12
                     }}
                   >
-                    {/* Header đơn */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 18 }}>
-                          {order.orderType === 'callback' ? '📞' : '🛒'}
-                        </span>
-                        <div>
-                          <div style={{ fontWeight: 'bold', fontSize: 14, color: 'var(--text)' }}>
-                            {order.customerName}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--text3)' }}>
-                            Mã đơn: #{order.id?.slice(0, 8)} • Loại: {order.orderType === 'callback' ? 'Yêu cầu tư vấn kỹ thuật' : 'Đặt mua sản phẩm'}
-                          </div>
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search input */}
+              <div style={{ flex: 1, minWidth: 220, maxWidth: 360, position: 'relative' }}>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="🔍 Tìm tên khách, SĐT, mã đơn, sản phẩm..."
+                  value={orderSearch}
+                  onChange={e => setOrderSearch(e.target.value)}
+                  style={{ width: '100%', fontSize: 13, padding: '7px 12px 7px 32px', borderRadius: 8 }}
+                />
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.5, pointerEvents: 'none' }}>
+                  🔍
+                </span>
+                {orderSearch && (
+                  <button
+                    onClick={() => setOrderSearch('')}
+                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 13 }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Orders list */}
+            {filteredOrders.length === 0 ? (
+              <div className="card empty" style={{ padding: '60px 0', textAlign: 'center' }}>
+                <div style={{ fontSize: 44, marginBottom: 12 }}>📭</div>
+                <div style={{ fontSize: 15, color: 'var(--text)', fontWeight: 700 }}>
+                  {orderSearch || orderFilter !== 'all' ? 'Không tìm thấy yêu cầu báo giá phù hợp' : 'Chưa có đơn đặt hàng hoặc yêu cầu nào từ Web'}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 6, maxWidth: 450, margin: '6px auto 0' }}>
+                  {orderSearch || orderFilter !== 'all' 
+                    ? 'Hãy thử thay đổi bộ lọc trạng thái hoặc từ khóa tìm kiếm.' 
+                    : 'Khi khách hàng gửi đơn đặt hàng hoặc yêu cầu gọi lại trên website, thông tin chi tiết sẽ lập tức hiển thị tại đây.'}
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {filteredOrders.map(order => {
+                  const isPending = (order.status || 'pending') === 'pending'
+                  const isCallback = order.orderType === 'callback'
+                  const timeFormatted = order.createdAt?.toDate 
+                    ? order.createdAt.toDate().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+                    : (order.createdAt ? new Date(order.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Vừa xong')
+
+                  const calculatedTotal = (order.items || []).reduce((sum, it) => sum + ((it.price || 0) * (it.quantity || 1)), 0)
+                  const finalTotal = order.totalAmount != null && order.totalAmount > 0 ? order.totalAmount : calculatedTotal
+
+                  return (
+                    <div 
+                      key={order.id} 
+                      className="card" 
+                      style={{
+                        background: isPending ? 'linear-gradient(180deg, rgba(239,246,255,0.6) 0%, var(--surface) 100%)' : 'var(--surface)',
+                        border: isPending ? '1.5px solid #3b82f6' : '1px solid var(--border)',
+                        boxShadow: isPending ? '0 4px 20px rgba(59,130,246,0.1)' : 'none',
+                        padding: 20, 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: 16, 
+                        borderRadius: 14
+                      }}
+                    >
+                      {/* 1. Header Đơn hàng */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <span style={{ 
+                            padding: '4px 10px', 
+                            borderRadius: 6, 
+                            fontSize: 12, 
+                            fontWeight: 700, 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: 5,
+                            background: isCallback ? '#fef3c7' : '#dbeafe',
+                            color: isCallback ? '#92400e' : '#1e40af',
+                            border: `1px solid ${isCallback ? '#fde68a' : '#bfdbfe'}`
+                          }}>
+                            {isCallback ? '📞 YÊU CẦU GỌI LẠI TƯ VẤN' : '🛒 ĐƠN BÁO GIÁ & ĐẶT MUA'}
+                          </span>
+
+                          <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: 'var(--text2)', background: 'var(--bg)', padding: '3px 8px', borderRadius: 4, border: '1px solid var(--border)' }}>
+                            #{order.id?.slice(0, 8).toUpperCase()}
+                          </span>
+
+                          <span style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            ⏱️ {timeFormatted}
+                          </span>
+                        </div>
+
+                        {/* Trạng thái đơn & nút xóa */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <select 
+                            value={order.status || 'pending'} 
+                            onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                            className="select sm"
+                            style={{
+                              fontWeight: 700,
+                              fontSize: 12,
+                              padding: '5px 10px',
+                              borderRadius: 8,
+                              cursor: 'pointer',
+                              background: order.status === 'done' ? '#ecfdf5' : order.status === 'contacted' ? '#eff6ff' : order.status === 'cancelled' ? '#fef2f2' : '#fffbeb',
+                              color: order.status === 'done' ? '#059669' : order.status === 'contacted' ? '#2563eb' : order.status === 'cancelled' ? '#dc2626' : '#d97706',
+                              borderColor: order.status === 'done' ? '#a7f3d0' : order.status === 'contacted' ? '#bfdbfe' : order.status === 'cancelled' ? '#fca5a5' : '#fde68a'
+                            }}
+                          >
+                            <option value="pending">⏳ Chờ xử lý</option>
+                            <option value="contacted">📞 Đã liên hệ</option>
+                            <option value="done">✅ Hoàn thành</option>
+                            <option value="cancelled">❌ Đã hủy / Spam</option>
+                          </select>
+
+                          <button 
+                            onClick={() => handleDeleteOrder(order.id)}
+                            className="btn xs"
+                            style={{ color: '#ef4444', borderColor: '#fca5a5', background: '#fef2f2', height: 28, width: 28, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Xóa đơn hàng này"
+                          >
+                            🗑️
+                          </button>
                         </div>
                       </div>
 
-                      {/* Trạng thái đơn */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <select 
-                          value={order.status || 'pending'} 
-                          onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                          className="select sm"
-                          style={{
-                            fontWeight: 'bold',
-                            fontSize: 12,
-                            background: order.status === 'done' ? '#ecfdf5' : order.status === 'contacted' ? '#eff6ff' : order.status === 'cancelled' ? '#fef2f2' : '#fffbeb',
-                            color: order.status === 'done' ? '#059669' : order.status === 'contacted' ? '#2563eb' : order.status === 'cancelled' ? '#dc2626' : '#d97706',
-                            borderColor: order.status === 'done' ? '#a7f3d0' : order.status === 'contacted' ? '#bfdbfe' : order.status === 'cancelled' ? '#fca5a5' : '#fde68a'
-                          }}
-                        >
-                          <option value="pending">⏳ Chờ xử lý</option>
-                          <option value="contacted">📞 Đã liên hệ</option>
-                          <option value="done">✅ Hoàn thành</option>
-                          <option value="cancelled">❌ Đã hủy</option>
-                        </select>
+                      {/* 2. Thông tin khách hàng & Ghi chú */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                        {/* Box Khách hàng */}
+                        <div style={{ background: 'var(--bg)', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            👤 Thông tin người yêu cầu
+                          </div>
+                          
+                          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
+                            {order.customerName || '(Khách không để lại tên)'}
+                          </div>
 
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: '#2563eb', fontFamily: 'monospace' }}>
+                              📞 {order.customerPhone || 'Chưa có SĐT'}
+                            </span>
+                            {order.customerPhone && (
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(order.customerPhone)
+                                    toast('Đã sao chép SĐT: ' + order.customerPhone, 'success')
+                                  }}
+                                  className="btn xs"
+                                  style={{ padding: '2px 6px', fontSize: 11, background: '#fff', borderColor: '#cbd5e1' }}
+                                  title="Sao chép SĐT"
+                                >
+                                  📋 Copy
+                                </button>
+                                <a
+                                  href={`tel:${order.customerPhone}`}
+                                  className="btn xs"
+                                  style={{ padding: '2px 8px', fontSize: 11, background: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                                >
+                                  📞 Gọi
+                                </a>
+                                <a
+                                  href={`https://zalo.me/${order.customerPhone}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn xs"
+                                  style={{ padding: '2px 8px', fontSize: 11, background: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                                >
+                                  💬 Zalo
+                                </a>
+                              </div>
+                            )}
+                          </div>
+
+                          <div style={{ fontSize: 12.5, color: 'var(--text2)', display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 2 }}>
+                            <span>📍</span>
+                            <span><strong>Địa chỉ:</strong> {order.customerAddress || 'Chưa cung cấp địa chỉ'}</span>
+                          </div>
+                        </div>
+
+                        {/* Box Ghi chú / Lời nhắn của khách */}
+                        <div style={{
+                          background: order.orderNote ? '#fefce8' : 'var(--bg)',
+                          border: order.orderNote ? '1px solid #fef08a' : '1px solid var(--border)',
+                          padding: '12px 14px',
+                          borderRadius: 10,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6
+                        }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: order.orderNote ? '#a16207' : 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            📝 Lời nhắn & Nhu cầu kỹ thuật
+                          </div>
+                          {order.orderNote ? (
+                            <div style={{ fontSize: 13, color: '#854d0e', lineHeight: 1.5, fontStyle: 'italic', fontWeight: 500, whiteSpace: 'pre-wrap' }}>
+                              "{order.orderNote}"
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic', marginTop: 4 }}>
+                              (Khách không để lại ghi chú kèm theo)
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 3. Danh sách sản phẩm yêu cầu báo giá */}
+                      {order.items && order.items.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                          <div style={{ padding: '8px 14px', background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--text2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>🛒 Danh sách sản phẩm khách chọn báo giá ({order.items.length} món)</span>
+                          </div>
+
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                              <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text3)', textAlign: 'left' }}>
+                                  <th style={{ padding: '6px 14px', width: 40 }}>STT</th>
+                                  <th style={{ padding: '6px 14px' }}>Sản phẩm</th>
+                                  <th style={{ padding: '6px 14px', width: 110 }}>Thương hiệu</th>
+                                  <th style={{ padding: '6px 14px', textAlign: 'right', width: 130 }}>Đơn giá</th>
+                                  <th style={{ padding: '6px 14px', textAlign: 'center', width: 80 }}>Số lượng</th>
+                                  <th style={{ padding: '6px 14px', textAlign: 'right', width: 140 }}>Thành tiền</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {order.items.map((item, idx) => {
+                                  const itemPrice = item.price || 0
+                                  const itemQty = item.quantity || 1
+                                  const subtotal = itemPrice * itemQty
+                                  return (
+                                    <tr key={idx} style={{ borderBottom: idx === order.items.length - 1 ? 'none' : '1px solid var(--border)' }}>
+                                      <td style={{ padding: '8px 14px', color: 'var(--text3)' }}>{idx + 1}</td>
+                                      <td style={{ padding: '8px 14px', fontWeight: 600, color: 'var(--text)' }}>
+                                        {item.name}
+                                      </td>
+                                      <td style={{ padding: '8px 14px' }}>
+                                        <span className="badge badge-amber" style={{ fontSize: 10, padding: '2px 6px' }}>
+                                          {item.brand || 'UPTI PUMP'}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: '8px 14px', textAlign: 'right', color: 'var(--text2)', fontFamily: 'monospace' }}>
+                                        {fmt(itemPrice)}
+                                      </td>
+                                      <td style={{ padding: '8px 14px', textAlign: 'center', fontWeight: 700, color: 'var(--text)' }}>
+                                        x{itemQty}
+                                      </td>
+                                      <td style={{ padding: '8px 14px', textAlign: 'right', fontWeight: 700, color: '#059669', fontFamily: 'monospace' }}>
+                                        {fmt(subtotal)}
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Tổng giá trị đơn hàng */}
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '10px 16px', background: 'rgba(5, 150, 105, 0.05)', borderTop: '1px solid var(--border)' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)' }}>
+                              Tổng cộng giá trị báo giá:
+                            </span>
+                            <span style={{ fontSize: 17, fontWeight: 800, color: '#059669', fontFamily: 'monospace' }}>
+                              {fmt(finalTotal)}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: 8, border: '1px dashed #cbd5e1', fontSize: 12.5, color: '#64748b', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 18 }}>💡</span>
+                          <span>Yêu cầu liên hệ trực tiếp: Khách muốn nhận tư vấn thông số kỹ thuật (Cột áp H, Lưu lượng Q) và bảng giá chiết khấu cho dòng bơm phù hợp.</span>
+                        </div>
+                      )}
+
+                      {/* 4. Thanh tác vụ nhanh: Gọi điện, Chat Zalo, AI Báo Giá, Sao chép */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, paddingTop: 6 }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {/* Nút Gọi ngay */}
+                          {order.customerPhone && (
+                            <a 
+                              href={`tel:${order.customerPhone}`}
+                              className="btn sm"
+                              style={{ background: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                            >
+                              📞 Gọi {order.customerPhone}
+                            </a>
+                          )}
+
+                          {/* Nút Chat Zalo */}
+                          {order.customerPhone && (
+                            <a 
+                              href={`https://zalo.me/${order.customerPhone}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn sm"
+                              style={{ background: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                            >
+                              💬 Chat Zalo
+                            </a>
+                          )}
+
+                          {/* Nút Trợ lý AI Báo Giá */}
+                          <button 
+                            onClick={() => handleGenerateAIQuote(order)}
+                            className="btn sm"
+                            style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: '#fff', border: 'none', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(99,102,241,0.25)' }}
+                          >
+                            🪄 Trợ lý AI Báo Giá
+                          </button>
+                        </div>
+
+                        {/* Nút Sao chép toàn bộ thông tin */}
                         <button 
-                          onClick={() => handleDeleteOrder(order.id)}
-                          className="btn xs"
-                          style={{ color: '#ef4444', borderColor: '#fca5a5', background: '#fef2f2' }}
-                          title="Xóa đơn hàng"
+                          onClick={() => handleCopyOrderDetails(order)}
+                          className="btn sm"
+                          style={{ borderColor: 'var(--border)', color: 'var(--text2)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                          title="Sao chép toàn bộ thông tin đơn hàng này vào bộ nhớ tạm"
                         >
-                          🗑️
+                          📋 Sao chép đơn hàng
                         </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

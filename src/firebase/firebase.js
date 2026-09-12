@@ -891,10 +891,165 @@ const getVNFormattedDate = () => {
   return `${yyyy}-${mm}-${dd}`
 }
 
+let cachedGeoData = null
+
+/** Lấy thông tin IP & Địa lý khách hàng (Cache theo phiên để tối ưu tốc độ) */
+export const getVisitorGeoData = async () => {
+  if (cachedGeoData) return cachedGeoData
+  try {
+    const fromSession = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('tt_visitor_geo_v1') : null
+    if (fromSession) {
+      cachedGeoData = JSON.parse(fromSession)
+      return cachedGeoData
+    }
+  } catch {}
+
+  try {
+    const res = await fetch('https://ipwho.is/', { cache: 'no-cache' })
+    const data = await res.json()
+    if (data && data.success !== false) {
+      cachedGeoData = {
+        ip: data.ip || '',
+        city: data.city || '',
+        region: data.region || '',
+        country: data.country || 'Việt Nam',
+        countryCode: data.country_code || 'VN',
+        flag: data.flag?.emoji || '🇻🇳',
+        isp: data.connection?.isp || data.isp || '',
+        org: data.connection?.org || '',
+        lat: data.latitude || null,
+        lon: data.longitude || null,
+      }
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('tt_visitor_geo_v1', JSON.stringify(cachedGeoData))
+        }
+      } catch {}
+      return cachedGeoData
+    }
+  } catch (e) {
+    try {
+      const res2 = await fetch('https://api.ipify.org?format=json')
+      const d2 = await res2.json()
+      if (d2 && d2.ip) {
+        cachedGeoData = { ip: d2.ip, country: 'Việt Nam', flag: '🇻🇳', city: '', region: '', isp: '' }
+        return cachedGeoData
+      }
+    } catch {}
+  }
+  return null
+}
+
+/** Nhận diện thiết bị, hệ điều hành, trình duyệt và nguồn truy cập chi tiết */
+export const getClientDeviceAndSource = () => {
+  if (typeof window === 'undefined') return {}
+
+  const ua = navigator?.userAgent || ''
+
+  // 1. Hệ điều hành
+  let os = 'Khác'
+  if (/Windows NT 10.0/i.test(ua)) os = 'Windows 10/11'
+  else if (/Windows/i.test(ua)) os = 'Windows'
+  else if (/iPhone/i.test(ua)) os = 'iPhone (iOS)'
+  else if (/iPad/i.test(ua)) os = 'iPad (iPadOS)'
+  else if (/Android/i.test(ua)) os = 'Android'
+  else if (/Macintosh|Mac OS/i.test(ua)) os = 'macOS'
+  else if (/Linux/i.test(ua)) os = 'Linux'
+
+  // 2. Trình duyệt
+  let browser = 'Khác'
+  if (/Zalo/i.test(ua)) browser = 'Zalo In-App'
+  else if (/FBAN|FBAV/i.test(ua)) browser = 'Facebook In-App'
+  else if (/CocCoc/i.test(ua)) browser = 'Cốc Cốc'
+  else if (/Edg/i.test(ua)) browser = 'Microsoft Edge'
+  else if (/Chrome/i.test(ua) && !/Edg|CocCoc/i.test(ua)) browser = 'Google Chrome'
+  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Apple Safari'
+  else if (/Firefox/i.test(ua)) browser = 'Mozilla Firefox'
+
+  // 3. Phân loại máy
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+  const isTablet = /(iPad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch)))/i.test(ua)
+  const deviceType = isTablet ? 'Tablet' : isMobile ? 'Mobile' : 'Desktop'
+
+  // 4. Nguồn truy cập (Traffic Acquisition)
+  const referrer = document?.referrer || ''
+  let source = 'Trực tiếp (Direct)'
+  if (referrer.includes('google.')) source = 'Google Search'
+  else if (referrer.includes('zalo.me')) source = 'Zalo Chat'
+  else if (referrer.includes('facebook.') || referrer.includes('fb.com')) source = 'Facebook'
+  else if (referrer.includes('tiktok.')) source = 'TikTok'
+  else if (referrer.includes('youtube.')) source = 'YouTube'
+  else if (referrer) {
+    try {
+      source = new URL(referrer).hostname
+    } catch {
+      source = referrer.substring(0, 50)
+    }
+  }
+
+  // 5. UTM & Google Ads GCLID
+  let utmSource = ''
+  let utmMedium = ''
+  let utmCampaign = ''
+  let gclid = false
+  try {
+    const urlParams = new URLSearchParams(window.location.search)
+    utmSource = urlParams.get('utm_source') || ''
+    utmMedium = urlParams.get('utm_medium') || ''
+    utmCampaign = urlParams.get('utm_campaign') || ''
+    gclid = Boolean(urlParams.get('gclid'))
+
+    if (gclid || utmSource.toLowerCase().includes('google') || utmMedium.toLowerCase().includes('cpc')) {
+      source = 'Google Ads'
+    } else if (utmSource) {
+      source = `UTM: ${utmSource}`
+    }
+  } catch {}
+
+  // 6. Mã định danh khách & phiên
+  let visitorId = ''
+  try {
+    visitorId = localStorage.getItem('tt_vid')
+    if (!visitorId) {
+      visitorId = 'vid_' + Math.random().toString(36).substring(2, 8) + Date.now().toString(36).slice(-4)
+      localStorage.setItem('tt_vid', visitorId)
+    }
+  } catch {
+    visitorId = 'guest'
+  }
+
+  let sessionId = ''
+  try {
+    sessionId = sessionStorage.getItem('tt_sid')
+    if (!sessionId) {
+      sessionId = 'sid_' + Math.random().toString(36).substring(2, 8)
+      sessionStorage.setItem('tt_sid', sessionId)
+    }
+  } catch {
+    sessionId = 'sess'
+  }
+
+  return {
+    os,
+    browser,
+    deviceType,
+    isMobile,
+    screenResolution: typeof window !== 'undefined' ? `${window.screen?.width || 0}x${window.screen?.height || 0}` : '',
+    source,
+    referrer,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    gclid,
+    visitorId,
+    sessionId,
+  }
+}
+
 export const logWebAnalyticsEvent = async ({ type = 'page_view', path = '/', title = 'Trang chủ', isNewSession = false, meta = {} }) => {
   try {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator?.userAgent || '')
-    const deviceType = isMobile ? 'Mobile' : 'Desktop'
+    const clientInfo = getClientDeviceAndSource()
+    const geoInfo = await getVisitorGeoData()
     const dateKey = getVNFormattedDate()
 
     // 1. Cập nhật thống kê tổng hợp theo ngày
@@ -904,11 +1059,24 @@ export const logWebAnalyticsEvent = async ({ type = 'page_view', path = '/', tit
       updatedAt: Date.now(),
       totalViews: increment(1),
       ...(isNewSession ? { uniqueVisitors: increment(1) } : {}),
-      ...(isMobile ? { mobileViews: increment(1) } : { desktopViews: increment(1) }),
+      ...(clientInfo.isMobile ? { mobileViews: increment(1) } : { desktopViews: increment(1) }),
       ...(type === 'zalo_click' ? { zaloClicks: increment(1) } : {}),
       ...(type === 'call_click' ? { callClicks: increment(1) } : {}),
       ...(type === 'product_view' ? { productViews: increment(1) } : {}),
       ...(type === 'order_created' ? { orderCount: increment(1) } : {})
+    }
+
+    if (geoInfo?.city) {
+      const cityKey = sanitizeFirestoreId(geoInfo.city || 'other')
+      dailyUpdate[`topCities.${cityKey}.name`] = geoInfo.city
+      dailyUpdate[`topCities.${cityKey}.region`] = geoInfo.region || ''
+      dailyUpdate[`topCities.${cityKey}.count`] = increment(1)
+    }
+
+    if (clientInfo?.source) {
+      const srcKey = sanitizeFirestoreId(clientInfo.source || 'direct')
+      dailyUpdate[`topSources.${srcKey}.name`] = clientInfo.source
+      dailyUpdate[`topSources.${srcKey}.count`] = increment(1)
     }
 
     if (type === 'product_view' && meta.productId) {
@@ -926,9 +1094,33 @@ export const logWebAnalyticsEvent = async ({ type = 'page_view', path = '/', tit
       type,
       path,
       title: title || 'Trang chủ',
-      device: deviceType,
-      isMobile,
-      userAgent: (navigator?.userAgent || '').substring(0, 120),
+      device: clientInfo.deviceType || 'Desktop',
+      isMobile: clientInfo.isMobile || false,
+      os: clientInfo.os || 'Khác',
+      browser: clientInfo.browser || 'Khác',
+      screenResolution: clientInfo.screenResolution || '',
+      source: clientInfo.source || 'Trực tiếp (Direct)',
+      referrer: clientInfo.referrer || '',
+      utmSource: clientInfo.utmSource || '',
+      utmMedium: clientInfo.utmMedium || '',
+      utmCampaign: clientInfo.utmCampaign || '',
+      gclid: clientInfo.gclid || false,
+      visitorId: clientInfo.visitorId || '',
+      sessionId: clientInfo.sessionId || '',
+
+      // Thông tin GeoIP & Vị trí mạng
+      ip: geoInfo?.ip || '',
+      city: geoInfo?.city || '',
+      region: geoInfo?.region || '',
+      country: geoInfo?.country || 'Việt Nam',
+      countryCode: geoInfo?.countryCode || 'VN',
+      flag: geoInfo?.flag || '🇻🇳',
+      isp: geoInfo?.isp || '',
+      org: geoInfo?.org || '',
+      lat: geoInfo?.lat || null,
+      lon: geoInfo?.lon || null,
+
+      userAgent: (navigator?.userAgent || '').substring(0, 160),
       createdAt: Date.now(),
       date: dateKey,
       ...meta

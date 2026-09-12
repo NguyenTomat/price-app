@@ -279,6 +279,12 @@ export default function WebManagePage() {
   const [orphanFiles, setOrphanFiles] = useState([])
   const [cleaningOrphans, setCleaningOrphans] = useState(false)
 
+  // Visitor telemetry details modal states
+  const [selectedVisitorLog, setSelectedVisitorLog] = useState(null)
+  const [visitorLogFilter, setVisitorLogFilter] = useState('all') // 'all' | 'product_view' | 'zalo_click' | 'call_click' | 'order_created' | 'page_view'
+  const [visitorLogSearch, setVisitorLogSearch] = useState('')
+  const [copiedIp, setCopiedIp] = useState(false)
+
   // Web custom categories management
   const [showCatModal, setShowCatModal] = useState(false)
   const [categoriesList, setCategoriesList] = useState([])
@@ -2405,77 +2411,331 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                     </div>
 
                     {/* RIGHT: Live Stream Activity Log */}
-                    <div className="card" style={{ padding: 20 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                         <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span>⚡ Nhật Ký Truy Cập Thời Gian Thực</span>
+                          <span>⚡ Nhật Ký Khách Ghé Thăm Thời Gian Thực</span>
                         </h4>
-                        <span style={{ fontSize: 11.5, color: '#10B981', fontWeight: 700 }}>
-                          ● Cập nhật liên tục
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 11, color: '#10B981', fontWeight: 700, background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                            Live Telemetry
+                          </span>
+                        </div>
                       </div>
 
-                      {analyticsLogs.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text3)', fontSize: 12.5 }}>
-                          Đang chờ phiên truy cập tiếp theo...
+                      {/* Filters & Search Toolbar */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                        <div style={{ position: 'relative', width: '100%' }}>
+                          <input
+                            type="text"
+                            placeholder="🔍 Tìm nhanh IP, Tỉnh/Thành phố, Tên máy bơm..."
+                            value={visitorLogSearch}
+                            onChange={e => setVisitorLogSearch(e.target.value)}
+                            style={{
+                              width: '100%', padding: '7px 12px', fontSize: 12, borderRadius: 8,
+                              border: '1px solid var(--border)', background: 'var(--surface2)',
+                              color: 'var(--text)', outline: 'none'
+                            }}
+                          />
+                          {visitorLogSearch && (
+                            <button
+                              onClick={() => setVisitorLogSearch('')}
+                              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', fontSize: 12, color: 'var(--text3)', cursor: 'pointer' }}
+                            >
+                              ✕
+                            </button>
+                          )}
                         </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
-                          {analyticsLogs.slice(0, 30).map((log, idx) => {
-                            const timeStr = log.createdAt ? new Date(log.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--';
-                            const dateStr = log.createdAt ? new Date(log.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : '';
-                            
-                            let badgeBg = '#E0F2FE';
-                            let badgeColor = '#0369A1';
-                            let actionLabel = 'Xem trang';
 
-                            if (log.type === 'zalo_click') {
-                              badgeBg = '#DBEAFE';
-                              badgeColor = '#1D4ED8';
-                              actionLabel = '💬 Chat Zalo';
-                            } else if (log.type === 'call_click') {
-                              badgeBg = '#FEF3C7';
-                              badgeColor = '#B45309';
-                              actionLabel = '📞 Gọi Hotline';
-                            } else if (log.type === 'product_view') {
-                              badgeBg = '#D1FAE5';
-                              badgeColor = '#047857';
-                              actionLabel = '🔍 Xem máy bơm';
-                            } else if (log.type === 'order_created') {
-                              badgeBg = '#FEE2E2';
-                              badgeColor = '#B91C1C';
-                              actionLabel = '🛒 Đặt hàng';
-                            }
+                        {/* Filter Tabs */}
+                        <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 2 }}>
+                          {[
+                            { key: 'all', label: `Tất cả (${analyticsLogs.length})` },
+                            { key: 'product_view', label: '🔍 Xem máy' },
+                            { key: 'zalo_click', label: '💬 Zalo' },
+                            { key: 'call_click', label: '📞 Hotline' },
+                            { key: 'order_created', label: '🛒 Đơn hàng' },
+                            { key: 'page_view', label: '📄 Xem trang' },
+                          ].map(tab => (
+                            <button
+                              key={tab.key}
+                              type="button"
+                              onClick={() => setVisitorLogFilter(tab.key)}
+                              style={{
+                                padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                                border: visitorLogFilter === tab.key ? '1px solid var(--accent)' : '1px solid var(--border)',
+                                background: visitorLogFilter === tab.key ? 'var(--accent)' : 'var(--surface)',
+                                color: visitorLogFilter === tab.key ? '#fff' : 'var(--text2)',
+                                cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all .15s'
+                              }}
+                            >
+                              {tab.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
 
-                            return (
-                              <div
-                                key={idx}
-                                style={{
-                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                  padding: '8px 10px', borderRadius: 8, background: 'var(--surface)',
-                                  border: '1px solid var(--border)', fontSize: 12
-                                }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                                  <span style={{ fontSize: 13 }}>{log.device === 'Mobile' ? '📱' : '💻'}</span>
-                                  <span style={{ background: badgeBg, color: badgeColor, padding: '2px 6px', borderRadius: 4, fontWeight: 700, fontSize: 10.5, whiteSpace: 'nowrap' }}>
-                                    {actionLabel}
-                                  </span>
-                                  <span style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 }}>
-                                    {log.title || log.path || 'Trang chủ'}
-                                  </span>
+                      {/* Log List */}
+                      {(() => {
+                        const filteredLogs = analyticsLogs.filter(log => {
+                          if (visitorLogFilter !== 'all' && log.type !== visitorLogFilter) return false;
+                          if (!visitorLogSearch.trim()) return true;
+                          const q = visitorLogSearch.toLowerCase();
+                          return (
+                            (log.ip || '').toLowerCase().includes(q) ||
+                            (log.city || '').toLowerCase().includes(q) ||
+                            (log.region || '').toLowerCase().includes(q) ||
+                            (log.title || '').toLowerCase().includes(q) ||
+                            (log.source || '').toLowerCase().includes(q) ||
+                            (log.isp || '').toLowerCase().includes(q)
+                          );
+                        });
+
+                        if (filteredLogs.length === 0) {
+                          return (
+                            <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text3)', fontSize: 12.5 }}>
+                              {analyticsLogs.length === 0 ? 'Đang chờ phiên truy cập tiếp theo...' : 'Không có nhật ký phù hợp bộ lọc.'}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto', paddingRight: 4 }}>
+                            {filteredLogs.slice(0, 40).map((log, idx) => {
+                              const timeStr = log.createdAt ? new Date(log.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--';
+                              const dateStr = log.createdAt ? new Date(log.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : '';
+                              
+                              let badgeBg = '#E0F2FE';
+                              let badgeColor = '#0369A1';
+                              let actionLabel = 'Xem trang';
+
+                              if (log.type === 'zalo_click') {
+                                badgeBg = '#DBEAFE';
+                                badgeColor = '#1D4ED8';
+                                actionLabel = '💬 Chat Zalo';
+                              } else if (log.type === 'call_click') {
+                                badgeBg = '#FEF3C7';
+                                badgeColor = '#B45309';
+                                actionLabel = '📞 Gọi Hotline';
+                              } else if (log.type === 'product_view') {
+                                badgeBg = '#D1FAE5';
+                                badgeColor = '#047857';
+                                actionLabel = '🔍 Xem máy';
+                              } else if (log.type === 'order_created') {
+                                badgeBg = '#FEE2E2';
+                                badgeColor = '#B91C1C';
+                                actionLabel = '🛒 Đặt hàng';
+                              }
+
+                              const locationText = log.city || log.region ? `${log.city || log.region}` : '';
+
+                              return (
+                                <div
+                                  key={log.id || idx}
+                                  onClick={() => setSelectedVisitorLog(log)}
+                                  style={{
+                                    display: 'flex', flexDirection: 'column', gap: 6,
+                                    padding: '9px 12px', borderRadius: 8, background: 'var(--surface)',
+                                    border: '1px solid var(--border)', fontSize: 12, cursor: 'pointer',
+                                    transition: 'all .15s ease',
+                                  }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.style.borderColor = 'var(--accent)';
+                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(8,120,217,0.12)';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                  }}
+                                  onMouseLeave={e => {
+                                    e.currentTarget.style.borderColor = 'var(--border)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                    e.currentTarget.style.transform = '';
+                                  }}
+                                  title="Bấm để xem chi tiết thông tin IP, Định vị, Thiết bị và Nguồn khách"
+                                >
+                                  {/* Row 1: Action + Title + Time */}
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                                      <span style={{ fontSize: 13 }} title={log.device === 'Mobile' ? 'Điện thoại' : 'Máy tính'}>
+                                        {log.device === 'Mobile' ? '📱' : '💻'}
+                                      </span>
+                                      <span style={{ background: badgeBg, color: badgeColor, padding: '2px 6px', borderRadius: 4, fontWeight: 700, fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                                        {actionLabel}
+                                      </span>
+                                      <span style={{ fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
+                                        {log.title || log.path || 'Trang chủ'}
+                                      </span>
+                                    </div>
+                                    <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                      {timeStr} {dateStr ? `(${dateStr})` : ''}
+                                    </span>
+                                  </div>
+
+                                  {/* Row 2: Location + Source + IP Chips */}
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap', fontSize: 11, color: 'var(--text2)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                      {locationText ? (
+                                        <span style={{ background: 'rgba(16,185,129,0.1)', color: '#059669', padding: '1px 6px', borderRadius: 4, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                          <span>{log.flag || '📍'}</span>
+                                          <span>{locationText}</span>
+                                        </span>
+                                      ) : (
+                                        <span style={{ background: 'var(--surface2)', color: 'var(--text3)', padding: '1px 6px', borderRadius: 4, fontSize: 10.5 }}>
+                                          📍 Việt Nam
+                                        </span>
+                                      )}
+
+                                      {log.source && (
+                                        <span style={{ background: log.source.includes('Google') ? '#EFF6FF' : 'var(--surface2)', color: log.source.includes('Google') ? '#2563EB' : 'var(--text2)', padding: '1px 6px', borderRadius: 4, fontSize: 10.5, fontWeight: 600 }}>
+                                          🌐 {log.source}
+                                        </span>
+                                      )}
+
+                                      {log.ip && (
+                                        <span style={{ fontFamily: 'monospace', color: 'var(--text3)', fontSize: 10.5 }}>
+                                          IP: {log.ip}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 11 }}>
+                                      Xem chi tiết ›
+                                    </span>
+                                  </div>
                                 </div>
-                                <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                                  {timeStr} {dateStr ? `(${dateStr})` : ''}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                   </div>
+
+                  {/* 2-COLUMN SECTION: TOP CITIES & TOP TRAFFIC SOURCES */}
+                  {(() => {
+                    // 1. Top Cities Aggregation
+                    const cityMap = {};
+                    analyticsSummary.forEach(d => {
+                      if (d.topCities) {
+                        Object.entries(d.topCities).forEach(([k, v]) => {
+                          const name = v?.name || k;
+                          const count = v?.count || 0;
+                          if (!cityMap[name]) cityMap[name] = { name, region: v?.region || '', count: 0 };
+                          cityMap[name].count += count;
+                        });
+                      }
+                    });
+                    analyticsLogs.forEach(l => {
+                      const cityName = l.city || l.region || (l.country ? 'Khác (Việt Nam)' : '');
+                      if (cityName) {
+                        if (!cityMap[cityName]) cityMap[cityName] = { name: cityName, region: l.region || '', count: 0 };
+                        if (Object.keys(cityMap).length <= 4) cityMap[cityName].count += 1;
+                      }
+                    });
+
+                    const topCitiesList = Object.values(cityMap).sort((a, b) => b.count - a.count).slice(0, 6);
+                    const maxCityCount = topCitiesList.length > 0 ? Math.max(...topCitiesList.map(c => c.count), 1) : 1;
+
+                    // 2. Top Sources Aggregation
+                    const sourceMap = {};
+                    analyticsSummary.forEach(d => {
+                      if (d.topSources) {
+                        Object.entries(d.topSources).forEach(([k, v]) => {
+                          const name = v?.name || k;
+                          const count = v?.count || 0;
+                          if (!sourceMap[name]) sourceMap[name] = { name, count: 0 };
+                          sourceMap[name].count += count;
+                        });
+                      }
+                    });
+                    analyticsLogs.forEach(l => {
+                      const srcName = l.source || 'Trực tiếp (Direct)';
+                      if (srcName) {
+                        if (!sourceMap[srcName]) sourceMap[srcName] = { name: srcName, count: 0 };
+                        if (Object.keys(sourceMap).length <= 4) sourceMap[srcName].count += 1;
+                      }
+                    });
+
+                    const topSourcesList = Object.values(sourceMap).sort((a, b) => b.count - a.count).slice(0, 6);
+                    const maxSourceCount = topSourcesList.length > 0 ? Math.max(...topSourcesList.map(s => s.count), 1) : 1;
+
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20, marginTop: 20 }}>
+                        {/* Top Cities */}
+                        <div className="card" style={{ padding: 20 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>🗺️ Top Tỉnh / Thành Phố Khách Ghé Thăm</span>
+                            </h4>
+                            <span style={{ fontSize: 11.5, color: 'var(--text3)' }}>Lượt ghé</span>
+                          </div>
+
+                          {topCitiesList.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text3)', fontSize: 12.5 }}>
+                              Đang thu thập dữ liệu định vị địa lý khách hàng...
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                              {topCitiesList.map((c, idx) => {
+                                const pct = Math.round((c.count / maxCityCount) * 100);
+                                return (
+                                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
+                                      <span style={{ fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span>📍</span>
+                                        <span>{c.name}</span>
+                                      </span>
+                                      <span style={{ fontWeight: 800, color: '#059669' }}>{c.count} lượt</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                                      <div style={{ width: `${pct}%`, height: '100%', background: '#10B981', borderRadius: 3 }} />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Top Sources */}
+                        <div className="card" style={{ padding: 20 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>🚀 Nguồn Khách Đến (Traffic Acquisition)</span>
+                            </h4>
+                            <span style={{ fontSize: 11.5, color: 'var(--text3)' }}>Lượt truy cập</span>
+                          </div>
+
+                          {topSourcesList.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text3)', fontSize: 12.5 }}>
+                              Đang phân tích các kênh tiếp thị và nguồn tìm kiếm...
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                              {topSourcesList.map((s, idx) => {
+                                const pct = Math.round((s.count / maxSourceCount) * 100);
+                                const isAds = s.name.includes('Google Ads');
+                                return (
+                                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
+                                      <span style={{ fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span>{isAds ? '🎯' : '🌐'}</span>
+                                        <span>{s.name}</span>
+                                      </span>
+                                      <span style={{ fontWeight: 800, color: isAds ? '#2563EB' : 'var(--accent)' }}>{s.count} lượt</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                                      <div style={{ width: `${pct}%`, height: '100%', background: isAds ? '#2563EB' : 'var(--accent)', borderRadius: 3 }} />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </>
               );
             })()}
@@ -2483,6 +2743,265 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
           </div>
         ) : null}
       </div>
+
+      {/* MODAL: CHI TIẾT KHÁCH TRUY CẬP & ĐỊNH VỊ THIẾT BỊ (VISITOR INTELLIGENCE) */}
+      {selectedVisitorLog && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(5px)', zIndex: 12000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+        }}>
+          <div style={{
+            background: 'var(--surface)', borderRadius: 16, width: '100%', maxWidth: 650, maxHeight: '90vh',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column',
+            border: '1px solid var(--border)', overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex',
+              justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface2)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 24 }}>
+                  {selectedVisitorLog.device === 'Mobile' ? '📱' : '💻'}
+                </span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>Hồ Sơ Khách Ghé Thăm</span>
+                    {selectedVisitorLog.flag && <span>{selectedVisitorLog.flag}</span>}
+                  </h3>
+                  <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 2 }}>
+                    Thời gian: {selectedVisitorLog.createdAt ? new Date(selectedVisitorLog.createdAt).toLocaleString('vi-VN') : 'Vừa xong'}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedVisitorLog(null)}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text3)', padding: 4 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              
+              {/* Card 1: Vị Trí & Địa Chỉ IP */}
+              <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#059669', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>📍</span> Vị Trí Địa Lý & Địa Chỉ IP
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, fontSize: 13 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>ĐỊA CHỈ IP (CLIENT IP)</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                        {selectedVisitorLog.ip || 'Không công khai (Ẩn IP)'}
+                      </span>
+                      {selectedVisitorLog.ip && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedVisitorLog.ip);
+                            setCopiedIp(true);
+                            setTimeout(() => setCopiedIp(false), 2000);
+                          }}
+                          style={{
+                            padding: '2px 8px', fontSize: 11, borderRadius: 4,
+                            border: '1px solid var(--border)', background: 'var(--surface)',
+                            color: copiedIp ? '#059669' : 'var(--accent)', cursor: 'pointer', fontWeight: 600
+                          }}
+                        >
+                          {copiedIp ? '✓ Đã chép' : '📋 Copy'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>TỈNH / THÀNH PHỐ</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text)', marginTop: 3 }}>
+                      {selectedVisitorLog.city ? `${selectedVisitorLog.city}, ` : ''}
+                      {selectedVisitorLog.region || 'Việt Nam'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>NHÀ MẠNG / NHÀ CUNG CẤP (ISP)</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text2)', marginTop: 3 }}>
+                      {selectedVisitorLog.isp || selectedVisitorLog.org || 'Chưa xác định'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>TỌA ĐỘ GPS BẢN ĐỒ</div>
+                    <div style={{ marginTop: 3 }}>
+                      {selectedVisitorLog.lat && selectedVisitorLog.lon ? (
+                        <a
+                          href={`https://www.google.com/maps?q=${selectedVisitorLog.lat},${selectedVisitorLog.lon}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: '#2563EB', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          🗺️ Xem trên Google Maps ({selectedVisitorLog.lat.toFixed(2)}, {selectedVisitorLog.lon.toFixed(2)}) ↗
+                        </a>
+                      ) : (
+                        <span style={{ color: 'var(--text3)' }}>Định vị cấp Thành phố</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Thiết Bị & Trình Duyệt */}
+              <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#8B5CF6', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>📱</span> Thiết Bị, Hệ Điều Hành & Trình Duyệt
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, fontSize: 13 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>LOẠI MÁY</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text)', marginTop: 3 }}>
+                      {selectedVisitorLog.device === 'Mobile' ? '📱 Điện thoại di động (Smartphone)' : '💻 Máy tính để bàn / Laptop (Desktop)'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>HỆ ĐIỀU HÀNH</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text)', marginTop: 3 }}>
+                      {selectedVisitorLog.os || 'Khác'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>TRÌNH DUYỆT</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text)', marginTop: 3 }}>
+                      {selectedVisitorLog.browser || 'Khác'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>ĐỘ PHÂN GIẢI MÀN HÌNH</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text2)', marginTop: 3 }}>
+                      {selectedVisitorLog.screenResolution ? `${selectedVisitorLog.screenResolution} px` : 'Tự động co giãn'}
+                    </div>
+                  </div>
+                </div>
+
+                {selectedVisitorLog.userAgent && (
+                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--border)', fontSize: 11, color: 'var(--text3)', wordBreak: 'break-all' }}>
+                    <strong>User-Agent:</strong> {selectedVisitorLog.userAgent}
+                  </div>
+                )}
+              </div>
+
+              {/* Card 3: Nguồn Khách Đến (Traffic Source & Campaign) */}
+              <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>🚀</span> Kênh Nguồn Khách Đến & Tiếp Thị
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, fontSize: 13 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>KÊNH TIẾP CẬN</div>
+                    <div style={{ fontWeight: 700, color: '#2563EB', marginTop: 3 }}>
+                      {selectedVisitorLog.source || 'Trực tiếp (Direct)'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>QUẢNG CÁO GOOGLE ADS</div>
+                    <div style={{ fontWeight: 600, marginTop: 3 }}>
+                      {selectedVisitorLog.gclid ? (
+                        <span style={{ color: '#059669', fontWeight: 700 }}>✓ Khách bấm từ Google Ads (AW-18042418669)</span>
+                      ) : (
+                        <span style={{ color: 'var(--text3)' }}>Tìm kiếm tự nhiên / Trực tiếp</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>TRANG GIỚI THIỆU (REFERRER)</div>
+                    <div style={{ fontWeight: 500, color: 'var(--text2)', marginTop: 3, wordBreak: 'break-all', fontSize: 12 }}>
+                      {selectedVisitorLog.referrer || 'Khách gõ trực tiếp tên miền, mở từ Bookmark hoặc Ứng dụng Zalo'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Hành Động & Nội Dung Đang Xem */}
+              <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#D97706', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>⏱️</span> Hành Động & Sản Phẩm Quan Tâm
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, fontSize: 13 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>LOẠI TƯƠNG TÁC</div>
+                    <div style={{ fontWeight: 800, color: 'var(--text)', marginTop: 3 }}>
+                      {selectedVisitorLog.type === 'zalo_click' ? '💬 Bấm Chat Zalo' :
+                       selectedVisitorLog.type === 'call_click' ? '📞 Bấm Gọi Hotline' :
+                       selectedVisitorLog.type === 'product_view' ? '🔍 Xem Chi Tiết Máy Bơm' :
+                       selectedVisitorLog.type === 'order_created' ? '🛒 Đặt Hàng Báo Giá' : '📄 Xem Trang Web'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>MÃ ĐỊNH DANH KHÁCH (VISITOR ID)</div>
+                    <div style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>
+                      {selectedVisitorLog.visitorId || 'Khách vãng lai'}
+                    </div>
+                  </div>
+
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600 }}>SẢN PHẨM / TRANG WEB ĐANG XEM</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text)', marginTop: 3, fontSize: 14 }}>
+                      {selectedVisitorLog.title || selectedVisitorLog.path || 'Trang chủ'}
+                    </div>
+                    {selectedVisitorLog.code && (
+                      <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, marginTop: 2 }}>
+                        Mã model: {selectedVisitorLog.code} {selectedVisitorLog.brand ? `(${selectedVisitorLog.brand})` : ''}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex',
+              justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface2)'
+            }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setSelectedVisitorLog(null)}
+                style={{ padding: '8px 18px', fontWeight: 600 }}
+              >
+                ✕ Đóng
+              </button>
+
+              {selectedVisitorLog.productId && (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => {
+                    window.open(`https://maybomtandt.com.vn/#product/${selectedVisitorLog.productId}`, '_blank');
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                >
+                  <span>🔗</span> Mở sản phẩm này trên Web ↗
+                </button>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* New Order Realtime Toast Alert */}
       {newOrderAlert && (

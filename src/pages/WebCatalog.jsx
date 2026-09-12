@@ -1576,6 +1576,31 @@ export default function WebCatalog() {
         isNewSession: isNew
       })
     } catch (e) {}
+
+    // Bắt sự kiện tương tác bấm Zalo / Gọi Hotline để ghi nhận vào Realtime Telemetry
+    const handleGlobalContactClick = (e) => {
+      try {
+        const target = e.target?.closest?.('a, button')
+        if (!target) return
+        const href = target.href || target.getAttribute('href') || ''
+        const text = target.innerText || ''
+        if (href.startsWith('tel:') || text.includes('0984 273 806') || text.includes('0984273806')) {
+          logWebAnalyticsEvent({
+            type: 'call_click',
+            title: 'Khách bấm gọi Hotline',
+            path: window.location.hash || '#contact'
+          })
+        } else if (href.includes('zalo.me') || text.toLowerCase().includes('zalo')) {
+          logWebAnalyticsEvent({
+            type: 'zalo_click',
+            title: 'Khách bấm Chat Zalo',
+            path: window.location.hash || '#contact'
+          })
+        }
+      } catch {}
+    }
+    window.addEventListener('click', handleGlobalContactClick, { capture: true })
+    return () => window.removeEventListener('click', handleGlobalContactClick, { capture: true })
   }, [])
 
   // Get current active product for detail page view

@@ -56,7 +56,7 @@ const POPULAR_SEARCH_KEYWORDS = [
   '220V'
 ];
 
-// Hàm chuẩn hóa chuỗi tìm kiếm tiếng Việt không dấu
+// Hàm chuẩn hóa chuỗi tìm kiếm tiếng Việt không dấu (giữ nguyên ký tự model như . / -)
 const normalizeSearchStr = (str) => {
   if (!str) return '';
   return String(str)
@@ -65,7 +65,6 @@ const normalizeSearchStr = (str) => {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/đ/g, 'd')
     .replace(/Đ/g, 'd')
-    .replace(/[^\w\s]/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 };
@@ -1699,88 +1698,110 @@ export default function WebCatalog() {
   const processedProducts = useMemo(() => {
     let result = [...products]
 
-    if (activeBrand !== 'ALL') {
-      result = result.filter(p => (p.webBrand || '').toUpperCase() === activeBrand.toUpperCase())
-    }
-
-    if (selectedCategory && selectedCategory !== 'TẤT CẢ') {
-      const normSelected = normalizeSearchStr(selectedCategory);
-      result = result.filter(p => {
-        const normGroup = normalizeSearchStr(p.group || '');
-        const normName = normalizeSearchStr(p.name || '');
-        const normCode = normalizeSearchStr(p.code || '');
-        const normDesc = normalizeSearchStr(p.webDesc || p.desc || '');
-        const normCat = normalizeSearchStr(p.category || '');
-        const normListName = normalizeSearchStr(p.listName || '');
-        const fullTarget = `${normGroup} ${normCat} ${normName} ${normCode} ${normDesc} ${normListName}`;
-
-        // 1. Biến tần
-        if (normSelected.includes('bien tan') || normSelected.includes('inverter')) {
-          return fullTarget.includes('bien tan') || fullTarget.includes('inverter') || fullTarget.includes('thong minh');
-        }
-        // 2. Trục đứng (CDLF / đa tầng)
-        if (normSelected.includes('truc dung') || normSelected.includes('cdlf')) {
-          return fullTarget.includes('truc dung') || fullTarget.includes('cdlf') || fullTarget.includes('da tang');
-        }
-        // 3. Tăng áp
-        if (normSelected.includes('tang ap') || normSelected.includes('booster')) {
-          return (fullTarget.includes('tang ap') || fullTarget.includes('booster')) && !fullTarget.includes('gieng khoan');
-        }
-        // 4. Nước thải & Hút bùn (Chặn giếng khoan / hỏa tiễn)
-        if (normSelected.includes('nuoc thai') || normSelected.includes('hut bun') || normSelected.includes('bun') || normSelected.includes('thai')) {
-          return (fullTarget.includes('nuoc thai') || fullTarget.includes('hut bun') || fullTarget.includes('thai') || fullTarget.includes('ho ga') || fullTarget.includes('ktz') || fullTarget.includes('wq')) && !fullTarget.includes('gieng khoan') && !fullTarget.includes('hoa tien');
-        }
-        // 5. Hỏa tiễn & Giếng khoan (Chặn nước thải / bùn)
-        if (normSelected.includes('hoa tien') || normSelected.includes('gieng khoan')) {
-          return (fullTarget.includes('hoa tien') || fullTarget.includes('gieng khoan') || fullTarget.includes('slm') || fullTarget.includes('tha gieng')) && !fullTarget.includes('nuoc thai') && !fullTarget.includes('hut bun');
-        }
-        // 6. Ly tâm trục ngang
-        if (normSelected.includes('ly tam') || normSelected.includes('truc ngang')) {
-          return (fullTarget.includes('ly tam') || fullTarget.includes('truc ngang') || fullTarget.includes('luu luong')) && !fullTarget.includes('truc dung') && !fullTarget.includes('cdlf');
-        }
-        // 7. Công nghiệp
-        if (normSelected.includes('cong nghiep')) {
-          return fullTarget.includes('cong nghiep') || fullTarget.includes('truc dung') || fullTarget.includes('ly tam');
-        }
-        // 8. Dàn bơm
-        if (normSelected.includes('dan bom') || normSelected.includes('cum bom')) {
-          return fullTarget.includes('dan bom') || fullTarget.includes('cum bom') || fullTarget.includes('booster');
-        }
-
-        // Fallback exact/substring match
-        return normGroup === normSelected ||
-               normCat === normSelected ||
-               (normGroup && normGroup.includes(normSelected)) ||
-               (p.group || '').replace(/\s+/g, ' ').trim().toLowerCase() === selectedCategory.replace(/\s+/g, ' ').trim().toLowerCase();
-      })
-    }
-
-    // Multi-select group filter (sidebar)
-    if (filterGroups.size > 0) {
-      const normFilters = Array.from(filterGroups).map(g => normalizeSearchStr(g));
-      result = result.filter(p => {
-        const normGroup = normalizeSearchStr(p.group);
-        return filterGroups.has((p.group || '').trim()) ||
-               normFilters.some(nf => nf === normGroup);
-      })
-    }
-
-    if (searchTerm.trim()) {
+    // If searching by keyword/model code, search across all products instantly
+    if (searchTerm && searchTerm.trim()) {
       const rawTerm = searchTerm.toLowerCase().trim();
       const normTerm = normalizeSearchStr(searchTerm);
+      const cleanTerm = rawTerm.replace(/[^a-z0-9]/g, '');
       const tokens = normTerm.split(/\s+/).filter(Boolean);
 
       result = result.filter(p => {
         const fullSearchTarget = normalizeSearchStr(
-          `${p.name || ''} ${p.code || ''} ${p.id || ''} ${p.webBrand || ''} ${p.group || ''} ${p.category || ''} ${p.webSpecs?.power || ''} ${p.powerKw || ''} ${p.powerHp || ''} ${p.webSpecs?.voltage || ''} ${p.voltage || ''} ${p.webSpecs?.specs || ''} ${p.specs || ''} ${p.head || ''} ${p.flow || ''} ${p.webDesc || ''} ${p.desc || ''}`
+          `${p.name || ''} ${p.code || ''} ${p.id || ''} ${p.webBrand || ''} ${p.group || ''} ${p.category || ''} ${p.webSpecs?.power || ''} ${p.powerKw || ''} ${p.powerHp || ''} ${p.webSpecs?.voltage || ''} ${p.voltage || ''} ${p.webSpecs?.specs || ''} ${p.specs || ''} ${p.head || ''} ${p.flow || ''} ${p.webDesc || ''} ${p.desc || ''} ${p.listName || ''}`
         );
+        const cleanTarget = fullSearchTarget.replace(/[^a-z0-9]/g, '');
+
         const matchesTokens = tokens.length === 0 || tokens.every(token => fullSearchTarget.includes(token));
+        const matchesClean = cleanTerm.length > 1 && cleanTarget.includes(cleanTerm);
         const matchesRaw = (p.name && p.name.toLowerCase().includes(rawTerm)) ||
                            (p.code && p.code.toLowerCase().includes(rawTerm)) ||
                            (p.webBrand && p.webBrand.toLowerCase().includes(rawTerm)) ||
                            (p.webDesc && p.webDesc.toLowerCase().includes(rawTerm));
-        return matchesTokens || matchesRaw;
+
+        return matchesTokens || matchesClean || matchesRaw;
       });
+    } else {
+      // If NOT searching by keyword, apply Brand & Category filters
+      if (activeBrand !== 'ALL') {
+        result = result.filter(p => (p.webBrand || '').toUpperCase() === activeBrand.toUpperCase())
+      }
+
+      if (selectedCategory && selectedCategory !== 'TẤT CẢ') {
+        const normSelected = normalizeSearchStr(selectedCategory);
+        result = result.filter(p => {
+          const normGroup = normalizeSearchStr(p.group || '');
+          const normName = normalizeSearchStr(p.name || '');
+          const normCode = normalizeSearchStr(p.code || '');
+          const normDesc = normalizeSearchStr(p.webDesc || p.desc || '');
+          const normCat = normalizeSearchStr(p.category || '');
+          const normListName = normalizeSearchStr(p.listName || '');
+          const fullTarget = `${normGroup} ${normCat} ${normName} ${normCode} ${normDesc} ${normListName}`;
+
+          // 1. Biến tần
+          if (normSelected.includes('bien tan') || normSelected.includes('inverter')) {
+            return (fullTarget.includes('bien tan') || fullTarget.includes('inverter') || fullTarget.includes('thong minh')) && !fullTarget.includes('gieng khoan');
+          }
+          // 2. Trục đứng (CDLF / đa tầng)
+          if (normSelected.includes('truc dung') || normSelected.includes('cdlf')) {
+            return fullTarget.includes('truc dung') || fullTarget.includes('cdlf') || fullTarget.includes('da tang');
+          }
+          // 3. Tăng áp (Điện tử, chân không, booster)
+          if (normSelected.includes('tang ap') || normSelected.includes('booster')) {
+            return (fullTarget.includes('tang ap') || fullTarget.includes('booster') || fullTarget.includes('chan khong') || fullTarget.includes('dien tu')) &&
+                   !fullTarget.includes('bien tan') &&
+                   !fullTarget.includes('inverter') &&
+                   !fullTarget.includes('gieng khoan');
+          }
+          // 4. Nước thải & Hút bùn (KRS, KTZ, WQ, cánh cắt)
+          if (normSelected.includes('nuoc thai') || normSelected.includes('hut bun') || normSelected.includes('bun') || normSelected.includes('thai')) {
+            return (fullTarget.includes('nuoc thai') || fullTarget.includes('hut bun') || fullTarget.includes('thai') || fullTarget.includes('ho ga') || fullTarget.includes('ktz') || fullTarget.includes('wq') || fullTarget.includes('krs') || fullTarget.includes('cat gang')) &&
+                   !fullTarget.includes('gieng khoan') &&
+                   !fullTarget.includes('hoa tien') &&
+                   !fullTarget.includes('slm');
+          }
+          // 5. Hỏa tiễn & Giếng khoan
+          if (normSelected.includes('hoa tien') || normSelected.includes('gieng khoan')) {
+            return (fullTarget.includes('hoa tien') || fullTarget.includes('gieng khoan') || fullTarget.includes('tha gieng') || fullTarget.includes('slm') || fullTarget.includes('tha chim')) &&
+                   !fullTarget.includes('nuoc thai') &&
+                   !fullTarget.includes('hut bun') &&
+                   !fullTarget.includes('cat gang') &&
+                   !fullTarget.includes('ktz') &&
+                   !fullTarget.includes('krs');
+          }
+          // 6. Ly tâm trục ngang
+          if (normSelected.includes('ly tam') || normSelected.includes('truc ngang')) {
+            return (fullTarget.includes('ly tam') || fullTarget.includes('truc ngang') || fullTarget.includes('mat bich') || fullTarget.includes('dau jet') || fullTarget.includes('canh ho') || fullTarget.includes('dia') || fullTarget.includes('lon')) &&
+                   !fullTarget.includes('truc dung') &&
+                   !fullTarget.includes('cdlf') &&
+                   !fullTarget.includes('hoa tien') &&
+                   !fullTarget.includes('gieng khoan');
+          }
+          // 7. Công nghiệp
+          if (normSelected.includes('cong nghiep')) {
+            return fullTarget.includes('cong nghiep') || fullTarget.includes('truc dung') || fullTarget.includes('ly tam') || fullTarget.includes('mat bich');
+          }
+          // 8. Dàn bơm
+          if (normSelected.includes('dan bom') || normSelected.includes('cum bom')) {
+            return fullTarget.includes('dan bom') || fullTarget.includes('cum bom') || fullTarget.includes('booster');
+          }
+
+          // Fallback exact/substring match
+          return normGroup === normSelected ||
+                 normCat === normSelected ||
+                 (normGroup && normGroup.includes(normSelected)) ||
+                 (p.group || '').replace(/\s+/g, ' ').trim().toLowerCase() === selectedCategory.replace(/\s+/g, ' ').trim().toLowerCase();
+        })
+      }
+
+      // Multi-select group filter (sidebar)
+      if (filterGroups.size > 0) {
+        const normFilters = Array.from(filterGroups).map(g => normalizeSearchStr(g));
+        result = result.filter(p => {
+          const normGroup = normalizeSearchStr(p.group);
+          return filterGroups.has((p.group || '').trim()) ||
+                 normFilters.some(nf => nf === normGroup);
+        })
+      }
     }
 
     if (filterPower !== 'ALL') {
@@ -4842,9 +4863,54 @@ export default function WebCatalog() {
                     <p style={{ fontSize: 32, margin: '0 0 10px' }}>📋</p>
                     <p style={{ color: '#64748B', fontSize: 13, margin: 0, fontWeight: 600 }}>Không tìm thấy máy bơm nào khớp với điều kiện lọc.</p>
                   </div>
-                ) : selectedCategory === 'TẤT CẢ' ? (
+                ) : (searchTerm.trim() || selectedCategory !== 'TẤT CẢ') ? (
+
+                  // Single selected category OR Search Results direct flat layout
+                  <div>
+                    {/* Desktop Single Category / Search Header */}
+                    <div className="desktop-only" style={{
+                      background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: '24px 28px',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28
+                    }}>
+                      <div>
+                        <h2 style={{ fontSize: 18, fontWeight: 900, color: '#082B4C', textTransform: 'uppercase', margin: 0 }}>
+                          {searchTerm.trim() ? `KẾT QUẢ TÌM KIẾM: "${searchTerm.trim()}"` : selectedCategory}
+                        </h2>
+                        <p style={{ fontSize: 12.5, color: '#64748B', margin: '4px 0 0', fontWeight: 500 }}>
+                          {searchTerm.trim() ? 'Danh sách máy bơm phù hợp với từ khóa tìm kiếm' : 'Nhập khẩu chính hãng · Phân phối chính thức tại Việt Nam'}
+                        </p>
+                      </div>
+                      <span style={{ fontSize: 12, color: '#0878D9', background: '#EAF3FF', padding: '6px 14px', borderRadius: 4, fontWeight: 800 }}>
+                        {processedProducts.length} sản phẩm
+                      </span>
+                    </div>
+
+                    {/* Mobile Single Category / Search Header */}
+                    <div className="mobile-only-flex category-header-single" style={{
+                      display: 'none',
+                      flexDirection: 'column',
+                      padding: '16px 0',
+                      marginBottom: 10,
+                      borderBottom: '1px solid #E2E8F0',
+                      boxSizing: 'border-box',
+                      gap: 4
+                    }}>
+                      <h2 style={{ fontSize: 18, fontWeight: 900, color: '#082B4C', textTransform: 'uppercase', margin: 0, lineHeight: 1.3 }}>
+                        {searchTerm.trim() ? `KẾT QUẢ: "${searchTerm.trim()}"` : selectedCategory}
+                      </h2>
+                      <span style={{ fontSize: 12, color: '#64748B', fontWeight: 550 }}>
+                        {processedProducts.length} sản phẩm tìm thấy
+                      </span>
+                    </div>
+ 
+                    <div className="catalog-grid">
+                      {processedProducts.map(p => renderProductCard(p))}
+                    </div>
+                  </div>
+
+                ) : (
                   
-                  // Category grouped lists
+                  // Category grouped lists (when selectedCategory === 'TẤT CẢ' and no search term)
                   <div>
                     {(() => {
                       const catSource = dbCategories.length > 0
@@ -4871,49 +4937,6 @@ export default function WebCatalog() {
                         />
                       );
                     })}
-                  </div>
-
-                ) : (
-
-                  // Single selected category direct layout
-                  <div>
-                    {/* Desktop Single Category Header */}
-                    <div className="desktop-only" style={{
-                      background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: '24px 28px',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28
-                    }}>
-                      <div>
-                        <h2 style={{ fontSize: 18, fontWeight: 900, color: '#082B4C', textTransform: 'uppercase', margin: 0 }}>
-                          {selectedCategory}
-                        </h2>
-                        <p style={{ fontSize: 12.5, color: '#64748B', margin: '4px 0 0', fontWeight: 500 }}>Nhập khẩu chính hãng &middot; Phân phối chính thức tại Việt Nam</p>
-                      </div>
-                      <span style={{ fontSize: 12, color: '#0878D9', background: '#EAF3FF', padding: '6px 14px', borderRadius: 4, fontWeight: 800 }}>
-                        {processedProducts.length} sản phẩm
-                      </span>
-                    </div>
-
-                    {/* Mobile Single Category Header */}
-                    <div className="mobile-only-flex category-header-single" style={{
-                      display: 'none',
-                      flexDirection: 'column',
-                      padding: '16px 0',
-                      marginBottom: 10,
-                      borderBottom: '1px solid #E2E8F0',
-                      boxSizing: 'border-box',
-                      gap: 4
-                    }}>
-                      <h2 style={{ fontSize: 18, fontWeight: 900, color: '#082B4C', textTransform: 'uppercase', margin: 0, lineHeight: 1.3 }}>
-                        {selectedCategory}
-                      </h2>
-                      <span style={{ fontSize: 12, color: '#64748B', fontWeight: 550 }}>
-                        Nhập khẩu chính hãng &middot; {processedProducts.length} sản phẩm
-                      </span>
-                    </div>
- 
-                    <div className="catalog-grid">
-                      {processedProducts.map(p => renderProductCard(p))}
-                    </div>
                   </div>
 
                 )}

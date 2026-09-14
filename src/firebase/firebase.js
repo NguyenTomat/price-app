@@ -206,9 +206,30 @@ export const sanitizeWebProduct = (p, listId, listName) => {
   }
 }
 
-// Lấy danh sách sản phẩm đăng lên Web Catalog công cộng siêu tốc (tối ưu payload & CDN)
+// Lấy danh sách sản phẩm đăng lên Web Catalog công cộng siêu tốc & cập nhật thời gian thực
 export const getWebCatalogProducts = async () => {
-  // 1. Tải siêu tốc từ static CDN bundle /web_catalog.json (chứa 100% đầy đủ ảnh sản phẩm, load trong 0.1s)
+  // 1. Đọc trực tiếp snapshot thời gian thực từ Firestore để mọi sản phẩm mới thêm/sửa được hiển thị ngay lập tức
+  try {
+    const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
+    const snapshotSnap = await getDoc(snapshotRef)
+    if (snapshotSnap.exists() && snapshotSnap.data().products?.length > 0) {
+      return snapshotSnap.data().products
+    }
+  } catch (err) {
+    console.warn('Lỗi đọc web_catalog_snapshot từ Firestore:', err)
+  }
+
+  // 2. Nếu snapshot chưa có, quét trực tiếp từ tất cả các bảng giá
+  try {
+    const fresh = await refreshWebCatalogSnapshot()
+    if (fresh && fresh.length > 0) {
+      return fresh
+    }
+  } catch (e) {
+    console.warn('Lỗi refresh snapshot từ Firestore:', e)
+  }
+
+  // 3. Fallback đọc static /web_catalog.json khi offline
   try {
     const res = await fetch('/web_catalog.json')
     if (res.ok) {
@@ -218,22 +239,10 @@ export const getWebCatalogProducts = async () => {
       }
     }
   } catch (e) {
-    console.warn('Lỗi đọc web_catalog.json, fallback Firestore:', e)
+    console.warn('Lỗi đọc web_catalog.json fallback:', e)
   }
 
-  // 2. Fallback đọc từ Firestore snapshot
-  try {
-    const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
-    const snapshotSnap = await getDoc(snapshotRef)
-    if (snapshotSnap.exists() && snapshotSnap.data().products?.length > 0) {
-      return snapshotSnap.data().products
-    }
-  } catch (err) {
-    console.warn('Lỗi đọc web_catalog_snapshot:', err)
-  }
-
-  // 3. Quét Firestore nếu chưa có cache
-  return await refreshWebCatalogSnapshot()
+  return []
 }
 
 export const refreshWebCatalogSnapshot = async () => {

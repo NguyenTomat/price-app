@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getPriceLists, getProducts, updateProduct, uploadProductImageFile, uploadWebCategoryImage, getProductDetail, getWebCategories, saveWebCategories, getWebHeroSlides, saveWebHeroSlides, subscribeWebOrders, updateWebOrderStatus, deleteWebOrder, ensureProductStorageUrls, getCloudStorageFiles, deleteCloudStorageFile, getWebAnalyticsSummary, subscribeWebAnalyticsLogs } from '../firebase/firebase'
+import { getPriceLists, getProducts, updateProduct, uploadProductImageFile, uploadWebCategoryImage, getProductDetail, getWebCategories, saveWebCategories, getWebHeroSlides, saveWebHeroSlides, subscribeWebOrders, updateWebOrderStatus, deleteWebOrder, ensureProductStorageUrls, getCloudStorageFiles, deleteCloudStorageFile, getWebAnalyticsSummary, subscribeWebAnalyticsLogs, refreshWebCatalogSnapshot } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import MobileTableWrap from '../components/MobileTableWrap'
@@ -1236,6 +1236,8 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
       setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...dataToUpdate } : p))
       setEditingProduct(null)
       toast('Đã cập nhật thông tin Web cho sản phẩm!', 'success')
+      // Tự động làm mới snapshot Web Catalog thời gian thực trong nền
+      refreshWebCatalogSnapshot().catch(console.warn)
     } catch (err) {
       console.error('Lỗi lưu sản phẩm web:', err)
       toast('Lỗi cập nhật: ' + (err?.message || 'Không rõ lỗi. Kiểm tra Console.'), 'error')
@@ -1275,6 +1277,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
       setCategoriesList(migrated)
       toast('Đã lưu danh mục lọc thành công!', 'success')
       setShowCatModal(false)
+      refreshWebCatalogSnapshot().catch(console.warn)
     } catch (err) {
       toast('Lỗi lưu danh mục: ' + err.message, 'error')
     } finally {
@@ -1300,11 +1303,25 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
     }
   }
 
+  const [isSyncingWeb, setIsSyncingWeb] = useState(false)
+  const handleManualSyncWeb = async () => {
+    setIsSyncingWeb(true)
+    try {
+      const res = await refreshWebCatalogSnapshot()
+      toast(`Đã đồng bộ thành công ${res.length} sản phẩm lên Web công cộng!`, 'success')
+    } catch (e) {
+      toast('Lỗi đồng bộ Web: ' + e.message, 'error')
+    } finally {
+      setIsSyncingWeb(false)
+    }
+  }
+
   const handleQuickToggleWeb = async (p, val) => {
     try {
       await updateProduct(selectedListId, p.id, { showOnWeb: val })
       setProducts(prev => prev.map(item => item.id === p.id ? { ...item, showOnWeb: val } : item))
       toast(val ? 'Đã hiển thị trên Web!' : 'Đã ẩn khỏi Web!', 'success')
+      refreshWebCatalogSnapshot().catch(console.warn)
     } catch (err) {
       toast('Lỗi cập nhật: ' + err.message, 'error')
     }
@@ -1315,6 +1332,16 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
       <div className="main-header" style={{ flexWrap: 'wrap', gap: 12 }}>
         <h2 style={{ flex: 1 }}>Cấu hình sản phẩm Web 🌐</h2>
         
+        {/* Nút đồng bộ nhanh snapshot Web */}
+        <button 
+          className="btn" 
+          disabled={isSyncingWeb}
+          onClick={handleManualSyncWeb}
+          style={{ background: '#10B981', color: '#fff', borderColor: '#059669', fontWeight: 'bold' }}
+        >
+          {isSyncingWeb ? '⏳ Đang đồng bộ...' : '🔄 Đồng bộ Web ngay'}
+        </button>
+
         {/* Nút mở nhanh trang Web */}
         <button 
           className="btn" 

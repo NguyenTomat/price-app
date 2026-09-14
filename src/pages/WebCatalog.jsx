@@ -1442,9 +1442,38 @@ export default function WebCatalog() {
       const hashParams = new URLSearchParams(hashQuery)
 
       const queryProductId = searchParams.get('product') || hashParams.get('product')
-      const queryCat = searchParams.get('cat') || searchParams.get('category') || hashParams.get('cat') || hashParams.get('category')
+      let queryCat = searchParams.get('cat') || searchParams.get('category') || hashParams.get('cat') || hashParams.get('category')
       const querySearch = searchParams.get('q') || searchParams.get('search') || hashParams.get('q') || hashParams.get('search')
       const queryBrand = searchParams.get('brand') || hashParams.get('brand')
+
+      // Check direct hash category e.g. #category/hoa-tien or #cat/bien-tan
+      if (!queryCat) {
+        if (hash.startsWith('#category/') || hash.startsWith('#cat/')) {
+          queryCat = hash.replace(/^#(category|cat)\//, '').split('?')[0]
+        }
+      }
+
+      // Map slug to human category names
+      if (queryCat) {
+        const slug = queryCat.toLowerCase().trim()
+        if (slug === 'hoa-tien' || slug === 'gieng-khoan' || slug === 'bom-hoa-tien') {
+          queryCat = 'BƠM CHÌM GIẾNG KHOAN'
+        } else if (slug === 'bien-tan' || slug === 'bom-bien-tan') {
+          queryCat = 'BƠM BIẾN TẦN'
+        } else if (slug === 'truc-dung' || slug === 'bom-truc-dung' || slug === 'cdlf') {
+          queryCat = 'BƠM TRỤC ĐỨNG'
+        } else if (slug === 'tang-ap' || slug === 'bom-tang-ap') {
+          queryCat = 'BƠM TĂNG ÁP'
+        } else if (slug === 'ly-tam' || slug === 'bom-ly-tam') {
+          queryCat = 'BƠM LY TÂM'
+        } else if (slug === 'nuoc-thai' || slug === 'bom-chim' || slug === 'chim') {
+          queryCat = 'BƠM CHÌM'
+        } else if (slug === 'cong-nghiep' || slug === 'bom-cong-nghiep') {
+          queryCat = 'BƠM CÔNG NGHIỆP'
+        } else if (slug === 'dan-bom') {
+          queryCat = 'DÀN BƠM'
+        }
+      }
 
       if (queryProductId) {
         setDetailProductId(queryProductId)
@@ -1459,11 +1488,12 @@ export default function WebCatalog() {
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } else {
         const h = hash.split('?')[0]
-        if (h === '#web/catalog' || h === '#products' || h === '#web/products' || queryCat || querySearch || queryBrand) {
+        if (h === '#web/catalog' || h === '#products' || h === '#web/products' || h.startsWith('#category/') || h.startsWith('#cat/') || queryCat || querySearch || queryBrand) {
           setViewMode('catalog')
           setActiveTab('products')
           if (queryCat) {
             setSelectedCategory(queryCat)
+            setSearchTerm('')
           }
           if (querySearch) {
             setSearchTerm(querySearch)
@@ -1471,6 +1501,7 @@ export default function WebCatalog() {
           if (queryBrand) {
             setActiveBrand(queryBrand.toUpperCase())
           }
+          window.scrollTo({ top: 0, behavior: 'smooth' })
         } else if (h === '#web/applications' || h === '#applications') {
           setViewMode('applications')
           setActiveTab('applications')

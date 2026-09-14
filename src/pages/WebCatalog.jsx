@@ -574,7 +574,7 @@ export default function WebCatalog() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeBrand, setActiveBrand] = useState('ALL')
-  const [sortType, setSortType] = useState('bestseller')
+  const [sortType, setSortType] = useState('price-asc')
   const [homeFeaturedTab, setHomeFeaturedTab] = useState('ALL')
 
   // Routing states: 'catalog' | 'product-detail'

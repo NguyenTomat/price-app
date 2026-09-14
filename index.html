@@ -10,7 +10,7 @@
 
       gtag('config', 'AW-18042418669');
 
-      // Hàm báo cáo chuyển đổi Google Ads
+      // Hàm báo cáo chuyển đổi Google Ads (Người liên hệ / Gọi điện / Zalo)
       window.gtag_report_conversion = function(url) {
         var callback = function () {
           if (typeof(url) != 'undefined' && url) {
@@ -19,10 +19,15 @@
         };
         if (typeof gtag === 'function') {
           gtag('event', 'conversion', {
-            'send_to': 'AW-18042418669/qcZbCK3d5fMcEO3rpZtD',
+            'send_to': 'AW-18042418669/xVQMCIEg4ZccEO3rpZtD',
             'value': 1.0,
             'currency': 'VND',
             'event_callback': callback
+          });
+          gtag('event', 'conversion', {
+            'send_to': 'AW-18042418669/qcZbCK3d5fMcEO3rpZtD',
+            'value': 1.0,
+            'currency': 'VND'
           });
         }
         return false;
@@ -34,17 +39,22 @@
         if (target && target.href) {
           if (target.href.startsWith('tel:')) {
             window.gtag_report_conversion(target.href);
-            gtag('event', 'contact_call', {
-              event_category: 'Contact',
-              event_label: target.href,
-              value: 1
-            });
+            if (typeof gtag === 'function') {
+              gtag('event', 'contact_call', {
+                event_category: 'Contact',
+                event_label: target.href,
+                value: 1
+              });
+            }
           } else if (target.href.indexOf('zalo.me') !== -1) {
-            gtag('event', 'contact_zalo', {
-              event_category: 'Contact',
-              event_label: target.href,
-              value: 1
-            });
+            window.gtag_report_conversion(target.href);
+            if (typeof gtag === 'function') {
+              gtag('event', 'contact_zalo', {
+                event_category: 'Contact',
+                event_label: target.href,
+                value: 1
+              });
+            }
           }
         }
       });

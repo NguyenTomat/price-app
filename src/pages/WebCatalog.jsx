@@ -1544,8 +1544,8 @@ export default function WebCatalog() {
 
   // Load products with LocalStorage cache (Stale-While-Revalidate)
   useEffect(() => {
-    const CACHE_KEY = 'tt_web_products_cache'
-    const CACHE_TIME_KEY = 'tt_web_products_cache_time'
+    const CACHE_KEY = 'tt_web_products_cache_v2'
+    const CACHE_TIME_KEY = 'tt_web_products_cache_time_v2'
 
     const fetchCategories = async () => {
       try {

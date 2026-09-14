@@ -208,41 +208,54 @@ export const sanitizeWebProduct = (p, listId, listName) => {
 
 // Lấy danh sách sản phẩm đăng lên Web Catalog công cộng siêu tốc & cập nhật thời gian thực
 export const getWebCatalogProducts = async () => {
-  // 1. Đọc trực tiếp snapshot thời gian thực từ Firestore để mọi sản phẩm mới thêm/sửa được hiển thị ngay lập tức
-  try {
-    const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
-    const snapshotSnap = await getDoc(snapshotRef)
-    if (snapshotSnap.exists() && snapshotSnap.data().products?.length > 0) {
-      return snapshotSnap.data().products
-    }
-  } catch (err) {
-    console.warn('Lỗi đọc web_catalog_snapshot từ Firestore:', err)
-  }
+  let baseProducts = []
 
-  // 2. Nếu snapshot chưa có, quét trực tiếp từ tất cả các bảng giá
-  try {
-    const fresh = await refreshWebCatalogSnapshot()
-    if (fresh && fresh.length > 0) {
-      return fresh
-    }
-  } catch (e) {
-    console.warn('Lỗi refresh snapshot từ Firestore:', e)
-  }
-
-  // 3. Fallback đọc static /web_catalog.json khi offline
+  // 1. Tải dữ liệu hình ảnh phong phú từ /web_catalog.json
   try {
     const res = await fetch('/web_catalog.json')
     if (res.ok) {
       const data = await res.json()
       if (Array.isArray(data) && data.length > 0) {
-        return data
+        baseProducts = data
       }
     }
   } catch (e) {
-    console.warn('Lỗi đọc web_catalog.json fallback:', e)
+    console.warn('Lỗi đọc web_catalog.json:', e)
   }
 
-  return []
+  // 2. Tải snapshot cập nhật mới nhất từ Firestore và ghép nối hình ảnh
+  try {
+    const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
+    const snapshotSnap = await getDoc(snapshotRef)
+    if (snapshotSnap.exists() && Array.isArray(snapshotSnap.data().products)) {
+      const liveProducts = snapshotSnap.data().products
+      if (liveProducts.length > 0) {
+        const baseMap = new Map(baseProducts.map(p => [p.id, p]))
+        const merged = liveProducts.map(lp => {
+          const bp = baseMap.get(lp.id)
+          // Nếu sản phẩm trên live chưa có ảnh hoặc ảnh bị tinh giản, giữ nguyên ảnh chuẩn từ baseCatalog
+          const images = (lp.webImages && lp.webImages.length > 0)
+            ? lp.webImages
+            : (bp && bp.webImages && bp.webImages.length > 0)
+              ? bp.webImages
+              : []
+          return {
+            ...lp,
+            webImages: images
+          }
+        })
+        return merged
+      }
+    }
+  } catch (err) {
+    console.warn('Lỗi đọc web_catalog_snapshot từ Firestore:', err)
+  }
+
+  if (baseProducts.length > 0) {
+    return baseProducts
+  }
+
+  return await refreshWebCatalogSnapshot()
 }
 
 export const refreshWebCatalogSnapshot = async () => {

@@ -258,11 +258,30 @@ export const refreshWebCatalogSnapshot = async () => {
     const allWebProducts = chunks.flat()
     if (allWebProducts.length > 0) {
       try {
-        // Loại bỏ base64 khổng lồ trong snapshot lưu trên Firestore để tránh vượt trần 1MB của Firestore
-        const lightweightProducts = allWebProducts.map(p => ({
-          ...p,
-          webImages: p.webImages?.map(img => (typeof img === 'string' && img.length > 50000 && img.startsWith('data:')) ? '' : img).filter(Boolean)
-        }))
+        // Loại bỏ base64 khổng lồ trong snapshot lưu trên Firestore để luôn siêu nhẹ (~150KB) dưới hạn mức 1MB của Firestore
+        const lightweightProducts = allWebProducts.map(p => {
+          const rawImages = (p.webImages && p.webImages.length > 0) ? p.webImages : (p.images || []);
+          const cleanImages = rawImages
+            .filter(img => typeof img === 'string')
+            .map(img => img.startsWith('data:') ? (img.length < 5000 ? img : '') : img)
+            .filter(Boolean);
+
+          return {
+            id: p.id,
+            listId: p.listId,
+            listName: p.listName,
+            name: p.name || '',
+            code: p.code || '',
+            group: p.group || '',
+            category: p.category || p.group || '',
+            webBrand: p.webBrand || 'UPTI PUMP',
+            price: p.price || 0,
+            voltage: p.webSpecs?.voltage || (p.spec2?.includes('380V') ? '380V' : '220V'),
+            webSpecs: p.webSpecs || { power: p.spec1 || '', specs: p.spec2 || '', voltage: '220V' },
+            webImages: cleanImages.slice(0, 2),
+            showOnWeb: true
+          };
+        })
         const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
         await setDoc(snapshotRef, { products: lightweightProducts, updatedAt: Date.now() })
       } catch (saveErr) {

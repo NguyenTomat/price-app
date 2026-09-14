@@ -1465,7 +1465,7 @@ export default function WebCatalog() {
           queryCat = 'BƠM TĂNG ÁP'
         } else if (slug === 'ly-tam' || slug === 'bom-ly-tam' || slug === 'truc-ngang') {
           queryCat = 'BƠM LY TÂM'
-        } else if (slug === 'nuoc-thai' || slug === 'bom-nuoc-thai' || slug === 'hut-bun' || slug === 'thai' || slug === 'chim') {
+        } else if (slug === 'nuoc-thai' || slug === 'bom-nuoc-thai' || slug === 'hut-bun' || slug === 'thai' || slug === 'chim' || slug === 'ho-mong' || slug === 'bom-ho-mong' || slug === 'bom-bun' || slug === 'ktz' || slug === 'krs' || slug === 'bom-chim') {
           queryCat = 'BƠM CHÌM NƯỚC THẢI'
         } else if (slug === 'cong-nghiep' || slug === 'bom-cong-nghiep') {
           queryCat = 'BƠM CÔNG NGHIỆP'

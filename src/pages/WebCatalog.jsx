@@ -1774,48 +1774,44 @@ export default function WebCatalog() {
           const codeNorm = normalizeSearchStr(p.code || '');
           const catNorm = normalizeSearchStr(p.category || '');
 
-          // 1. Trục đứng (CDLF)
-          if (normSelected.includes('truc dung') || normSelected.includes('cdlf')) {
-            return (groupNorm.includes('truc dung') || groupNorm.includes('cdlf') || nameNorm.includes('cdlf') || nameNorm.includes('truc dung')) &&
+          // 1. EXACT GROUP / CATEGORY MATCH (Directly respect App Management assignment)
+          if (groupNorm === normSelected || catNorm === normSelected || (p.group || '').trim().toLowerCase() === selectedCategory.trim().toLowerCase()) {
+            return true;
+          }
+
+          // 2. UMBRELLA CATEGORY MATCH (for Google Ads Sitelinks / General Navigation)
+          if (normSelected === 'bom truc dung' || normSelected === 'truc dung' || normSelected === 'cdlf') {
+            return (groupNorm.includes('truc dung') || groupNorm.includes('cdlf') || nameNorm.includes('cdlf')) &&
                    !groupNorm.includes('gieng khoan') && !groupNorm.includes('tha chim') && !codeNorm.startsWith('4sl');
           }
-          // 2. Biến tần
-          if (normSelected.includes('bien tan') || normSelected.includes('inverter')) {
+          if (normSelected === 'bom bien tan' || normSelected === 'bien tan' || normSelected === 'inverter') {
             return groupNorm.includes('bien tan') || nameNorm.includes('bien tan') || codeNorm.includes('inverter');
           }
-          // 3. Tăng áp (Điện tử, chân không, booster)
-          if (normSelected.includes('tang ap') || normSelected.includes('booster')) {
+          if (normSelected === 'bom tang ap' || normSelected === 'tang ap' || normSelected === 'booster') {
             return (groupNorm.includes('tang ap') || groupNorm.includes('chan khong') || nameNorm.includes('tang ap')) &&
                    !groupNorm.includes('bien tan') && !nameNorm.includes('bien tan');
           }
-          // 4. Nước thải & Hút bùn (KRS, KTZ, WQ, cánh cắt)
-          if (normSelected.includes('nuoc thai') || normSelected.includes('hut bun') || normSelected.includes('ho mong') || normSelected.includes('thai')) {
+          if (normSelected === 'bom chim nuoc thai' || normSelected === 'bom nuoc thai' || normSelected === 'nuoc thai' || normSelected === 'hut bun') {
             return (groupNorm.includes('nuoc thai') || groupNorm.includes('ho mong') || groupNorm.includes('krs') || groupNorm.includes('ktz') || groupNorm.includes('bun') || groupNorm.includes('canh cat')) &&
                    !groupNorm.includes('gieng khoan') && !codeNorm.startsWith('4sl');
           }
-          // 5. Hỏa tiễn & Giếng khoan
-          if (normSelected.includes('hoa tien') || normSelected.includes('gieng khoan')) {
+          if (normSelected === 'bom hoa tien' || normSelected === 'hoa tien' || normSelected === 'gieng khoan' || normSelected === 'bom gieng khoan') {
             return (groupNorm.includes('gieng khoan') || groupNorm.includes('tha chim') || groupNorm.includes('gieng khoi') || groupNorm.includes('hoa tien') || codeNorm.startsWith('4sl') || codeNorm.startsWith('3sl') || codeNorm.startsWith('6sl')) &&
                    !groupNorm.includes('nuoc thai') && !groupNorm.includes('truc dung') && !groupNorm.includes('cdlf');
           }
-          // 6. Ly tâm trục ngang
-          if (normSelected.includes('ly tam') || normSelected.includes('truc ngang')) {
+          if (normSelected === 'bom ly tam' || normSelected === 'ly tam' || normSelected === 'truc ngang') {
             return (groupNorm.includes('ly tam') || groupNorm.includes('dau jet') || groupNorm.includes('bom lon') || groupNorm.includes('bom dia')) &&
                    !groupNorm.includes('truc dung') && !groupNorm.includes('cdlf');
           }
-          // 7. Công nghiệp
-          if (normSelected.includes('cong nghiep')) {
+          if (normSelected === 'bom cong nghiep' || normSelected === 'cong nghiep') {
             return groupNorm.includes('cong nghiep') || groupNorm.includes('mat bich');
           }
-          // 8. Dàn bơm
-          if (normSelected.includes('dan bom') || normSelected.includes('cum bom')) {
+          if (normSelected === 'dan bom' || normSelected === 'cum bom') {
             return groupNorm.includes('dan bom') || groupNorm.includes('cum bom');
           }
 
-          // Fallback exact match on p.group or p.category
-          return groupNorm === normSelected ||
-                 catNorm === normSelected ||
-                 (p.group || '').replace(/\s+/g, ' ').trim().toLowerCase() === selectedCategory.replace(/\s+/g, ' ').trim().toLowerCase();
+          // Fallback substring in group or category
+          return groupNorm.includes(normSelected) || catNorm.includes(normSelected);
         });
       }
 

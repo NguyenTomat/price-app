@@ -1432,9 +1432,19 @@ export default function WebCatalog() {
   // Phân luồng router dựa trên Hash URL (#web hoặc #web/product/123 hoặc qua query parameter)
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash
-      const params = new URLSearchParams(window.location.search)
-      const queryProductId = params.get('product')
+      const hash = window.location.hash || ''
+      const searchParams = new URLSearchParams(window.location.search)
+      
+      let hashQuery = ''
+      if (hash.includes('?')) {
+        hashQuery = hash.slice(hash.indexOf('?') + 1)
+      }
+      const hashParams = new URLSearchParams(hashQuery)
+
+      const queryProductId = searchParams.get('product') || hashParams.get('product')
+      const queryCat = searchParams.get('cat') || searchParams.get('category') || hashParams.get('cat') || hashParams.get('category')
+      const querySearch = searchParams.get('q') || searchParams.get('search') || hashParams.get('q') || hashParams.get('search')
+      const queryBrand = searchParams.get('brand') || hashParams.get('brand')
 
       if (queryProductId) {
         setDetailProductId(queryProductId)
@@ -1442,16 +1452,25 @@ export default function WebCatalog() {
         setActiveImageIndex(0)
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } else if (hash.startsWith('#web/product/')) {
-        const id = hash.replace('#web/product/', '')
+        const id = hash.replace('#web/product/', '').split('?')[0]
         setDetailProductId(id)
         setViewMode('product-detail')
         setActiveImageIndex(0)
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } else {
-        const h = window.location.hash
-        if (h === '#web/catalog' || h === '#products' || h === '#web/products') {
+        const h = hash.split('?')[0]
+        if (h === '#web/catalog' || h === '#products' || h === '#web/products' || queryCat || querySearch || queryBrand) {
           setViewMode('catalog')
           setActiveTab('products')
+          if (queryCat) {
+            setSelectedCategory(queryCat)
+          }
+          if (querySearch) {
+            setSearchTerm(querySearch)
+          }
+          if (queryBrand) {
+            setActiveBrand(queryBrand.toUpperCase())
+          }
         } else if (h === '#web/applications' || h === '#applications') {
           setViewMode('applications')
           setActiveTab('applications')

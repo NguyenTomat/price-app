@@ -1456,21 +1456,21 @@ export default function WebCatalog() {
       // Map slug to human category names
       if (queryCat) {
         const slug = queryCat.toLowerCase().trim()
-        if (slug === 'hoa-tien' || slug === 'gieng-khoan' || slug === 'bom-hoa-tien') {
-          queryCat = 'BƠM CHÌM GIẾNG KHOAN'
-        } else if (slug === 'bien-tan' || slug === 'bom-bien-tan') {
+        if (slug === 'hoa-tien' || slug === 'gieng-khoan' || slug === 'bom-hoa-tien' || slug === 'bom-gieng-khoan') {
+          queryCat = 'BƠM HỎA TIỄN'
+        } else if (slug === 'bien-tan' || slug === 'bom-bien-tan' || slug === 'inverter') {
           queryCat = 'BƠM BIẾN TẦN'
         } else if (slug === 'truc-dung' || slug === 'bom-truc-dung' || slug === 'cdlf') {
           queryCat = 'BƠM TRỤC ĐỨNG'
-        } else if (slug === 'tang-ap' || slug === 'bom-tang-ap') {
+        } else if (slug === 'tang-ap' || slug === 'bom-tang-ap' || slug === 'booster') {
           queryCat = 'BƠM TĂNG ÁP'
-        } else if (slug === 'ly-tam' || slug === 'bom-ly-tam') {
+        } else if (slug === 'ly-tam' || slug === 'bom-ly-tam' || slug === 'truc-ngang') {
           queryCat = 'BƠM LY TÂM'
-        } else if (slug === 'nuoc-thai' || slug === 'bom-chim' || slug === 'chim') {
-          queryCat = 'BƠM CHÌM'
+        } else if (slug === 'nuoc-thai' || slug === 'bom-nuoc-thai' || slug === 'hut-bun' || slug === 'thai' || slug === 'chim') {
+          queryCat = 'BƠM CHÌM NƯỚC THẢI'
         } else if (slug === 'cong-nghiep' || slug === 'bom-cong-nghiep') {
           queryCat = 'BƠM CÔNG NGHIỆP'
-        } else if (slug === 'dan-bom') {
+        } else if (slug === 'dan-bom' || slug === 'cum-bom') {
           queryCat = 'DÀN BƠM'
         }
       }
@@ -1706,15 +1706,52 @@ export default function WebCatalog() {
     if (selectedCategory && selectedCategory !== 'TẤT CẢ') {
       const normSelected = normalizeSearchStr(selectedCategory);
       result = result.filter(p => {
-        const normGroup = normalizeSearchStr(p.group);
-        const normCat = normalizeSearchStr(p.category);
-        const normListName = normalizeSearchStr(p.listName);
+        const normGroup = normalizeSearchStr(p.group || '');
+        const normName = normalizeSearchStr(p.name || '');
+        const normCode = normalizeSearchStr(p.code || '');
+        const normDesc = normalizeSearchStr(p.webDesc || p.desc || '');
+        const normCat = normalizeSearchStr(p.category || '');
+        const normListName = normalizeSearchStr(p.listName || '');
+        const fullTarget = `${normGroup} ${normCat} ${normName} ${normCode} ${normDesc} ${normListName}`;
+
+        // 1. Biến tần
+        if (normSelected.includes('bien tan') || normSelected.includes('inverter')) {
+          return fullTarget.includes('bien tan') || fullTarget.includes('inverter') || fullTarget.includes('thong minh');
+        }
+        // 2. Trục đứng (CDLF / đa tầng)
+        if (normSelected.includes('truc dung') || normSelected.includes('cdlf')) {
+          return fullTarget.includes('truc dung') || fullTarget.includes('cdlf') || fullTarget.includes('da tang');
+        }
+        // 3. Tăng áp
+        if (normSelected.includes('tang ap') || normSelected.includes('booster')) {
+          return (fullTarget.includes('tang ap') || fullTarget.includes('booster')) && !fullTarget.includes('gieng khoan');
+        }
+        // 4. Nước thải & Hút bùn (Chặn giếng khoan / hỏa tiễn)
+        if (normSelected.includes('nuoc thai') || normSelected.includes('hut bun') || normSelected.includes('bun') || normSelected.includes('thai')) {
+          return (fullTarget.includes('nuoc thai') || fullTarget.includes('hut bun') || fullTarget.includes('thai') || fullTarget.includes('ho ga') || fullTarget.includes('ktz') || fullTarget.includes('wq')) && !fullTarget.includes('gieng khoan') && !fullTarget.includes('hoa tien');
+        }
+        // 5. Hỏa tiễn & Giếng khoan (Chặn nước thải / bùn)
+        if (normSelected.includes('hoa tien') || normSelected.includes('gieng khoan')) {
+          return (fullTarget.includes('hoa tien') || fullTarget.includes('gieng khoan') || fullTarget.includes('slm') || fullTarget.includes('tha gieng')) && !fullTarget.includes('nuoc thai') && !fullTarget.includes('hut bun');
+        }
+        // 6. Ly tâm trục ngang
+        if (normSelected.includes('ly tam') || normSelected.includes('truc ngang')) {
+          return (fullTarget.includes('ly tam') || fullTarget.includes('truc ngang') || fullTarget.includes('luu luong')) && !fullTarget.includes('truc dung') && !fullTarget.includes('cdlf');
+        }
+        // 7. Công nghiệp
+        if (normSelected.includes('cong nghiep')) {
+          return fullTarget.includes('cong nghiep') || fullTarget.includes('truc dung') || fullTarget.includes('ly tam');
+        }
+        // 8. Dàn bơm
+        if (normSelected.includes('dan bom') || normSelected.includes('cum bom')) {
+          return fullTarget.includes('dan bom') || fullTarget.includes('cum bom') || fullTarget.includes('booster');
+        }
+
+        // Fallback exact/substring match
         return normGroup === normSelected ||
                normCat === normSelected ||
-               (normGroup && (normGroup.includes(normSelected) || normSelected.includes(normGroup))) ||
-               (normCat && (normCat.includes(normSelected) || normSelected.includes(normCat))) ||
-               (p.group || '').replace(/\s+/g, ' ').trim().toLowerCase() === selectedCategory.replace(/\s+/g, ' ').trim().toLowerCase() ||
-               (p.category || '').replace(/\s+/g, ' ').trim().toLowerCase() === selectedCategory.replace(/\s+/g, ' ').trim().toLowerCase();
+               (normGroup && normGroup.includes(normSelected)) ||
+               (p.group || '').replace(/\s+/g, ' ').trim().toLowerCase() === selectedCategory.replace(/\s+/g, ' ').trim().toLowerCase();
       })
     }
 

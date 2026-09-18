@@ -76,11 +76,15 @@ function OrderDetailModal({ order, onClose, onEdit }) {
 
   // Xác định xem có dữ liệu listPrice không
   const hasListPrice = listPriceTotal != null && listPriceTotal > 0
+  const chenhDeduction = (order.includeVat || order.vatPct > 0) ? (order.chenhAppliedTotal ?? 0) : 0
+  const computedListPriceProfit = hasListPrice
+    ? (itemsTotal - listPriceTotal - companyShipping - chenhDeduction)
+    : null
 
-  // Lợi nhuận hiển thị chính: ưu tiên listPriceProfit (giá bán − bảng giá − VC mình trả)
-  const mainProfit      = listPriceProfit ?? recommendedProfit
+  // Lợi nhuận hiển thị chính: ưu tiên listPriceProfit (giá bán − bảng giá − VC mình trả − chênh)
+  const mainProfit      = computedListPriceProfit ?? listPriceProfit ?? recommendedProfit
   const mainProfitLabel = hasListPrice
-    ? `LN ước tính (bán − bảng${companyShipping > 0 ? ' − VC' : ''})`
+    ? `LN ước tính (bán − bảng${companyShipping > 0 ? ' − VC' : ''}${chenhDeduction > 0 ? ' − chênh' : ''})`
     : 'Gợi ý LN (giá vốn chênh)'
 
   const [editMode, setEditMode] = useState(false)
@@ -316,7 +320,7 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
     const vatAmount = order.includeVat ? Math.round(sellTotal * 0.08) : 0
     const grandTotal = sellTotal + vatAmount + customerShip
     const recommendedProfit = sellTotal - companyShip - chenhAppliedTotal - costTotal
-    const listPriceProfit = listPriceTotal > 0 ? sellTotal - listPriceTotal - companyShip : null
+    const listPriceProfit = listPriceTotal > 0 ? (sellTotal - listPriceTotal - companyShip - (order.includeVat ? chenhAppliedTotal : 0)) : null
 
     return {
       sellTotal,
@@ -604,7 +608,7 @@ function EditOrderModal({ order, costPrices, allProducts, onClose, onSaved, toas
               ship > 0 ? [shippingPaidBy === 'company' ? 'VC (mình trả, trừ LN)' : 'VC (khách trả)', ship.toLocaleString('vi-VN') + ' đ'] : null,
               ['Khách trả', summary.grandTotal.toLocaleString('vi-VN') + ' đ'],
               summary.listPriceProfit != null
-                ? ['LN ước tính (bán − bảng' + (summary.companyShip > 0 ? ' − VC' : '') + ')',
+                ? ['LN ước tính (bán − bảng' + (summary.companyShip > 0 ? ' − VC' : '') + (order.includeVat && summary.chenhAppliedTotal > 0 ? ' − chênh' : '') + ')',
                     (summary.listPriceProfit >= 0 ? '+' : '') + summary.listPriceProfit.toLocaleString('vi-VN') + ' đ']
                 : null,
             ].filter(Boolean).map(([label, val]) => (
@@ -1001,7 +1005,7 @@ function CreateOrderPanel({ onCreated, onCancel }) {
 
     // 4. Lợi nhuận
     const recommendedProfit   = sellTotal - companyShipping - chenhAppliedTotal - costTotal
-    const listPriceProfit     = listPriceTotal > 0 ? (sellTotal - listPriceTotal - companyShipping) : null
+    const listPriceProfit     = listPriceTotal > 0 ? (sellTotal - listPriceTotal - companyShipping - (includeVat ? chenhAppliedTotal : 0)) : null
 
     // 5. Gắn calc chi tiết từng dòng theo % bậc chung của cả đơn
     const itemCalcs = rawItems.map(x => ({
@@ -1271,13 +1275,13 @@ function CreateOrderPanel({ onCreated, onCancel }) {
                 </div>
               </div>
               <div className="field" style={{ marginBottom: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                {/* Lợi nhuận chính = giá bán − giá bảng giá − VC mình trả */}
+                {/* Lợi nhuận chính = giá bán − giá bảng giá − VC mình trả − chênh */}
                 {orderCalc.listPriceProfit != null ? (
                   <>
                     <label className="field-label">
                       Lợi nhuận ước tính
                       <span className="text-muted" style={{ fontSize: 10, marginLeft: 4 }}>
-                        (bán − bảng giá{orderCalc.companyShipping > 0 ? ' − VC' : ''})
+                        (bán − bảng giá{orderCalc.companyShipping > 0 ? ' − VC' : ''}{includeVat && orderCalc.chenhAppliedTotal > 0 ? ' − chênh' : ''})
                       </span>
                     </label>
                     <div style={{ padding: '8px 10px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', fontSize: 14, fontWeight: 700, fontFamily: 'var(--mono)', color: orderCalc.listPriceProfit >= 0 ? 'var(--success)' : 'var(--danger)' }}>

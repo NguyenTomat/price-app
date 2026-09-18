@@ -126,7 +126,14 @@ export default function DashboardPage({ setPage }) {
 
       const found = list.find(item => item.year === y && item.month === m)
       if (found) {
-        found.orderProfit += (o.listPriceProfit ?? o.profit ?? 0)
+        const lp = o.listPriceTotal ?? 0
+        if (lp > 0) {
+          const ship = o.companyShipping ?? (o.shippingPaidBy === 'company' ? (o.shipping ?? 0) : 0)
+          const chenh = (o.includeVat || o.vatPct > 0) ? (o.chenhAppliedTotal ?? 0) : 0
+          found.orderProfit += ((o.total ?? 0) - lp - ship - chenh)
+        } else {
+          found.orderProfit += (o.listPriceProfit ?? o.profit ?? 0)
+        }
       }
     })
 

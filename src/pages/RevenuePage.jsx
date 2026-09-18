@@ -41,11 +41,21 @@ export default function RevenuePage() {
     })
   }, [delivered, filterMonth, filterYear])
 
+  // Hàm tính lãi bảng giá chuẩn (đã trừ VC mình trả và trừ chênh áp dụng nếu có VAT)
+  const getOrderListProfit = (o) => {
+    if (o.listPriceTotal > 0) {
+      const ship = o.companyShipping ?? (o.shippingPaidBy === 'company' ? (o.shipping ?? 0) : 0)
+      const chenh = (o.includeVat || o.vatPct > 0) ? (o.chenhAppliedTotal ?? 0) : 0
+      return (o.total ?? 0) - o.listPriceTotal - ship - chenh
+    }
+    return o.listPriceProfit ?? null
+  }
+
   // Tổng hợp tháng
   const stats = useMemo(() => {
     const revenue        = filtered.reduce((s, o) => s + (o.grandTotal ?? o.total ?? 0), 0)
     const listPriceTotal = filtered.reduce((s, o) => s + (o.listPriceTotal ?? 0), 0)
-    const listProfit     = filtered.reduce((s, o) => s + (o.listPriceProfit ?? 0), 0)
+    const listProfit     = filtered.reduce((s, o) => s + (getOrderListProfit(o) ?? 0), 0)
     const recProfit      = filtered.reduce((s, o) => s + (o.recommendedProfit ?? 0), 0)
     const hasListPrice   = filtered.some(o => o.listPriceTotal > 0)
     return { revenue, listPriceTotal, listProfit, recProfit, hasListPrice, count: filtered.length }
@@ -134,7 +144,7 @@ export default function RevenuePage() {
                 <tbody>
                   {filtered.map(o => {
                     const lp       = o.listPriceTotal
-                    const lpProfit = o.listPriceProfit
+                    const lpProfit = getOrderListProfit(o)
                     const recP     = o.recommendedProfit
                     return (
                       <tr key={o.id} style={{ cursor: 'pointer' }} onClick={() => setDetailOrder(o)}>
@@ -241,30 +251,40 @@ export default function RevenuePage() {
                 </table>
               </MobileTableWrap>
 
-              <div className="calc-result">
-                {[
-                  ['Tiền hàng', fmt(detailOrder.total)],
-                  detailOrder.vatAmount > 0 ? [`VAT ${detailOrder.vatPct}%`, fmt(detailOrder.vatAmount)] : null,
-                  detailOrder.shipping > 0 ? ['Phí vận chuyển', fmt(detailOrder.shipping)] : null,
-                  ['Khách trả', fmt(detailOrder.grandTotal ?? detailOrder.total)],
-                  detailOrder.listPriceTotal > 0 ? ['Tổng giá bảng', fmt(detailOrder.listPriceTotal)] : null,
-                  detailOrder.listPriceProfit != null
-                    ? ['Lãi (bảng giá)', (detailOrder.listPriceProfit >= 0 ? '+' : '') + fmt(detailOrder.listPriceProfit)]
-                    : null,
-                  detailOrder.recommendedProfit != null
-                    ? ['LN (giá vốn chênh)', (detailOrder.recommendedProfit >= 0 ? '+' : '') + fmt(detailOrder.recommendedProfit)]
-                    : null,
-                ].filter(Boolean).map(([label, val]) => (
-                  <div key={label} className="cr-row">
-                    <span className="cr-label">{label}</span>
-                    <span style={{
-                      fontWeight: label.startsWith('Lãi') || label.startsWith('LN') || label === 'Khách trả' ? 700 : 500,
-                      color: label === 'Khách trả' ? 'var(--accent)'
-                           : label.startsWith('Lãi') || label.startsWith('LN') ? 'var(--success)' : ''
-                    }}>{val}</span>
+              {(() => {
+                const chenhDeduction = (detailOrder.includeVat || detailOrder.vatPct > 0) ? (detailOrder.chenhAppliedTotal ?? 0) : 0
+                const ship = detailOrder.companyShipping ?? (detailOrder.shippingPaidBy === 'company' ? (detailOrder.shipping ?? 0) : 0)
+                const computedLpProfit = detailOrder.listPriceTotal > 0
+                  ? ((detailOrder.total ?? 0) - detailOrder.listPriceTotal - ship - chenhDeduction)
+                  : detailOrder.listPriceProfit
+
+                return (
+                  <div className="calc-result">
+                    {[
+                      ['Tiền hàng', fmt(detailOrder.total)],
+                      detailOrder.vatAmount > 0 ? [`VAT ${detailOrder.vatPct}%`, fmt(detailOrder.vatAmount)] : null,
+                      detailOrder.shipping > 0 ? ['Phí vận chuyển', fmt(detailOrder.shipping)] : null,
+                      ['Khách trả', fmt(detailOrder.grandTotal ?? detailOrder.total)],
+                      detailOrder.listPriceTotal > 0 ? ['Tổng giá bảng', fmt(detailOrder.listPriceTotal)] : null,
+                      computedLpProfit != null
+                        ? [`Lãi ước tính (bán − bảng${ship > 0 ? ' − VC' : ''}${chenhDeduction > 0 ? ' − chênh' : ''})`, (computedLpProfit >= 0 ? '+' : '') + fmt(computedLpProfit)]
+                        : null,
+                      detailOrder.recommendedProfit != null
+                        ? ['LN (giá vốn chênh)', (detailOrder.recommendedProfit >= 0 ? '+' : '') + fmt(detailOrder.recommendedProfit)]
+                        : null,
+                    ].filter(Boolean).map(([label, val]) => (
+                      <div key={label} className="cr-row">
+                        <span className="cr-label">{label}</span>
+                        <span style={{
+                          fontWeight: label.startsWith('Lãi') || label.startsWith('LN') || label === 'Khách trả' ? 700 : 500,
+                          color: label === 'Khách trả' ? 'var(--accent)'
+                               : label.startsWith('Lãi') || label.startsWith('LN') ? 'var(--success)' : ''
+                        }}>{val}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )
+              })()}
               {detailOrder.note && (
                 <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text2)' }}>📝 {detailOrder.note}</div>
               )}

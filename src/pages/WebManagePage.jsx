@@ -3771,107 +3771,133 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: 650, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="card" style={{ width: '100%', maxWidth: 780, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>⚙️ Quản lý các dòng máy bơm trên Web</span>
+              <span>⚙️ Quản lý các dòng sản phẩm trên Web</span>
               <button 
                 className="btn primary" 
-                onClick={() => setCategoriesList(prev => [...prev, { name: '', image: '', desc: '', featured: false }])}
+                onClick={() => setCategoriesList(prev => [...prev, { name: '', image: '', desc: '', featured: false, type: 'pump' }])}
                 style={{ fontSize: 11, padding: '6px 12px' }}
               >
-                ➕ Thêm dòng bơm mới
+                ➕ Thêm danh mục mới
               </button>
             </h3>
             
             <p style={{ fontSize: 12, color: 'var(--text3)', margin: 0 }}>
-              Cấu hình các dòng máy bơm hiển thị ngoài trang chủ Web công cộng. Bạn có thể thay đổi tên, upload ảnh và chọn các mục "Nổi bật" ngoài trang chủ.
+              Cấu hình các dòng máy bơm / phụ kiện hiển thị ngoài trang chủ Web. Bạn có thể đặt tên danh mục, tải ảnh, chọn loại (Máy bơm / Phụ kiện) và chọn mục "Nổi bật".
             </p>
 
-            <div style={{ maxHeight: 350, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, paddingRight: 6 }}>
+            <div style={{ maxHeight: 420, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, paddingRight: 6 }}>
               {categoriesList.map((cat, index) => (
                 <div key={index} style={{
-                  display: 'flex', flexDirection: 'column', gap: 10,
-                  background: '#fff', padding: '12px 14px', borderRadius: 12,
-                  border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(15,23,42,0.02)'
+                  display: 'flex', gap: 12,
+                  background: '#f8fafc', padding: '12px 14px', borderRadius: 12,
+                  border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(15,23,42,0.03)',
+                  alignItems: 'center'
                 }}>
-                  {/* Top row: Image input + Name input + Featured + Delete */}
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    {/* Category Image upload box */}
-                    <label style={{ display: 'block', width: 50, height: 50, borderRadius: 8, overflow: 'hidden', background: '#f1f5f9', cursor: 'pointer', border: '1.5px dashed #cbd5e1', position: 'relative', flexShrink: 0 }}>
-                      {cat.image ? (
-                        <img src={cat.image} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 9, fontWeight: 700, color: '#94a3b8' }}>📷 Ảnh</div>
-                      )}
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            await handleCategoryClassImageUpload(index, file);
-                          }
-                        }}
-                        style={{ display: 'none' }} 
-                      />
-                    </label>
-
-                    {/* Name input */}
+                  {/* Category Image upload box */}
+                  <label style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    width: 58, height: 58, borderRadius: 8, overflow: 'hidden',
+                    background: '#fff', cursor: 'pointer', border: '1.5px dashed #cbd5e1',
+                    position: 'relative', flexShrink: 0
+                  }} title="Bấm để tải ảnh đại diện">
+                    {cat.image ? (
+                      <img src={cat.image} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 9, fontWeight: 700, lineHeight: 1.2 }}>
+                        <div style={{ fontSize: 16 }}>📷</div>
+                        <div>Ảnh</div>
+                      </div>
+                    )}
                     <input 
-                      className="input" 
-                      type="text" 
-                      placeholder="Tên dòng máy bơm..." 
-                      value={cat.name || ''} 
-                      onChange={e => {
-                        const val = e.target.value;
-                        setCategoriesList(prev => prev.map((item, idx) => idx === index ? { ...item, name: val } : item))
+                      type="file" 
+                      accept="image/*" 
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          await handleCategoryClassImageUpload(index, file);
+                        }
                       }}
-                      style={{ flex: 1, padding: '8px 12px', fontSize: 13, border: '1px solid #e2e8f0', borderRadius: 8 }}
+                      style={{ display: 'none' }} 
                     />
+                  </label>
 
-                    {/* Category Type */}
-                    <select
-                      className="select"
-                      value={cat.type || 'pump'}
-                      onChange={e => {
-                        const val = e.target.value;
-                        setCategoriesList(prev => prev.map((item, idx) => idx === index ? { ...item, type: val } : item))
-                      }}
-                      style={{ padding: '6px 8px', fontSize: 11.5, fontWeight: 700, borderRadius: 6, border: '1px solid #cbd5e1', background: cat.type === 'accessory' ? '#f3e8ff' : '#e0f2fe', color: cat.type === 'accessory' ? '#7e22ce' : '#0369a1', flexShrink: 0 }}
-                    >
-                      <option value="pump">⚡ Máy bơm</option>
-                      <option value="accessory">🔧 Phụ kiện</option>
-                    </select>
-
-                    {/* Featured */}
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: cat.featured ? '#3b82f6' : '#64748b', cursor: 'pointer', userSelect: 'none', background: cat.featured ? '#eff6ff' : '#f8fafc', padding: '6px 8px', borderRadius: 6, border: cat.featured ? '1px solid #bfdbfe' : '1px solid #e2e8f0', flexShrink: 0 }}>
+                  {/* Category Details */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+                    {/* Top Row: Name + Type + Featured + Delete */}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <input 
-                        type="checkbox" 
-                        checked={!!cat.featured} 
+                        type="text" 
+                        placeholder="Nhập tên danh mục (ví dụ: BƠM BIẾN TẦN)..." 
+                        value={cat.name || ''} 
                         onChange={e => {
-                          const val = e.target.checked;
-                          setCategoriesList(prev => prev.map((item, idx) => idx === index ? { ...item, featured: val } : item))
+                          const val = e.target.value;
+                          setCategoriesList(prev => prev.map((item, idx) => idx === index ? { ...item, name: val } : item))
                         }}
-                        style={{ cursor: 'pointer', margin: 0 }}
+                        style={{
+                          flex: 1, minWidth: 0, padding: '7px 12px', fontSize: 13,
+                          fontWeight: 700, border: '1.5px solid #cbd5e1', borderRadius: 8,
+                          background: '#fff', outline: 'none', color: '#0f172a'
+                        }}
                       />
-                      Nổi bật
-                    </label>
 
-                    {/* Delete */}
-                    <button 
-                      className="btn" 
-                      onClick={() => setCategoriesList(prev => prev.filter((_, idx) => idx !== index))}
-                      style={{ background: '#fee2e2', color: '#ef4444', border: 'none', padding: '8px', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 32, width: 32, flexShrink: 0 }}
-                    >
-                      🗑️
-                    </button>
-                  </div>
+                      <select
+                        value={cat.type || 'pump'}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setCategoriesList(prev => prev.map((item, idx) => idx === index ? { ...item, type: val } : item))
+                        }}
+                        style={{
+                          width: 'auto', padding: '7px 10px', fontSize: 12,
+                          fontWeight: 700, borderRadius: 8, border: '1px solid #cbd5e1',
+                          background: cat.type === 'accessory' ? '#f3e8ff' : '#e0f2fe',
+                          color: cat.type === 'accessory' ? '#7e22ce' : '#0369a1',
+                          cursor: 'pointer', outline: 'none', flexShrink: 0
+                        }}
+                      >
+                        <option value="pump">⚡ Máy bơm</option>
+                        <option value="accessory">🔧 Phụ kiện</option>
+                      </select>
 
-                  {/* Bottom row: Description input */}
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{ width: 50 }} /> {/* spacer */}
+                      <label style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5,
+                        fontWeight: 700, color: cat.featured ? '#2563eb' : '#64748b',
+                        cursor: 'pointer', userSelect: 'none',
+                        background: cat.featured ? '#eff6ff' : '#fff',
+                        padding: '6px 10px', borderRadius: 8,
+                        border: cat.featured ? '1px solid #93c5fd' : '1px solid #cbd5e1',
+                        whiteSpace: 'nowrap', flexShrink: 0
+                      }}>
+                        <input 
+                          type="checkbox" 
+                          checked={!!cat.featured} 
+                          onChange={e => {
+                            const val = e.target.checked;
+                            setCategoriesList(prev => prev.map((item, idx) => idx === index ? { ...item, featured: val } : item))
+                          }}
+                          style={{ cursor: 'pointer', margin: 0 }}
+                        />
+                        Nổi bật
+                      </label>
+
+                      <button 
+                        type="button"
+                        title="Xóa danh mục này"
+                        onClick={() => setCategoriesList(prev => prev.filter((_, idx) => idx !== index))}
+                        style={{
+                          background: '#fee2e2', color: '#ef4444', border: '1px solid #fecaca',
+                          padding: 0, cursor: 'pointer', borderRadius: 8,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          height: 32, width: 32, flexShrink: 0
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+
+                    {/* Bottom Row: Description */}
                     <input 
-                      className="input" 
                       type="text" 
                       placeholder="Mô tả phụ (ví dụ: Trục ngang công nghiệp, CDLF áp lực cao...)" 
                       value={cat.desc || ''} 
@@ -3879,14 +3905,18 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                         const val = e.target.value;
                         setCategoriesList(prev => prev.map((item, idx) => idx === index ? { ...item, desc: val } : item))
                       }}
-                      style={{ flex: 1, padding: '6px 12px', fontSize: 12, border: '1px solid #e2e8f0', borderRadius: 6, background: '#f8fafc' }}
+                      style={{
+                        width: '100%', boxSizing: 'border-box', padding: '6px 12px', fontSize: 12,
+                        border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff',
+                        color: '#64748b', outline: 'none'
+                      }}
                     />
                   </div>
                 </div>
               ))}
               {categoriesList.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text3)', fontSize: 13 }}>
-                  Chưa có dòng máy bơm nào được thêm. Nhấn "Thêm dòng bơm mới" ở góc trên để bắt đầu.
+                  Chưa có danh mục nào được thêm. Nhấn "Thêm danh mục mới" ở góc trên để bắt đầu.
                 </div>
               )}
             </div>

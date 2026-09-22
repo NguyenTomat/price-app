@@ -201,6 +201,7 @@ export const sanitizeWebProduct = (p, listId, listName) => {
       voltage: p.voltage || ''
     },
     specs: p.specs || (p.webSpecs?.specs ? p.webSpecs.specs : ''),
+    productType: p.productType || 'pump', // 'pump' (Máy bơm) hoặc 'accessory' (Phụ kiện)
     webImages: webImages,
     hasFullImages: webImages.length > 1
   }
@@ -309,6 +310,7 @@ export const refreshWebCatalogSnapshot = async () => {
             price: p.price || 0,
             voltage: p.webSpecs?.voltage || (p.spec2?.includes('380V') ? '380V' : '220V'),
             webSpecs: p.webSpecs || { power: p.spec1 || '', specs: p.spec2 || '', voltage: '220V' },
+            productType: p.productType || 'pump',
             webImages: cleanImages.slice(0, 2),
             showOnWeb: true
           };

@@ -590,6 +590,8 @@ export default function WebCatalog() {
   const [hoveredCardId, setHoveredCardId] = useState(null)
   const [hoveredBtnId, setHoveredBtnId] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState('TẤT CẢ')
+  const [categoryNavType, setCategoryNavType] = useState('pump') // 'pump' | 'accessory'
+  const [filterProductType, setFilterProductType] = useState('ALL') // 'ALL' | 'pump' | 'accessory'
   const [activeTab, setActiveTab] = useState('home')
   const [dbCategories, setDbCategories] = useState(() => {
     try {
@@ -803,18 +805,36 @@ export default function WebCatalog() {
   }, [homepageSlides.length, sliderPaused]);
 
   const dynamicCategories = useMemo(() => {
-    return dbCategories.length > 0 ? dbCategories.map(c => {
-      if (typeof c === 'string') return { name: c, image: '', desc: '', featured: false };
-      return c;
-    }) : [
-      { name: 'BƠM BIẾN TẦN', image: './pump_vertical_cdlf.jpg', desc: 'Tự động điều chỉnh tần số động cơ đáp ứng chính xác nhu cầu lưu lượng.', featured: true },
-      { name: 'BƠM TĂNG ÁP', image: './pump_booster_green.jpg', desc: 'Vận hành tự động hoàn toàn, duy trì áp lực ổn định tại mọi vòi sen.', featured: true },
-      { name: 'BƠM CHÌM GIẾNG KHOAN', image: './pump_submersible_blue.jpg', desc: 'Dòng bơm thả giếng khoan, bơm chìm hố móng bùn loãng nhập khẩu nguyên chiếc.', featured: true },
-      { name: 'BƠM LY TÂM', image: './pump_horizontal_blue.jpg', desc: 'Bơm cấp thoát lưu lượng nước lớn cho sản xuất, khu công nghiệp và nông nghiệp.', featured: true },
-      { name: 'DÀN BƠM', image: './pump_showroom.jpg', desc: 'Thiết kế lắp ráp cụm bơm song song phục vụ chung cư, trạm cấp nước.', featured: true },
-      { name: 'BƠM CÔNG NGHIỆP', image: './pump_vertical.jpg', desc: 'Được tuyển chọn kỹ lưỡng, đạt tiêu chuẩn quốc tế và đầy đủ CO/CQ.', featured: true }
+    const defaultPumpCategories = [
+      { name: 'BƠM BIẾN TẦN', image: './pump_vertical_cdlf.jpg', desc: 'Tự động điều chỉnh tần số động cơ đáp ứng chính xác nhu cầu lưu lượng.', featured: true, type: 'pump' },
+      { name: 'BƠM TĂNG ÁP', image: './pump_booster_green.jpg', desc: 'Vận hành tự động hoàn toàn, duy trì áp lực ổn định tại mọi vòi sen.', featured: true, type: 'pump' },
+      { name: 'BƠM CHÌM GIẾNG KHOAN', image: './pump_submersible_blue.jpg', desc: 'Dòng bơm thả giếng khoan, bơm chìm hố móng bùn loãng nhập khẩu nguyên chiếc.', featured: true, type: 'pump' },
+      { name: 'BƠM LY TÂM', image: './pump_horizontal_blue.jpg', desc: 'Bơm cấp thoát lưu lượng nước lớn cho sản xuất, khu công nghiệp và nông nghiệp.', featured: true, type: 'pump' },
+      { name: 'DÀN BƠM', image: './pump_showroom.jpg', desc: 'Thiết kế lắp ráp cụm bơm song song phục vụ chung cư, trạm cấp nước.', featured: true, type: 'pump' },
+      { name: 'BƠM CÔNG NGHIỆP', image: './pump_vertical.jpg', desc: 'Được tuyển chọn kỹ lưỡng, đạt tiêu chuẩn quốc tế và đầy đủ CO/CQ.', featured: true, type: 'pump' }
     ];
-  }, [dbCategories]);
+
+    const defaultAccessoryCategories = [
+      { name: 'BÌNH TÍCH ÁP & RƠ LE', image: './pump_booster_green.jpg', desc: 'Bình tích áp Varem, Aquasystem, rơ le điện tử và cơ chính hãng.', featured: true, type: 'accessory' },
+      { name: 'BIẾN TẦN RỜI ĐIỀU KHIỂN', image: './pump_vertical_cdlf.jpg', desc: 'Biến tần chuyên dụng cho hệ thống máy bơm cấp nước điều áp.', featured: true, type: 'accessory' },
+      { name: 'MẶT BÍCH & KHỚP NỐI', image: './pump_horizontal_blue.jpg', desc: 'Mặt bích tiêu chuẩn, khớp nối mềm cao su chống rung.', featured: true, type: 'accessory' },
+      { name: 'CÁNH BƠM & PHỚT BƠM', image: './pump_submersible_blue.jpg', desc: 'Phớt cơ khí chịu nhiệt, cánh bơm inox, cánh đồng thay thế.', featured: true, type: 'accessory' },
+      { name: 'TỦ ĐIỀU KHIỂN & PHAO', image: './pump_showroom.jpg', desc: 'Tủ điện điều khiển luân phiên, phao điện chống cạn chống tràn.', featured: true, type: 'accessory' }
+    ];
+
+    if (dbCategories && dbCategories.length > 0) {
+      const mapped = dbCategories.map(c => {
+        if (typeof c === 'string') return { name: c, image: '', desc: '', featured: false, type: 'pump' };
+        return { ...c, type: c.type || 'pump' };
+      });
+      const filtered = mapped.filter(c => (c.type || 'pump') === categoryNavType);
+      if (filtered.length > 0) return filtered;
+      if (categoryNavType === 'accessory') return defaultAccessoryCategories;
+      return mapped;
+    }
+
+    return categoryNavType === 'accessory' ? defaultAccessoryCategories : defaultPumpCategories;
+  }, [dbCategories, categoryNavType]);
 
   useEffect(() => {
     if (homepageSlides.length > 0 && currentSlide >= homepageSlides.length) {
@@ -1465,6 +1485,8 @@ export default function WebCatalog() {
           queryCat = 'BƠM TĂNG ÁP'
         } else if (slug === 'ly-tam' || slug === 'bom-ly-tam' || slug === 'truc-ngang') {
           queryCat = 'BƠM LY TÂM'
+        } else if (slug === 'thai-inox-mat-bich' || slug === 'bom-thai-inox-mat-bich' || slug === 'thai-inox' || slug === 'dwmt' || slug === 'bom-thai-inox') {
+          queryCat = 'bơm thải toàn bộ INOX có mặt bích'
         } else if (slug === 'nuoc-thai' || slug === 'bom-nuoc-thai' || slug === 'hut-bun' || slug === 'thai' || slug === 'chim' || slug === 'ho-mong' || slug === 'bom-ho-mong' || slug === 'bom-bun' || slug === 'ktz' || slug === 'krs' || slug === 'bom-chim') {
           queryCat = 'BƠM CHÌM NƯỚC THẢI'
         } else if (slug === 'cong-nghiep' || slug === 'bom-cong-nghiep') {
@@ -1792,8 +1814,11 @@ export default function WebCatalog() {
                    !groupNorm.includes('bien tan') && !nameNorm.includes('bien tan');
           }
           if (normSelected === 'bom chim nuoc thai' || normSelected === 'bom nuoc thai' || normSelected === 'nuoc thai' || normSelected === 'hut bun') {
-            return (groupNorm.includes('nuoc thai') || groupNorm.includes('ho mong') || groupNorm.includes('krs') || groupNorm.includes('ktz') || groupNorm.includes('bun') || groupNorm.includes('canh cat')) &&
+            return (groupNorm.includes('nuoc thai') || groupNorm.includes('ho mong') || groupNorm.includes('krs') || groupNorm.includes('ktz') || groupNorm.includes('bun') || groupNorm.includes('canh cat') || groupNorm.includes('inox co mat bich')) &&
                    !groupNorm.includes('gieng khoan') && !codeNorm.startsWith('4sl');
+          }
+          if (normSelected.includes('thai toan bo inox') || normSelected.includes('thai inox') || normSelected === 'dwmt') {
+            return groupNorm.includes('inox co mat bich') || groupNorm.includes('thai toan bo inox') || codeNorm.startsWith('dwmt') || nameNorm.includes('dwmt');
           }
           if (normSelected === 'bom hoa tien' || normSelected === 'hoa tien' || normSelected === 'gieng khoan' || normSelected === 'bom gieng khoan') {
             return (groupNorm.includes('gieng khoan') || groupNorm.includes('tha chim') || groupNorm.includes('gieng khoi') || groupNorm.includes('hoa tien') || codeNorm.startsWith('4sl') || codeNorm.startsWith('3sl') || codeNorm.startsWith('6sl')) &&
@@ -1826,6 +1851,13 @@ export default function WebCatalog() {
       }
     }
 
+    if (filterProductType !== 'ALL') {
+      result = result.filter(p => {
+        const pType = p.productType || 'pump';
+        return pType === filterProductType;
+      });
+    }
+
     if (filterPower !== 'ALL') {
       result = result.filter(p => {
         const pow = (p.webSpecs?.power || '').toString().toLowerCase();
@@ -1849,7 +1881,7 @@ export default function WebCatalog() {
     }
 
     return result
-  }, [products, activeBrand, selectedCategory, searchTerm, sortType, filterGroups, filterPower, filterVoltage])
+  }, [products, activeBrand, selectedCategory, searchTerm, sortType, filterGroups, filterPower, filterVoltage, filterProductType])
 
   const calcListPrice = (basePrice) => {
     if (!basePrice) return 0
@@ -3695,11 +3727,67 @@ export default function WebCatalog() {
                 DANH MỤC SẢN PHẨM
               </span>
               <h2 style={{ fontSize: 24, fontWeight: 900, color: '#071A2F', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>
-                DÒNG MÁY BƠM
+                {categoryNavType === 'accessory' ? 'PHỤ KIỆN MÁY BƠM' : 'DÒNG MÁY BƠM'}
               </h2>
-              <p style={{ fontSize: 13.5, color: '#64748B', margin: '6px 0 0', fontWeight: 500 }}>
-                Khám phá các giải pháp bơm phù hợp cho từng nhu cầu
+              <p style={{ fontSize: 13.5, color: '#64748B', margin: '6px 0 16px', fontWeight: 500 }}>
+                {categoryNavType === 'accessory'
+                  ? 'Các linh kiện, phụ kiện thay thế và lắp đặt đồng bộ chính hãng'
+                  : 'Khám phá các giải pháp bơm phù hợp cho từng nhu cầu'}
               </p>
+
+              {/* Switcher Tab: [⚡ Máy Bơm] [🔧 Phụ Kiện] */}
+              <div style={{
+                display: 'inline-flex',
+                background: '#F1F5F9',
+                padding: '4px',
+                borderRadius: '30px',
+                border: '1px solid #E2E8F0',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)',
+                gap: '4px'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setCategoryNavType('pump')}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: '24px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '13.5px',
+                    transition: 'all 0.25s ease',
+                    background: categoryNavType === 'pump' ? '#0878D9' : 'transparent',
+                    color: categoryNavType === 'pump' ? '#FFF' : '#64748B',
+                    boxShadow: categoryNavType === 'pump' ? '0 2px 8px rgba(8,120,217,0.35)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>⚡</span> Máy Bơm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryNavType('accessory')}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: '24px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '13.5px',
+                    transition: 'all 0.25s ease',
+                    background: categoryNavType === 'accessory' ? '#0878D9' : 'transparent',
+                    color: categoryNavType === 'accessory' ? '#FFF' : '#64748B',
+                    boxShadow: categoryNavType === 'accessory' ? '0 2px 8px rgba(8,120,217,0.35)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>🔧</span> Phụ Kiện
+                </button>
+              </div>
             </div>
 
             {/* Desktop View: Full Responsive Category Grid (Displays ALL categories cleanly) */}
@@ -4646,10 +4734,11 @@ export default function WebCatalog() {
                   {/* BỘ LỌC HEADER */}
                   <div className="filter-panel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid #EEF1F4', flexShrink: 0 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: '#071A2F', letterSpacing: '0.5px' }}>BỘ LỌC SẢN PHẨM</span>
-                    {searchTerm || selectedCategory !== 'TẤT CẢ' ? (
+                    {searchTerm || selectedCategory !== 'TẤT CẢ' || filterProductType !== 'ALL' ? (
                       <button
                         onClick={() => {
                           setSelectedCategory('TẤT CẢ');
+                          setFilterProductType('ALL');
                           setSearchTerm('');
                         }}
                         style={{ background: 'transparent', border: 'none', color: '#0878D9', fontSize: 11, fontWeight: 800, cursor: 'pointer', textTransform: 'uppercase' }}
@@ -4692,6 +4781,40 @@ export default function WebCatalog() {
                             fontWeight: 600
                           }}
                         />
+                      </div>
+                    </div>
+
+                    {/* PHÂN LOẠI DÒNG SẢN PHẨM */}
+                    <div>
+                      <h3 style={{ fontSize: 11, fontWeight: 850, color: '#071A2F', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Phân loại
+                      </h3>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, background: '#F5F7FA', padding: 3, borderRadius: 6, border: '1px solid #EEF1F4' }}>
+                        {[
+                          { id: 'ALL', label: 'Tất cả' },
+                          { id: 'pump', label: '⚡ Máy bơm' },
+                          { id: 'accessory', label: '🔧 Phụ kiện' }
+                        ].map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setFilterProductType(t.id)}
+                            style={{
+                              padding: '6px 2px',
+                              borderRadius: 4,
+                              border: 'none',
+                              fontSize: 11,
+                              fontWeight: filterProductType === t.id ? 800 : 600,
+                              background: filterProductType === t.id ? '#0878D9' : 'transparent',
+                              color: filterProductType === t.id ? '#FFFFFF' : '#64748B',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
 
@@ -4739,6 +4862,7 @@ export default function WebCatalog() {
                     <button
                       onClick={() => {
                         setSelectedCategory('TẤT CẢ');
+                        setFilterProductType('ALL');
                         setSearchTerm('');
                       }}
                       style={{
@@ -4779,6 +4903,7 @@ export default function WebCatalog() {
                 {/* Active Filters Chips Bar */}
                 {(() => {
                   const hasActiveFilters =
+                    filterProductType !== 'ALL' ||
                     activeBrand !== 'ALL' ||
                     selectedCategory !== 'TẤT CẢ' ||
                     filterPower !== 'ALL' ||
@@ -4791,6 +4916,13 @@ export default function WebCatalog() {
                   return (
                     <div className="desktop-only" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 20 }}>
                       <span style={{ fontSize: 12.5, fontWeight: 800, color: '#475569', marginRight: 4 }}>Bộ lọc đang chọn:</span>
+
+                      {filterProductType !== 'ALL' && (
+                        <span style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 4, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, color: '#082B4C', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          Phân loại: {filterProductType === 'accessory' ? 'Phụ kiện' : 'Máy bơm'}
+                          <span style={{ cursor: 'pointer', color: '#EF4444' }} onClick={() => setFilterProductType('ALL')}>✕</span>
+                        </span>
+                      )}
                       
                       {selectedCategory !== 'TẤT CẢ' && (
                         <span style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 4, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, color: '#082B4C', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -4836,6 +4968,7 @@ export default function WebCatalog() {
 
                       <button
                         onClick={() => {
+                          setFilterProductType('ALL');
                           setSelectedCategory('TẤT CẢ');
                           setActiveBrand('ALL');
                           setFilterPower('ALL');
@@ -5065,6 +5198,20 @@ export default function WebCatalog() {
                 {/* Fields */}
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 24, paddingRight: 4 }}>
                   
+                  {/* Phân loại dòng sản phẩm */}
+                  <div>
+                    <h4 style={{ fontSize: 11, fontWeight: 800, color: '#082B4C', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.5px' }}>PHÂN LOẠI</h4>
+                    <select
+                      value={filterProductType}
+                      onChange={e => setFilterProductType(e.target.value)}
+                      style={{ width: '100%', height: 44, padding: '0 12px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', background: '#FFFFFF', fontSize: 13.5, fontWeight: 600, color: '#102A43' }}
+                    >
+                      <option value="ALL">Tất cả sản phẩm</option>
+                      <option value="pump">⚡ Máy bơm</option>
+                      <option value="accessory">🔧 Phụ kiện</option>
+                    </select>
+                  </div>
+
                   {/* Category */}
                   <div>
                     <h4 style={{ fontSize: 11, fontWeight: 800, color: '#082B4C', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.5px' }}>LOẠI MÁY BƠM</h4>
@@ -5164,6 +5311,7 @@ export default function WebCatalog() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #E2E8F0', paddingTop: 16 }}>
                   <button
                     onClick={() => {
+                      setFilterProductType('ALL');
                       setFilterPower('ALL');
                       setFilterVoltage('ALL');
                       setSelectedCategory('TẤT CẢ');

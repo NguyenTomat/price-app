@@ -305,6 +305,8 @@ export default function WebManagePage() {
   const [uploadingImages, setUploadingImages] = useState(false) // Trạng thái đang tải ảnh lên Storage
   const [savingProduct, setSavingProduct] = useState(false) // Trạng thái đang lưu sản phẩm
   const [draggedIndex, setDraggedIndex] = useState(null) // Drag & drop index state
+  const [productType, setProductType] = useState('pump') // 'pump' (Máy bơm) | 'accessory' (Phụ kiện)
+  const [filterProductType, setFilterProductType] = useState('all') // 'all' | 'pump' | 'accessory'
 
   // Web Admin tabs: 'products' | 'orders' | 'hero_slides' | 'cloud_storage'
   const [activeAdminTab, setActiveAdminTab] = useState('products')
@@ -765,17 +767,22 @@ export default function WebManagePage() {
 
   const filteredProducts = useMemo(() => {
     const q = search.toLowerCase()
-    return products.filter(p => 
-      !q ||
-      (p.code || '').toLowerCase().includes(q) ||
-      (p.name || '').toLowerCase().includes(q)
-    )
-  }, [products, search])
+    return products.filter(p => {
+      if (filterProductType === 'pump' && (p.productType || 'pump') === 'accessory') return false
+      if (filterProductType === 'accessory' && (p.productType || 'pump') !== 'accessory') return false
+      return (
+        !q ||
+        (p.code || '').toLowerCase().includes(q) ||
+        (p.name || '').toLowerCase().includes(q)
+      )
+    })
+  }, [products, search, filterProductType])
 
   const openEditModal = async (p) => {
     setEditingProduct(p)
     setShowOnWeb(p.showOnWeb || false)
     setWebBrand(p.webBrand || 'UPTI PUMP')
+    setProductType(p.productType || 'pump')
     setWebGroup(p.group || '')
     setWebName(p.name || '')
     setWebCode(p.code || '')
@@ -1220,6 +1227,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
       const dataToUpdate = {
         showOnWeb,
         webBrand,
+        productType: productType || 'pump',
         name: webName,
         code: webCode,
         group: webGroup,
@@ -1467,8 +1475,31 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
             </div>
 
             <div className="card">
-              <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h3 style={{ flex: 1 }}>Sản phẩm ({filteredProducts.length}/{products.length})</h3>
+              <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                <h3 style={{ margin: 0 }}>Sản phẩm ({filteredProducts.length}/{products.length})</h3>
+                <div style={{ display: 'flex', gap: 6, background: 'var(--surface2)', padding: '3px 4px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                  <button
+                    type="button"
+                    className={`btn xs ${filterProductType === 'all' ? 'primary' : 'ghost'}`}
+                    onClick={() => setFilterProductType('all')}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn xs ${filterProductType === 'pump' ? 'primary' : 'ghost'}`}
+                    onClick={() => setFilterProductType('pump')}
+                  >
+                    ⚡ Máy bơm
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn xs ${filterProductType === 'accessory' ? 'primary' : 'ghost'}`}
+                    onClick={() => setFilterProductType('accessory')}
+                  >
+                    🔧 Phụ kiện
+                  </button>
+                </div>
               </div>
 
               {loadingProducts ? (
@@ -1489,6 +1520,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                         <th style={{ width: 80, textAlign: 'center' }}>Đăng Web</th>
                         <th>Mã sản phẩm</th>
                         <th>Tên sản phẩm</th>
+                        <th>Phân loại</th>
                         <th>Thương hiệu</th>
                         <th style={{ textAlign: 'right' }}>Giá gốc</th>
                         <th style={{ textAlign: 'center' }}>Thao tác</th>
@@ -1509,6 +1541,13 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                           <td>
                             <div>{p.name}</div>
                             {p.group && <span className="badge badge-blue" style={{ fontSize: 9, padding: '2px 6px', marginTop: 4, display: 'inline-block' }}>{p.group}</span>}
+                          </td>
+                          <td>
+                            {p.productType === 'accessory' ? (
+                              <span className="badge" style={{ background: '#F3E8FF', color: '#7E22CE', fontWeight: 700, fontSize: 10 }}>🔧 Phụ kiện</span>
+                            ) : (
+                              <span className="badge" style={{ background: '#E0F2FE', color: '#0369A1', fontWeight: 700, fontSize: 10 }}>⚡ Máy bơm</span>
+                            )}
                           </td>
                           <td>
                             {p.showOnWeb ? (
@@ -3459,6 +3498,33 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                 </div>
               </div>
 
+              {/* Phân loại sản phẩm: Máy bơm hoặc Phụ kiện */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--surface2)', padding: '10px 12px', borderRadius: 8 }}>
+                <label style={{ fontSize: 12, fontWeight: 'bold', margin: 0 }}>Phân loại dòng sản phẩm:</label>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, fontWeight: productType === 'pump' ? 700 : 500, color: productType === 'pump' ? 'var(--accent)' : 'inherit' }}>
+                    <input
+                      type="radio"
+                      name="webProductType"
+                      value="pump"
+                      checked={productType === 'pump'}
+                      onChange={() => setProductType('pump')}
+                    />
+                    ⚡ Máy bơm (Mặc định)
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, fontWeight: productType === 'accessory' ? 700 : 500, color: productType === 'accessory' ? '#7E22CE' : 'inherit' }}>
+                    <input
+                      type="radio"
+                      name="webProductType"
+                      value="accessory"
+                      checked={productType === 'accessory'}
+                      onChange={() => setProductType('accessory')}
+                    />
+                    🔧 Phụ kiện máy bơm
+                  </label>
+                </div>
+              </div>
+
               {/* Sửa Tên sản phẩm & Mã hàng */}
               <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 10 }}>
                 <div>
@@ -3762,6 +3828,20 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                       }}
                       style={{ flex: 1, padding: '8px 12px', fontSize: 13, border: '1px solid #e2e8f0', borderRadius: 8 }}
                     />
+
+                    {/* Category Type */}
+                    <select
+                      className="select"
+                      value={cat.type || 'pump'}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setCategoriesList(prev => prev.map((item, idx) => idx === index ? { ...item, type: val } : item))
+                      }}
+                      style={{ padding: '6px 8px', fontSize: 11.5, fontWeight: 700, borderRadius: 6, border: '1px solid #cbd5e1', background: cat.type === 'accessory' ? '#f3e8ff' : '#e0f2fe', color: cat.type === 'accessory' ? '#7e22ce' : '#0369a1', flexShrink: 0 }}
+                    >
+                      <option value="pump">⚡ Máy bơm</option>
+                      <option value="accessory">🔧 Phụ kiện</option>
+                    </select>
 
                     {/* Featured */}
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: cat.featured ? '#3b82f6' : '#64748b', cursor: 'pointer', userSelect: 'none', background: cat.featured ? '#eff6ff' : '#f8fafc', padding: '6px 8px', borderRadius: 6, border: cat.featured ? '1px solid #bfdbfe' : '1px solid #e2e8f0', flexShrink: 0 }}>

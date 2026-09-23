@@ -303,6 +303,7 @@ export default function WebManagePage() {
   const [webCode, setWebCode] = useState('')
   const [webImages, setWebImages] = useState([]) // State lưu danh sách URL ảnh thực tế của sản phẩm
   const [uploadingImages, setUploadingImages] = useState(false) // Trạng thái đang tải ảnh lên Storage
+  const [savingProduct, setSavingProduct] = useState(false) // Trạng thái đang lưu thông tin sản phẩm
   const [draggedIndex, setDraggedIndex] = useState(null) // Drag & drop index state
   const [productType, setProductType] = useState('pump') // 'pump' (Máy bơm) | 'accessory' (Phụ kiện)
   const [webFeatured, setWebFeatured] = useState(false) // Đặt làm sản phẩm nổi bật trang chủ

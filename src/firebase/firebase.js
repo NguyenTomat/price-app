@@ -308,7 +308,7 @@ export const refreshWebCatalogSnapshot = async () => {
             category: p.category || p.group || '',
             webBrand: p.webBrand || 'UPTI PUMP',
             price: p.price || 0,
-            voltage: p.webSpecs?.voltage || (p.spec2?.includes('380V') ? '380V' : '220V'),
+            voltage: p.webSpecs?.voltage || (String(p.spec2 || '').includes('380V') ? '380V' : '220V'),
             webSpecs: p.webSpecs || { power: p.spec1 || '', specs: p.spec2 || '', voltage: '220V' },
             productType: p.productType || 'pump',
             featured: p.featured || false,

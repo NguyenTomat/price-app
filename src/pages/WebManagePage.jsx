@@ -780,6 +780,7 @@ export default function WebManagePage() {
   }, [products, search, filterProductType])
 
   const openEditModal = async (p) => {
+    if (!p) return
     setEditingProduct(p)
     setShowOnWeb(p.showOnWeb || false)
     setWebFeatured(p.featured === true)
@@ -791,27 +792,31 @@ export default function WebManagePage() {
     setAiCustomInstruction('')
     
     // Gộp chung thông số H và Q: Lấy trực tiếp từ webSpecs.specs cấu hình cũ hoặc tự điền từ spec2 của bảng gốc
-    const defaultSpecs = p.webSpecs?.specs || p.spec2 || ''
-    const defaultPower = p.webSpecs?.power || p.spec1 || ''
-    const defaultVoltage = p.webSpecs?.voltage || (p.spec2?.includes('380V') ? '380V' : '220V')
+    const defaultSpecs = p.webSpecs?.specs || (p.spec2 ? String(p.spec2) : '')
+    const defaultPower = p.webSpecs?.power || (p.spec1 ? String(p.spec1) : '')
+    const spec2Str = String(p.spec2 || '')
+    const defaultVoltage = p.webSpecs?.voltage || (spec2Str.includes('380V') ? '380V' : '220V')
 
     setPower(defaultPower)
     setHead(defaultSpecs) // Sử dụng biến state head đại diện cho trường thông số gộp
     setVoltage(defaultVoltage)
     setWebDesc(p.webDesc || '')
-    setWebImages(p.webImages || []) // Gán mặc định ban đầu
+    setWebImages(Array.isArray(p.webImages) ? p.webImages : (Array.isArray(p.images) ? p.images : []))
     
-    try {
-      const detail = await getProductDetail(selectedListId, p.id)
-      if (detail) {
-        // Ưu tiên webImages (đã upload lên Storage), fallback sang images cũ
-        const imgs = (detail.webImages && detail.webImages.length > 0)
-          ? detail.webImages
-          : (detail.images || [])
-        setWebImages(imgs)
+    const listId = p.listId || selectedListId
+    if (listId && p.id) {
+      try {
+        const detail = await getProductDetail(listId, p.id)
+        if (detail) {
+          // Ưu tiên webImages (đã upload lên Storage), fallback sang images cũ
+          const imgs = (Array.isArray(detail.webImages) && detail.webImages.length > 0)
+            ? detail.webImages
+            : (Array.isArray(detail.images) ? detail.images : [])
+          setWebImages(imgs)
+        }
+      } catch (err) {
+        console.warn("Lỗi tải chi tiết ảnh sản phẩm:", err)
       }
-    } catch (err) {
-      console.warn("Lỗi tải chi tiết ảnh sản phẩm:", err)
     }
   }
 
@@ -3609,7 +3614,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <select 
                     className="select" 
-                    value={categoriesList.map(c => c.name).includes(webGroup) ? webGroup : (webGroup ? '__CUSTOM__' : '')}
+                    value={(categoriesList || []).map(c => (typeof c === 'object' ? c?.name : c) || '').includes(webGroup) ? webGroup : (webGroup ? '__CUSTOM__' : '')}
                     onChange={e => {
                       if (e.target.value !== '__CUSTOM__') {
                         setWebGroup(e.target.value)
@@ -3620,18 +3625,20 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                     style={{ padding: '6px 10px', fontSize: 13 }}
                   >
                     <option value="">-- Chọn từ danh mục mẫu sẵn có --</option>
-                    {categoriesList.map((c, idx) => (
-                      <option key={idx} value={c.name}>{c.name}</option>
-                    ))}
+                    {(categoriesList || []).map((c, idx) => {
+                      const name = typeof c === 'object' ? c?.name : c
+                      if (!name) return null
+                      return <option key={idx} value={name}>{name}</option>
+                    })}
                     <option value="__CUSTOM__">✨ Tự nhập tay danh mục mới...</option>
                   </select>
                   
-                  {(!categoriesList.map(c => c.name).includes(webGroup) || webGroup === '') && (
+                  {(!(categoriesList || []).map(c => (typeof c === 'object' ? c?.name : c) || '').includes(webGroup) || webGroup === '') && (
                     <input 
                       className="input" 
                       style={{ padding: '6px 10px', fontSize: 13 }} 
                       placeholder="Hoặc tự gõ tên danh mục mới..." 
-                      value={webGroup} 
+                      value={webGroup || ''} 
                       onChange={e => setWebGroup(e.target.value)}
                     />
                   )}
@@ -3668,36 +3675,39 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                 </label>
                 
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                  {webImages.map((url, idx) => (
-                    <div 
-                      key={idx} 
-                      draggable="true"
-                      onDragStart={(e) => handleDragStart(e, idx)}
-                      onDragOver={(e) => handleDragOver(e, idx)}
-                      onDragEnd={handleDragEnd}
-                      onDrop={(e) => handleDrop(e, idx)}
-                      style={{ 
-                        position: 'relative', width: 64, height: 64, border: '2.5px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: '#fff',
-                        cursor: 'grab', userSelect: 'none', transition: 'opacity 0.2s, border-color 0.2s'
-                      }}
-                      onMouseOver={e => e.currentTarget.style.borderColor = '#3b82f6'}
-                      onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}
-                      title="Nhấn và kéo để sắp xếp lại ảnh"
-                    >
-                      <img src={url} alt={`Bơm ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                      
-                      {/* Xóa ảnh */}
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleRemoveImage(idx); }}
-                        style={{
-                          position: 'absolute', top: 1, right: 1, width: 14, height: 14, borderRadius: '50%',
-                          background: 'rgba(239, 68, 68, 0.85)', color: '#fff', border: 'none', fontSize: 8,
-                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10
+                  {(webImages || []).map((url, idx) => {
+                    const imgSrc = typeof url === 'string' ? url : (url?.url || '')
+                    if (!imgSrc) return null
+                    return (
+                      <div 
+                        key={idx} 
+                        draggable="true"
+                        onDragStart={(e) => handleDragStart(e, idx)}
+                        onDragOver={(e) => handleDragOver(e, idx)}
+                        onDragEnd={handleDragEnd}
+                        onDrop={(e) => handleDrop(e, idx)}
+                        style={{ 
+                          position: 'relative', width: 64, height: 64, border: '2.5px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: '#fff',
+                          cursor: 'grab', userSelect: 'none', transition: 'opacity 0.2s, border-color 0.2s'
                         }}
-                        title="Xóa ảnh"
+                        onMouseOver={e => e.currentTarget.style.borderColor = '#3b82f6'}
+                        onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                        title="Nhấn và kéo để sắp xếp lại ảnh"
                       >
-                        ✕
-                      </button>
+                        <img src={imgSrc} alt={`Bơm ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                        
+                        {/* Xóa ảnh */}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleRemoveImage(idx); }}
+                          style={{
+                            position: 'absolute', top: 1, right: 1, width: 14, height: 14, borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.85)', color: '#fff', border: 'none', fontSize: 8,
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10
+                          }}
+                          title="Xóa ảnh"
+                        >
+                          ✕
+                        </button>
 
                       {/* Di chuyển ảnh sang trái */}
                       {idx > 0 && (
@@ -3729,7 +3739,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                         </button>
                       )}
                     </div>
-                  ))}
+                  )})}
                   
                   {webImages.length < 5 && (
                     <label style={{

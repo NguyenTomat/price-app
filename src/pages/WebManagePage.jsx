@@ -303,10 +303,10 @@ export default function WebManagePage() {
   const [webCode, setWebCode] = useState('')
   const [webImages, setWebImages] = useState([]) // State lưu danh sách URL ảnh thực tế của sản phẩm
   const [uploadingImages, setUploadingImages] = useState(false) // Trạng thái đang tải ảnh lên Storage
-  const [savingProduct, setSavingProduct] = useState(false) // Trạng thái đang lưu sản phẩm
   const [draggedIndex, setDraggedIndex] = useState(null) // Drag & drop index state
   const [productType, setProductType] = useState('pump') // 'pump' (Máy bơm) | 'accessory' (Phụ kiện)
-  const [filterProductType, setFilterProductType] = useState('all') // 'all' | 'pump' | 'accessory'
+  const [webFeatured, setWebFeatured] = useState(false) // Đặt làm sản phẩm nổi bật trang chủ
+  const [filterProductType, setFilterProductType] = useState('all') // 'all' | 'pump' | 'accessory' | 'featured'
 
   // Web Admin tabs: 'products' | 'orders' | 'hero_slides' | 'cloud_storage'
   const [activeAdminTab, setActiveAdminTab] = useState('products')
@@ -770,6 +770,7 @@ export default function WebManagePage() {
     return products.filter(p => {
       if (filterProductType === 'pump' && (p.productType || 'pump') === 'accessory') return false
       if (filterProductType === 'accessory' && (p.productType || 'pump') !== 'accessory') return false
+      if (filterProductType === 'featured' && !p.featured) return false
       return (
         !q ||
         (p.code || '').toLowerCase().includes(q) ||
@@ -781,6 +782,7 @@ export default function WebManagePage() {
   const openEditModal = async (p) => {
     setEditingProduct(p)
     setShowOnWeb(p.showOnWeb || false)
+    setWebFeatured(p.featured === true)
     setWebBrand(p.webBrand || 'UPTI PUMP')
     setProductType(p.productType || 'pump')
     setWebGroup(p.group || '')
@@ -1226,6 +1228,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
 
       const dataToUpdate = {
         showOnWeb,
+        featured: webFeatured,
         webBrand,
         productType: productType || 'pump',
         name: webName,
@@ -1329,6 +1332,17 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
       await updateProduct(selectedListId, p.id, { showOnWeb: val })
       setProducts(prev => prev.map(item => item.id === p.id ? { ...item, showOnWeb: val } : item))
       toast(val ? 'Đã hiển thị trên Web!' : 'Đã ẩn khỏi Web!', 'success')
+      refreshWebCatalogSnapshot().catch(console.warn)
+    } catch (err) {
+      toast('Lỗi cập nhật: ' + err.message, 'error')
+    }
+  }
+
+  const handleQuickToggleFeatured = async (p, val) => {
+    try {
+      await updateProduct(selectedListId, p.id, { featured: val })
+      setProducts(prev => prev.map(item => item.id === p.id ? { ...item, featured: val } : item))
+      toast(val ? `Đã đặt ⭐ nổi bật trang chủ cho ${p.code}!` : `Đã bỏ nổi bật cho ${p.code}`, 'success')
       refreshWebCatalogSnapshot().catch(console.warn)
     } catch (err) {
       toast('Lỗi cập nhật: ' + err.message, 'error')
@@ -1499,6 +1513,14 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                   >
                     🔧 Phụ kiện
                   </button>
+                  <button
+                    type="button"
+                    className={`btn xs ${filterProductType === 'featured' ? 'primary' : 'ghost'}`}
+                    onClick={() => setFilterProductType('featured')}
+                    style={{ color: filterProductType === 'featured' ? '#fff' : '#d97706' }}
+                  >
+                    ⭐ Nổi bật ({products.filter(p => p.featured).length})
+                  </button>
                 </div>
               </div>
 
@@ -1517,7 +1539,8 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                   <table>
                     <thead>
                       <tr>
-                        <th style={{ width: 80, textAlign: 'center' }}>Đăng Web</th>
+                        <th style={{ width: 70, textAlign: 'center' }}>Đăng Web</th>
+                        <th style={{ width: 85, textAlign: 'center' }}>⭐ Nổi bật</th>
                         <th>Mã sản phẩm</th>
                         <th>Tên sản phẩm</th>
                         <th>Phân loại</th>
@@ -1536,6 +1559,26 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                               onChange={e => handleQuickToggleWeb(p, e.target.checked)}
                               style={{ width: 18, height: 18, cursor: 'pointer' }}
                             />
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickToggleFeatured(p, !p.featured)}
+                              title={p.featured ? "Đang nổi bật ngoài trang chủ. Bấm để bỏ." : "Bấm để ghim sản phẩm nổi bật trang chủ."}
+                              style={{
+                                background: p.featured ? '#FEF3C7' : 'transparent',
+                                border: p.featured ? '1px solid #F59E0B' : '1px solid #CBD5E1',
+                                borderRadius: 6,
+                                padding: '3px 8px',
+                                cursor: 'pointer',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: p.featured ? '#D97706' : '#94A3B8',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              {p.featured ? '⭐ Nổi bật' : '☆ Đặt'}
+                            </button>
                           </td>
                           <td className="td-mono">{p.code}</td>
                           <td>
@@ -3476,18 +3519,29 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '75vh', overflowY: 'auto', paddingRight: 4 }}>
-              {/* Toggle showOnWeb & Thương hiệu */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, background: 'var(--surface2)', padding: 10, borderRadius: 8 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 'bold', fontSize: 13, marginBottom: 0 }}>
+              {/* Toggle showOnWeb, webFeatured & Thương hiệu */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, background: 'var(--surface2)', padding: '10px 12px', borderRadius: 8, flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: 'bold', fontSize: 13, marginBottom: 0 }}>
                   <input 
                     type="checkbox" 
                     checked={showOnWeb}
                     onChange={e => setShowOnWeb(e.target.checked)}
-                    style={{ width: 18, height: 18 }}
+                    style={{ width: 17, height: 17 }}
                   />
-                  Đăng Web Catalog
+                  Đăng Web
                 </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: 700, fontSize: 12.5, color: webFeatured ? '#D97706' : '#64748B', background: webFeatured ? '#FEF3C7' : '#FFFFFF', padding: '4px 10px', borderRadius: 6, border: webFeatured ? '1px solid #F59E0B' : '1px solid #CBD5E1', marginBottom: 0, transition: 'all 0.15s ease' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={webFeatured}
+                    onChange={e => setWebFeatured(e.target.checked)}
+                    style={{ width: 15, height: 15, cursor: 'pointer' }}
+                  />
+                  ⭐ Nổi bật trang chủ
+                </label>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 12, fontWeight: 'bold' }}>Hãng:</span>
                   <select className="select" value={webBrand} onChange={e => setWebBrand(e.target.value)} style={{ padding: '4px 8px', fontSize: 12, width: 'auto' }}>
                     <option value="UPTI PUMP">UPTI PUMP (Đài Loan)</option>

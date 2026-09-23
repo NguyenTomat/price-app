@@ -311,6 +311,7 @@ export const refreshWebCatalogSnapshot = async () => {
             voltage: p.webSpecs?.voltage || (p.spec2?.includes('380V') ? '380V' : '220V'),
             webSpecs: p.webSpecs || { power: p.spec1 || '', specs: p.spec2 || '', voltage: '220V' },
             productType: p.productType || 'pump',
+            featured: p.featured || false,
             webImages: cleanImages.slice(0, 2),
             showOnWeb: true
           };

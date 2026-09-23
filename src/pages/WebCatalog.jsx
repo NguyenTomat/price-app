@@ -854,6 +854,62 @@ export default function WebCatalog() {
     }
     return Array.from(brandsSet);
   }, [products]);
+
+  // Lấy danh sách sản phẩm nổi bật ngoài trang chủ: Đa dạng mỗi dòng 1 con đại diện + ưu tiên sản phẩm ghim thủ công
+  const homeFeaturedProducts = useMemo(() => {
+    // 1. Lọc sản phẩm hiển thị trên Web và theo Tab thương hiệu đang chọn
+    const eligible = products.filter(p => p.showOnWeb && (homeFeaturedTab === 'ALL' || (p.webBrand || '').toUpperCase() === homeFeaturedTab.toUpperCase()))
+    if (eligible.length === 0) return []
+
+    // 2. Lấy sản phẩm được ghim nổi bật thủ công (p.featured === true)
+    const manuallyFeatured = eligible.filter(p => !!p.featured)
+
+    // 3. Gom nhóm theo Group / Category để chọn đại diện đa dạng mỗi dòng 1 sản phẩm tiêu biểu
+    const groupsMap = new Map()
+    eligible.forEach(p => {
+      const g = (p.group || p.category || 'Dòng bơm khác').trim()
+      if (!groupsMap.has(g)) {
+        groupsMap.set(g, [])
+      }
+      groupsMap.get(g).push(p)
+    })
+
+    // Sắp xếp sản phẩm trong từng nhóm: ưu tiên sản phẩm có ảnh thật và có công suất
+    groupsMap.forEach(prods => {
+      prods.sort((a, b) => {
+        const aScore = (a.webImages?.length ? 3 : (a.images?.length ? 1 : 0)) + (a.webSpecs?.power ? 2 : 0) + (a.price > 0 ? 1 : 0)
+        const bScore = (b.webImages?.length ? 3 : (b.images?.length ? 1 : 0)) + (b.webSpecs?.power ? 2 : 0) + (b.price > 0 ? 1 : 0)
+        return bScore - aScore
+      })
+    })
+
+    const selected = [...manuallyFeatured]
+    const selectedIds = new Set(selected.map(p => p.id))
+
+    // Lấy luân phiên từ mỗi nhóm 1 sản phẩm đại diện
+    const groupEntries = Array.from(groupsMap.entries())
+    let round = 0
+    let addedAny = true
+    while (selected.length < 12 && addedAny) {
+      addedAny = false
+      for (const [_, prods] of groupEntries) {
+        if (prods[round]) {
+          const candidate = prods[round]
+          if (!selectedIds.has(candidate.id)) {
+            selected.push(candidate)
+            selectedIds.add(candidate.id)
+            addedAny = true
+            if (selected.length >= 12) break
+          }
+        }
+      }
+      round++
+      if (round > 20) break
+    }
+
+    return selected.slice(0, 12)
+  }, [products, homeFeaturedTab]);
+
   const [aiResponseText, setAiResponseText] = useState('')
 
   // Floating AI Chat Box states
@@ -4041,23 +4097,17 @@ export default function WebCatalog() {
               </div>
             </div>
 
-            {/* Desktop View: 4-column compact featured cards */}
+            {/* Desktop View: 4-column compact featured cards (Đa dạng mỗi dòng 1 sản phẩm đại diện) */}
             <div className="desktop-only">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-                {products
-                  .filter(p => p.showOnWeb && (homeFeaturedTab === 'ALL' || (p.webBrand || '').toUpperCase() === homeFeaturedTab.toUpperCase()))
-                  .slice(0, 8)
-                  .map(p => renderFeaturedCard(p))}
+                {homeFeaturedProducts.slice(0, 8).map(p => renderFeaturedCard(p))}
               </div>
             </div>
 
             {/* Mobile View: Clean 2-column grid */}
             <div className="mobile-only-flex" style={{ display: 'none', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {products
-                  .filter(p => p.showOnWeb && (homeFeaturedTab === 'ALL' || (p.webBrand || '').toUpperCase() === homeFeaturedTab.toUpperCase()))
-                  .slice(0, 6)
-                  .map(p => renderFeaturedCard(p))}
+                {homeFeaturedProducts.slice(0, 6).map(p => renderFeaturedCard(p))}
               </div>
             </div>
             

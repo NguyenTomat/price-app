@@ -6959,19 +6959,56 @@ export default function WebCatalog() {
             </div>
 
             {/* RELATED PRODUCTS */}
-            <div style={{ marginTop: 60 }}>
-              <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: 12, marginBottom: 28 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase', letterSpacing: '1px' }}>Sản phẩm cùng loại</span>
-                <h3 style={{ fontSize: 20, fontWeight: 900, color: '#082B4C', margin: '4px 0 0' }}>SẢN PHẨM LIÊN QUAN</h3>
-              </div>
-              
-                            <div className="catalog-grid">
-                {products
-                  .filter(p => p.showOnWeb && p.id !== currentProduct.id && (p.group === currentProduct.group || p.webBrand === currentProduct.webBrand))
-                  .slice(0, 4)
-                  .map(p => renderProductCard(p))}
-              </div>
-            </div>
+            {(() => {
+              const normCurrentGroup = normalizeSearchStr(currentProduct.group || '')
+              const normCurrentName = normalizeSearchStr(currentProduct.name || '')
+              const currentType = currentProduct.productType || 'pump'
+              const candidates = products.filter(p => p.showOnWeb && p.id !== currentProduct.id)
+
+              // 1. Cùng nhóm chính xác (Exact Group)
+              const exactGroup = candidates.filter(p => {
+                if (!p.group || !currentProduct.group) return false
+                return p.group.trim().toLowerCase() === currentProduct.group.trim().toLowerCase()
+              })
+
+              // 2. Cùng phân loại và cùng từ khóa tương đồng (ví dụ: cùng hỏa tiễn, cùng nước thải, cùng biến tần, cùng ly tâm...)
+              const domainKeywords = ['hoa tien', 'gieng khoan', 'nuoc thai', 'ho mong', 'bien tan', 'tang ap', 'ly tam', 'truc dung', 'cdlf', 'cap inox', 'tu dien', 'binh tich ap', 'canh cat']
+              const matchedCategory = candidates.filter(p => {
+                if (exactGroup.some(eg => eg.id === p.id)) return false
+                const pType = p.productType || 'pump'
+                if (pType !== currentType) return false
+                const normG = normalizeSearchStr(p.group || '')
+                const normN = normalizeSearchStr(p.name || '')
+                return domainKeywords.some(kw => 
+                  (normCurrentGroup.includes(kw) || normCurrentName.includes(kw)) &&
+                  (normG.includes(kw) || normN.includes(kw))
+                )
+              })
+
+              // 3. Cùng thương hiệu và cùng phân loại (chỉ lấy cùng máy bơm hoặc cùng phụ kiện)
+              const sameBrand = candidates.filter(p => {
+                if (exactGroup.some(eg => eg.id === p.id) || matchedCategory.some(mc => mc.id === p.id)) return false
+                const pType = p.productType || 'pump'
+                if (pType !== currentType) return false
+                return (p.webBrand || '').toUpperCase() === (currentProduct.webBrand || '').toUpperCase()
+              })
+
+              const relatedList = [...exactGroup, ...matchedCategory, ...sameBrand].slice(0, 4)
+              if (relatedList.length === 0) return null
+
+              return (
+                <div style={{ marginTop: 60 }}>
+                  <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: 12, marginBottom: 28 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase', letterSpacing: '1px' }}>Sản phẩm cùng loại</span>
+                    <h3 style={{ fontSize: 20, fontWeight: 900, color: '#082B4C', margin: '4px 0 0' }}>SẢN PHẨM LIÊN QUAN</h3>
+                  </div>
+                  
+                  <div className="catalog-grid">
+                    {relatedList.map(p => renderProductCard(p))}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         );
       })())}

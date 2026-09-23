@@ -858,7 +858,7 @@ export default function WebCatalog() {
   // Lấy danh sách sản phẩm nổi bật ngoài trang chủ: Đa dạng mỗi dòng 1 con đại diện + ưu tiên sản phẩm ghim thủ công
   const homeFeaturedProducts = useMemo(() => {
     // 1. Lọc sản phẩm hiển thị trên Web và theo Tab thương hiệu đang chọn
-    const eligible = products.filter(p => p.showOnWeb && (homeFeaturedTab === 'ALL' || (p.webBrand || '').toUpperCase() === homeFeaturedTab.toUpperCase()))
+    const eligible = (products || []).filter(p => p && p.showOnWeb && (homeFeaturedTab === 'ALL' || (p.webBrand || '').toUpperCase() === homeFeaturedTab.toUpperCase()))
     if (eligible.length === 0) return []
 
     // 2. Lấy sản phẩm được ghim nổi bật thủ công (p.featured === true)
@@ -867,7 +867,7 @@ export default function WebCatalog() {
     // 3. Gom nhóm theo Group / Category để chọn đại diện đa dạng mỗi dòng 1 sản phẩm tiêu biểu
     const groupsMap = new Map()
     eligible.forEach(p => {
-      const g = (p.group || p.category || 'Dòng bơm khác').trim()
+      const g = String(p?.group || p?.category || 'Dòng bơm khác').trim()
       if (!groupsMap.has(g)) {
         groupsMap.set(g, [])
       }
@@ -877,8 +877,8 @@ export default function WebCatalog() {
     // Sắp xếp sản phẩm trong từng nhóm: ưu tiên sản phẩm có ảnh thật và có công suất
     groupsMap.forEach(prods => {
       prods.sort((a, b) => {
-        const aScore = (a.webImages?.length ? 3 : (a.images?.length ? 1 : 0)) + (a.webSpecs?.power ? 2 : 0) + (a.price > 0 ? 1 : 0)
-        const bScore = (b.webImages?.length ? 3 : (b.images?.length ? 1 : 0)) + (b.webSpecs?.power ? 2 : 0) + (b.price > 0 ? 1 : 0)
+        const aScore = (Array.isArray(a.webImages) && a.webImages.length ? 3 : (Array.isArray(a.images) && a.images.length ? 1 : 0)) + (a.webSpecs?.power ? 2 : 0) + (a.price > 0 ? 1 : 0)
+        const bScore = (Array.isArray(b.webImages) && b.webImages.length ? 3 : (Array.isArray(b.images) && b.images.length ? 1 : 0)) + (b.webSpecs?.power ? 2 : 0) + (b.price > 0 ? 1 : 0)
         return bScore - aScore
       })
     })
@@ -893,9 +893,9 @@ export default function WebCatalog() {
     while (selected.length < 12 && addedAny) {
       addedAny = false
       for (const [_, prods] of groupEntries) {
-        if (prods[round]) {
+        if (prods && prods[round]) {
           const candidate = prods[round]
-          if (!selectedIds.has(candidate.id)) {
+          if (candidate && candidate.id && !selectedIds.has(candidate.id)) {
             selected.push(candidate)
             selectedIds.add(candidate.id)
             addedAny = true
@@ -6960,15 +6960,15 @@ export default function WebCatalog() {
 
             {/* RELATED PRODUCTS */}
             {(() => {
-              const normCurrentGroup = normalizeSearchStr(currentProduct.group || '')
-              const normCurrentName = normalizeSearchStr(currentProduct.name || '')
-              const currentType = currentProduct.productType || 'pump'
-              const candidates = products.filter(p => p.showOnWeb && p.id !== currentProduct.id)
+              const normCurrentGroup = normalizeSearchStr(currentProduct?.group || '')
+              const normCurrentName = normalizeSearchStr(currentProduct?.name || '')
+              const currentType = currentProduct?.productType || 'pump'
+              const candidates = (products || []).filter(p => p && p.showOnWeb && p.id !== currentProduct?.id)
 
               // 1. Cùng nhóm chính xác (Exact Group)
               const exactGroup = candidates.filter(p => {
-                if (!p.group || !currentProduct.group) return false
-                return p.group.trim().toLowerCase() === currentProduct.group.trim().toLowerCase()
+                if (!p?.group || !currentProduct?.group) return false
+                return String(p.group).trim().toLowerCase() === String(currentProduct.group).trim().toLowerCase()
               })
 
               // 2. Cùng phân loại và cùng từ khóa tương đồng (ví dụ: cùng hỏa tiễn, cùng nước thải, cùng biến tần, cùng ly tâm...)
@@ -6990,7 +6990,7 @@ export default function WebCatalog() {
                 if (exactGroup.some(eg => eg.id === p.id) || matchedCategory.some(mc => mc.id === p.id)) return false
                 const pType = p.productType || 'pump'
                 if (pType !== currentType) return false
-                return (p.webBrand || '').toUpperCase() === (currentProduct.webBrand || '').toUpperCase()
+                return String(p.webBrand || '').toUpperCase() === String(currentProduct?.webBrand || '').toUpperCase()
               })
 
               const relatedList = [...exactGroup, ...matchedCategory, ...sameBrand].slice(0, 4)

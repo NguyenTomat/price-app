@@ -32,7 +32,8 @@ class ErrorBoundary extends React.Component {
           fontFamily: "'Inter', system-ui, sans-serif"
         }}>
           <div style={{
-            maxWidth: 480,
+            maxWidth: 520,
+            width: '100%',
             background: '#FFFFFF',
             borderRadius: 16,
             padding: '36px 28px',
@@ -44,14 +45,24 @@ class ErrorBoundary extends React.Component {
             <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>
               Đã xảy ra lỗi khi tải trang
             </h2>
-            <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, marginBottom: 24 }}>
-              Hệ thống đã tự động ghi nhận. Vui lòng bấm nút bên dưới để tải lại dữ liệu mới nhất.
+            <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, marginBottom: 20 }}>
+              Hệ thống đã tự động ghi nhận. Vui lòng bấm nút bên dưới để xóa cache và tải lại dữ liệu mới nhất.
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            {this.state.error && (
+              <div style={{ textAlign: 'left', background: '#F1F5F9', border: '1px solid #E2E8F0', padding: '10px 14px', borderRadius: 8, fontSize: 11.5, color: '#DC2626', overflowX: 'auto', marginBottom: 20, maxHeight: 120, fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                {this.state.error?.message || String(this.state.error)}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 onClick={() => {
                   try {
                     localStorage.removeItem('tt_web_products_cache')
+                    localStorage.removeItem('tt_web_products_cache_v2')
+                    localStorage.removeItem('tt_web_products_cache_time_v2')
+                    localStorage.removeItem('tt_web_categories_cache')
+                    localStorage.removeItem('tt_custom_categories_list')
+                    sessionStorage.clear()
                   } catch {}
                   window.location.hash = '#web'
                   window.location.reload()
@@ -67,7 +78,32 @@ class ErrorBoundary extends React.Component {
                   cursor: 'pointer'
                 }}
               >
-                🔄 Tải lại trang chủ
+                🔄 Xóa Cache & Tải lại Web
+              </button>
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.removeItem('tt_web_products_cache')
+                    localStorage.removeItem('tt_web_products_cache_v2')
+                    localStorage.removeItem('tt_web_products_cache_time_v2')
+                    localStorage.removeItem('tt_web_categories_cache')
+                    localStorage.removeItem('tt_custom_categories_list')
+                  } catch {}
+                  window.location.hash = '#login'
+                  window.location.reload()
+                }}
+                style={{
+                  background: '#F1F5F9',
+                  color: '#0F172A',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: 8,
+                  padding: '11px 20px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                🔐 Vào Quản trị App
               </button>
             </div>
           </div>

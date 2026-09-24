@@ -3,6 +3,7 @@ import { subscribePriceLists, getProducts, getUserPriceLists, saveUserPriceList,
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import { calcPriceBreakdown } from '../utils/priceCalc'
+import { exportMyPricesExcel } from '../utils/myPricesExcelExport'
 import MobileTableWrap from '../components/MobileTableWrap'
 import ProductImagesModal from '../components/ProductImagesModal'
 
@@ -184,6 +185,59 @@ export default function MyPricesPage() {
     }
   }
 
+  const handleExportActiveExcel = async () => {
+    if (!selectedList || !filtered.length) {
+      toast('Không có sản phẩm để xuất Excel', 'warning')
+      return
+    }
+    try {
+      const rowsToExport = filtered.map(p => ({
+        group: p.group || '',
+        name: p.name || '',
+        spec1: p.spec1 || '',
+        spec2: p.spec2 || '',
+        originalPrice: p.price,
+        myPrice: calcPrice(p.price)
+      }))
+
+      await exportMyPricesExcel({
+        listName: selectedList.name,
+        rows: rowsToExport,
+        includeVat,
+        discPct: discN,
+        marginPct: marginN,
+        userName: user?.displayName || user?.email?.split('@')[0] || 'NGUYỄN THỊ TUYẾT',
+        fileName: `Bang-gia-${(selectedList.name || 'san-pham').replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.xlsx`
+      })
+      toast('Đã xuất file Excel theo form T&T thành công!', 'success')
+    } catch (err) {
+      console.error('Lỗi xuất Excel:', err)
+      toast('Lỗi xuất Excel: ' + err.message, 'error')
+    }
+  }
+
+  const handleExportSavedExcel = async (saved) => {
+    if (!saved || !saved.rows?.length) {
+      toast('Bảng giá này không có sản phẩm', 'warning')
+      return
+    }
+    try {
+      await exportMyPricesExcel({
+        listName: saved.listName || saved.label || 'SẢN PHẨM',
+        rows: saved.rows,
+        includeVat: !!saved.includeVat,
+        discPct: saved.discPct || 0,
+        marginPct: saved.marginPct || 0,
+        userName: user?.displayName || user?.email?.split('@')[0] || 'NGUYỄN THỊ TUYẾT',
+        fileName: `Bang-gia-${(saved.label || 'cua-toi').replace(/[^a-zA-Z0-9à-ỹÀ-Ỹ]/g, '-')}-${new Date().toISOString().slice(0, 10)}.xlsx`
+      })
+      toast('Đã xuất file Excel theo form T&T thành công!', 'success')
+    } catch (err) {
+      console.error('Lỗi xuất Excel:', err)
+      toast('Lỗi xuất Excel: ' + err.message, 'error')
+    }
+  }
+
   const exportCSV = (saved) => {
     const header = 'Nhóm,Tên sản phẩm,Thông số,Giá gốc,Giá bán\n'
     const rows = saved.rows.map(r =>
@@ -254,7 +308,8 @@ export default function MyPricesPage() {
                         <button className="btn sm" onClick={(e) => startRenameSaved(s, e)} title="Đổi tên">✏️</button>
                       </>
                     )}
-                    <button className="btn sm" onClick={() => exportCSV(s)}>📥 Xuất CSV</button>
+                    <button className="btn sm primary" onClick={() => handleExportSavedExcel(s)} title="Xuất file Excel theo form chuẩn T&T" style={{ background: '#0E385E', borderColor: '#0E385E' }}>📊 Xuất Excel</button>
+                    <button className="btn sm" onClick={() => exportCSV(s)}>📥 CSV</button>
                     <button className="btn sm danger" onClick={() => handleDeleteSaved(s.id)}>🗑</button>
                   </div>
                 ))}
@@ -289,7 +344,8 @@ export default function MyPricesPage() {
                 </>
               )}
               <span className="text-muted text-sm">{viewingSaved.rows?.length} sản phẩm</span>
-              <button className="btn sm" onClick={() => exportCSV(viewingSaved)}>📥 Xuất CSV</button>
+              <button className="btn sm primary" onClick={() => handleExportSavedExcel(viewingSaved)} title="Xuất file Excel theo form chuẩn T&T" style={{ background: '#0E385E', borderColor: '#0E385E' }}>📊 Xuất Excel (Mẫu T&T)</button>
+              <button className="btn sm" onClick={() => exportCSV(viewingSaved)}>📥 CSV</button>
               <button className="btn sm" onClick={() => setViewingSaved(null)}>✕ Đóng</button>
             </div>
             <MobileTableWrap>
@@ -419,10 +475,11 @@ export default function MyPricesPage() {
                   <input className="input" placeholder="Tìm..." value={search} onChange={e => setSearch(e.target.value)}/>
                 </div>
                 <button className="btn primary" onClick={handleSave}>💾 Lưu</button>
+                <button className="btn primary" onClick={handleExportActiveExcel} title="Xuất file Excel theo form chuẩn T&T" style={{ background: '#0E385E', borderColor: '#0E385E' }}>📊 Xuất Excel (Mẫu T&T)</button>
                 <button className="btn" onClick={() => exportCSV({
                   label: `${selectedList.name}-${discN}%-${marginN}%`,
                   rows: filtered.map(p => ({ group: p.group, name: p.name, spec2: p.spec2, originalPrice: p.price, myPrice: calcPrice(p.price) }))
-                })}>📥 Xuất CSV</button>
+                })}>📥 CSV</button>
               </div>
 
               {loadingProds ? (

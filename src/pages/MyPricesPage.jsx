@@ -197,7 +197,8 @@ export default function MyPricesPage() {
         spec1: p.spec1 || '',
         spec2: p.spec2 || '',
         originalPrice: p.price,
-        myPrice: calcPrice(p.price)
+        myPrice: calcPrice(p.price),
+        image: (p.webImages && p.webImages[0]) || (p.images && p.images[0]) || null
       }))
 
       await exportMyPricesExcel({
@@ -222,9 +223,17 @@ export default function MyPricesPage() {
       return
     }
     try {
+      const rowsToExport = (saved.rows || []).map(r => {
+        const savedImgs = getSavedRowImages(r)
+        return {
+          ...r,
+          image: r.image || (r.webImages && r.webImages[0]) || (r.images && r.images[0]) || (savedImgs && savedImgs[0]) || null
+        }
+      })
+
       await exportMyPricesExcel({
         listName: saved.listName || saved.label || 'SẢN PHẨM',
-        rows: saved.rows,
+        rows: rowsToExport,
         includeVat: !!saved.includeVat,
         discPct: saved.discPct || 0,
         marginPct: saved.marginPct || 0,

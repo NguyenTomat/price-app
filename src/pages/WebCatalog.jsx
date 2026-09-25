@@ -2307,7 +2307,11 @@ export default function WebCatalog() {
   }
 
   const goBackToCatalog = () => {
-    window.location.hash = '#web'
+    if (window.history.length > 1) {
+      window.history.back()
+    } else {
+      window.location.hash = '#web/catalog'
+    }
   }
 
   const handleNavHome = () => {
@@ -6717,10 +6721,10 @@ export default function WebCatalog() {
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                     background: 'transparent', border: 'none', color: '#0878D9',
-                    fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0
+                    fontWeight: 700, fontSize: 13.5, cursor: 'pointer', padding: 0
                   }}
                 >
-                  ← QUAY LẠI DANH MỤC
+                  ← Quay lại
                 </button>
                 <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }} className="desktop-only">
                   <span style={{ cursor: 'pointer' }} onClick={() => handleNavHome()}>Trang chủ</span> / <span style={{ cursor: 'pointer' }} onClick={goBackToCatalog}>Sản phẩm</span> / <span style={{ fontWeight: 700, color: '#082B4C' }}>{currentProduct.name}</span>
@@ -6729,7 +6733,7 @@ export default function WebCatalog() {
 
               {/* Breadcrumb for Mobile */}
               <div style={{ display: 'none', borderBottom: '1px solid #F1F5F9', paddingBottom: 10, marginBottom: 16, alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }} className="mobile-only-flex">
-                <span style={{ color: '#64748B', cursor: 'pointer' }} onClick={goBackToCatalog}>← DANH SÁCH SẢN PHẨM</span>
+                <span style={{ color: '#0878D9', cursor: 'pointer' }} onClick={goBackToCatalog}>← Quay lại</span>
               </div>
 
               {/* PRODUCT HERO (Two Columns: 420px / 1fr on Desktop) */}

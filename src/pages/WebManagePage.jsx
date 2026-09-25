@@ -1212,9 +1212,9 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
         }
       }
 
-      // Cho phép lưu cả ảnh Storage (https://) và ảnh base64 đã nén
+      // Cho phép lưu tất cả ảnh hợp lệ (Storage URL, path tĩnh /product_images/, hoặc base64)
       const validImages = compressedWebImages.filter(
-        img => typeof img === 'string' && (img.startsWith('https://') || img.startsWith('data:'))
+        img => typeof img === 'string' && img.trim().length > 0
       )
 
       const dataToUpdate = {

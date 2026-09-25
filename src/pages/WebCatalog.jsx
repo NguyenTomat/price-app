@@ -349,17 +349,6 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
   const shouldSlide = catProducts && catProducts.length > itemsPerPage
   const totalPages = Math.ceil((catProducts?.length || 0) / itemsPerPage)
 
-  // Auto slide 4 by 4 smoothly every 4.5 seconds (pauses on hover/touch)
-  useEffect(() => {
-    if (!shouldSlide || isHovered || isSwiping) return
-
-    const timer = setInterval(() => {
-      setCurrentPage(prev => (prev + 1) % totalPages)
-    }, 4500)
-
-    return () => clearInterval(timer)
-  }, [shouldSlide, isHovered, isSwiping, totalPages])
-
   const handlePrev = (e) => {
     e?.stopPropagation()
     setCurrentPage(prev => (prev - 1 + totalPages) % totalPages)
@@ -437,9 +426,37 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
       <div className="category-header">
         <div className="category-header-left">
           <h3 className="category-title">{catName}</h3>
-          <span className="category-subtitle">
-            Nhập khẩu chính hãng &middot; {catProducts.length} sản phẩm
-          </span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '2px 8px',
+              borderRadius: '12px',
+              background: '#EFF6FF',
+              color: '#0878D9',
+              fontSize: '11px',
+              fontWeight: 700,
+              border: '1px solid #DBEAFE'
+            }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#0878D9' }} />
+              Chính hãng
+            </span>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '2px 8px',
+              borderRadius: '12px',
+              background: '#F8FAFC',
+              color: '#64748B',
+              fontSize: '11px',
+              fontWeight: 600,
+              border: '1px solid #E2E8F0'
+            }}>
+              {catProducts.length} sản phẩm
+            </span>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {shouldSlide && (
@@ -3804,9 +3821,25 @@ export default function WebCatalog() {
           {/* 2. PRODUCT CATEGORY NAVIGATION */}
           <section style={{ maxWidth: 1240, margin: '48px auto 32px', padding: '0 20px', boxSizing: 'border-box' }} id="categories-section">
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#0878D9', letterSpacing: '1.2px', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
-                DANH MỤC SẢN PHẨM
-              </span>
+              <div style={{ marginBottom: 8 }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 14px',
+                  borderRadius: '20px',
+                  background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
+                  color: '#0878D9',
+                  fontSize: '11.5px',
+                  fontWeight: 800,
+                  letterSpacing: '0.8px',
+                  textTransform: 'uppercase',
+                  border: '1px solid #BFDBFE',
+                  boxShadow: '0 1px 3px rgba(8, 120, 217, 0.08)'
+                }}>
+                  <span style={{ fontSize: 13 }}>📂</span> DANH MỤC SẢN PHẨM
+                </span>
+              </div>
               <h2 style={{ fontSize: 24, fontWeight: 900, color: '#071A2F', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>
                 {categoryNavType === 'accessory' ? 'PHỤ KIỆN MÁY BƠM' : 'DÒNG MÁY BƠM'}
               </h2>
@@ -4092,7 +4125,25 @@ export default function WebCatalog() {
           <section style={{ maxWidth: 1200, margin: '48px auto 32px', padding: '0 16px', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16, borderBottom: '1px solid #E2E8F0', paddingBottom: 12, flexWrap: 'wrap', gap: 10 }}>
               <div>
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase', letterSpacing: '1px' }}>Sản Phẩm Đắc Lực</span>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '3px 10px',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+                    color: '#92400E',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    letterSpacing: '0.6px',
+                    textTransform: 'uppercase',
+                    border: '1px solid #FCD34D',
+                    boxShadow: '0 1px 2px rgba(245, 158, 11, 0.1)'
+                  }}>
+                    <span>⭐</span> SẢN PHẨM ĐẮC LỰC
+                  </span>
+                </div>
                 <h2 style={{ fontSize: 22, fontWeight: 900, color: '#082B4C', marginTop: 2, margin: 0 }}>SẢN PHẨM NỔI BẬT</h2>
               </div>
               

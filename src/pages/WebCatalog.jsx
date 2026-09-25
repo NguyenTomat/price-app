@@ -9089,8 +9089,6 @@ export default function WebCatalog() {
           </div>
         </div>
       )}
-      
-      <PwaUpdateBanner />
     </div>
   )
 }

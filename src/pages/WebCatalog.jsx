@@ -240,6 +240,11 @@ function ProductImage({ src, alt, style = {}, className = '', fallbackTitle = ''
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
 
+  useEffect(() => {
+    setLoaded(false)
+    setError(false)
+  }, [src])
+
   const isValidSrc = src && typeof src === 'string' && src.trim().length > 0 && !src.includes('unsplash.com')
 
   if (!isValidSrc || error) {
@@ -573,7 +578,10 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
 export default function WebCatalog() {
   const [products, setProducts] = useState(() => {
     try {
-      const cached = localStorage.getItem('tt_web_products_cache_v2')
+      ['tt_web_products_cache_v1', 'tt_web_products_cache_v2', 'tt_web_products_cache_v3', 'tt_web_products_cache_v4'].forEach(k => {
+        try { localStorage.removeItem(k); } catch {}
+      })
+      const cached = localStorage.getItem('tt_web_products_cache_v5')
       if (cached) {
         const parsed = JSON.parse(cached)
         if (Array.isArray(parsed) && parsed.length > 0) return parsed
@@ -583,7 +591,7 @@ export default function WebCatalog() {
   })
   const [loading, setLoading] = useState(() => {
     try {
-      const cached = localStorage.getItem('tt_web_products_cache_v2')
+      const cached = localStorage.getItem('tt_web_products_cache_v5')
       if (cached) {
         const parsed = JSON.parse(cached)
         if (Array.isArray(parsed) && parsed.length > 0) return false
@@ -1640,8 +1648,8 @@ export default function WebCatalog() {
 
   // Load products with LocalStorage cache (Stale-While-Revalidate)
   useEffect(() => {
-    const CACHE_KEY = 'tt_web_products_cache_v2'
-    const CACHE_TIME_KEY = 'tt_web_products_cache_time_v2'
+    const CACHE_KEY = 'tt_web_products_cache_v5'
+    const CACHE_TIME_KEY = 'tt_web_products_cache_time_v5'
 
     const fetchCategories = async () => {
       try {
@@ -1661,7 +1669,7 @@ export default function WebCatalog() {
         if (Array.isArray(data) && data.length > 0) {
           setProducts(data)
           try {
-            // Lưu dữ liệu nhẹ (1 ảnh thumbnail) vào cache để không bao giờ bị QuotaExceededError
+            // Lưu dữ liệu vào cache để truy cập siêu tốc ngay cả khi tải lại trang
             const lightData = data.map(p => ({
               id: p.id,
               listId: p.listId,
@@ -1673,7 +1681,7 @@ export default function WebCatalog() {
               category: p.category,
               voltage: p.voltage,
               webSpecs: p.webSpecs,
-              webImages: (p.webImages && p.webImages.length > 0) ? [p.webImages[0]] : []
+              webImages: p.webImages || []
             }))
             localStorage.setItem(CACHE_KEY, JSON.stringify(lightData))
             localStorage.setItem(CACHE_TIME_KEY, Date.now().toString())
@@ -1693,14 +1701,13 @@ export default function WebCatalog() {
     try {
       const cachedData = localStorage.getItem(CACHE_KEY)
       if (cachedData) {
-        setProducts(JSON.parse(cachedData))
-        setLoading(false)
-      } else {
-        setLoading(true)
+        const parsed = JSON.parse(cachedData)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setProducts(parsed)
+          setLoading(false)
+        }
       }
-    } catch (e) {
-      setLoading(true)
-    }
+    } catch (e) {}
 
     // Always fetch fresh data in background to stay up to date
     fetchAndCache()

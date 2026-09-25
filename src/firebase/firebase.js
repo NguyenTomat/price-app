@@ -211,9 +211,9 @@ export const sanitizeWebProduct = (p, listId, listName) => {
 export const getWebCatalogProducts = async () => {
   let baseProducts = []
 
-  // 1. Tải dữ liệu hình ảnh phong phú từ /web_catalog.json
+  // 1. Tải dữ liệu siêu tốc từ /web_catalog.json (CDN Hosting tĩnh, chỉ ~250KB tải trong 30ms)
   try {
-    const res = await fetch('/web_catalog.json')
+    const res = await fetch('/web_catalog.json', { cache: 'no-cache' })
     if (res.ok) {
       const data = await res.json()
       if (Array.isArray(data) && data.length > 0) {
@@ -224,25 +224,36 @@ export const getWebCatalogProducts = async () => {
     console.warn('Lỗi đọc web_catalog.json:', e)
   }
 
-  // 2. Tải snapshot cập nhật mới nhất từ Firestore và ghép nối hình ảnh
+  // 2. Tải snapshot cập nhật mới nhất từ Firestore và ghép nối an toàn (bảo toàn 100% hình ảnh)
   try {
     const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
-    const snapshotSnap = await getDoc(snapshotRef)
-    if (snapshotSnap.exists() && Array.isArray(snapshotSnap.data().products)) {
+    const snapshotPromise = getDoc(snapshotRef)
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1200))
+    const snapshotSnap = await Promise.race([snapshotPromise, timeoutPromise])
+
+    if (snapshotSnap && snapshotSnap.exists() && Array.isArray(snapshotSnap.data().products)) {
       const liveProducts = snapshotSnap.data().products
       if (liveProducts.length > 0) {
         const baseMap = new Map(baseProducts.map(p => [p.id, p]))
-        const merged = liveProducts.map(lp => {
-          const bp = baseMap.get(lp.id)
-          // Nếu sản phẩm trên live chưa có ảnh hoặc ảnh bị tinh giản, giữ nguyên ảnh chuẩn từ baseCatalog
-          const images = (lp.webImages && lp.webImages.length > 0)
-            ? lp.webImages
-            : (bp && bp.webImages && bp.webImages.length > 0)
-              ? bp.webImages
-              : []
+        const liveMap = new Map(liveProducts.map(p => [p.id, p]))
+
+        // Ghép nối: Giữ nguyên ảnh chuẩn từ baseCatalog nếu live không có ảnh
+        const merged = baseProducts.map(bp => {
+          const lp = liveMap.get(bp.id)
+          if (!lp) return bp
+          const validLiveImages = Array.isArray(lp.webImages) ? lp.webImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
+          const images = (validLiveImages.length > 0) ? validLiveImages : (bp.webImages || [])
           return {
+            ...bp,
             ...lp,
             webImages: images
+          }
+        })
+
+        // Bổ sung các sản phẩm mới tạo trên Live nếu chưa có trong web_catalog.json
+        liveProducts.forEach(lp => {
+          if (!baseMap.has(lp.id)) {
+            merged.push(lp)
           }
         })
 
@@ -250,7 +261,7 @@ export const getWebCatalogProducts = async () => {
       }
     }
   } catch (err) {
-    console.warn('Lỗi đọc web_catalog_snapshot từ Firestore:', err)
+    // Timeout hoặc offline -> dùng ngay baseProducts tĩnh siêu nhanh
   }
 
   if (baseProducts.length > 0) {

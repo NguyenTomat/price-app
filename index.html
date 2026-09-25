@@ -1,6 +1,35 @@
 <!DOCTYPE html>
 <html lang="vi">
   <head>
+    <script>
+      (function() {
+        var reloaded = false;
+        function recover() {
+          if (reloaded) return;
+          var key = 'tt_chunk_reload_' + Math.floor(Date.now() / 60000);
+          if (!sessionStorage.getItem(key)) {
+            sessionStorage.setItem(key, '1');
+            reloaded = true;
+            window.location.reload(true);
+          }
+        }
+        window.addEventListener('error', function(e) {
+          var msg = (e && (e.message || (e.target && e.target.src))) ? String(e.message || e.target.src) : '';
+          if (msg.indexOf('Failed to load module script') !== -1 || msg.indexOf('dynamically imported module') !== -1 || msg.indexOf('chunk') !== -1) {
+            recover();
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(e) {
+          var reason = (e && e.reason) ? String(e.reason.message || e.reason) : '';
+          if (reason.indexOf('Failed to fetch dynamically imported module') !== -1 || reason.indexOf('dynamically imported module') !== -1) {
+            recover();
+          }
+        });
+        window.addEventListener('vite:preloadError', function() {
+          recover();
+        });
+      })();
+    </script>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18042418669"></script>
     <script>

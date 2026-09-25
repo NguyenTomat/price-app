@@ -114,7 +114,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const APP_HASH_PREFIXES = ['#app', '#login', '#dashboard', '#prices', '#orders', '#cost', '#inventory', '#admin', '#bus', '#revenue', '#manage', '#catalog']
+const APP_HASH_PREFIXES = ['#app', '#login', '#dashboard', '#prices', '#orders', '#cost', '#inventory', '#admin', '#bus', '#revenue', '#manage']
 const WEB_HASH_PREFIXES = ['#web', '#products', '#applications', '#brands', '#about', '#contact', '#policy', '#intro']
 
 function isWebRoute(hash) {

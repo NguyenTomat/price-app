@@ -246,23 +246,6 @@ export const getWebCatalogProducts = async () => {
           }
         })
 
-        // Tải ảnh trực tiếp cho các sản phẩm mới thêm vào chưa có trong web_catalog.json
-        const missingImages = merged.filter(p => (!p.webImages || p.webImages.length === 0) && p.listId && p.id)
-        if (missingImages.length > 0 && missingImages.length <= 50) {
-          await Promise.all(missingImages.map(async (p) => {
-            try {
-              const pSnap = await getDoc(doc(db, 'priceLists', p.listId, 'products', p.id))
-              if (pSnap.exists()) {
-                const pData = pSnap.data()
-                const imgs = (pData.webImages && pData.webImages.length > 0) ? pData.webImages : (pData.images || [])
-                if (imgs.length > 0) {
-                  p.webImages = imgs
-                }
-              }
-            } catch {}
-          }))
-        }
-
         return merged
       }
     }

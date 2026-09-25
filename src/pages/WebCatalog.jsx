@@ -571,8 +571,26 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
 }
 
 export default function WebCatalog() {
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [products, setProducts] = useState(() => {
+    try {
+      const cached = localStorage.getItem('tt_web_products_cache_v2')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch {}
+    return []
+  })
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('tt_web_products_cache_v2')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed) && parsed.length > 0) return false
+      }
+    } catch {}
+    return true
+  })
   const [activeBrand, setActiveBrand] = useState('ALL')
   const [sortType, setSortType] = useState('price-asc')
   const [homeFeaturedTab, setHomeFeaturedTab] = useState('ALL')

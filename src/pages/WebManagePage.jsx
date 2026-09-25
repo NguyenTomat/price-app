@@ -834,14 +834,15 @@ export default function WebManagePage() {
     setUploadingImages(true)
     try {
       const uploadedUrls = []
-      // Kiểm tra môi trường: nếu là trình duyệt Web thông thường (không phải Electron) thì bypass Storage luôn để tránh CORS retry làm treo giao diện
-      const isElectron = typeof window !== 'undefined' && (!!window.electronUpdater || navigator.userAgent.indexOf('Electron') >= 0)
-      const useBase64Directly = !isElectron
-
       for (let i = 0; i < files.length; i++) {
         const blob = await compressImage(files[i])
-        
-        if (useBase64Directly) {
+        try {
+          const url = await uploadProductImageFile(
+            selectedListId, editingProduct.id, blob, 'jpg', webImages.length + i
+          )
+          uploadedUrls.push(url)
+        } catch (storageErr) {
+          console.warn("Storage upload failed, falling back to base64 Data URL:", storageErr)
           const base64Url = await new Promise((resolve, reject) => {
             const reader = new FileReader()
             reader.readAsDataURL(blob)
@@ -849,22 +850,6 @@ export default function WebManagePage() {
             reader.onerror = reject
           })
           uploadedUrls.push(base64Url)
-        } else {
-          try {
-            const url = await uploadProductImageFile(
-              selectedListId, editingProduct.id, blob, 'jpg', webImages.length + i
-            )
-            uploadedUrls.push(url)
-          } catch (storageErr) {
-            console.warn("Storage upload failed, falling back to base64 Data URL:", storageErr)
-            const base64Url = await new Promise((resolve, reject) => {
-              const reader = new FileReader()
-              reader.readAsDataURL(blob)
-              reader.onloadend = () => resolve(reader.result)
-              reader.onerror = reject
-            })
-            uploadedUrls.push(base64Url)
-          }
         }
       }
       setWebImages(prev => [...prev, ...uploadedUrls])

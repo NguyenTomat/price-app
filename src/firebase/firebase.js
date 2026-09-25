@@ -284,12 +284,12 @@ export const refreshWebCatalogSnapshot = async () => {
     const allWebProducts = chunks.flat()
     if (allWebProducts.length > 0) {
       try {
-        // Loại bỏ base64 khổng lồ trong snapshot lưu trên Firestore để luôn siêu nhẹ (~150KB) dưới hạn mức 1MB của Firestore
+        // Lưu snapshot siêu nhẹ trên Firestore để cập nhật thời gian thực
         const lightweightProducts = allWebProducts.map(p => {
           const rawImages = (p.webImages && p.webImages.length > 0) ? p.webImages : (p.images || []);
           const cleanImages = rawImages
-            .filter(img => typeof img === 'string')
-            .map(img => img.startsWith('data:') ? (img.length < 5000 ? img : '') : img)
+            .filter(img => typeof img === 'string' && img.trim().length > 0)
+            .map(img => img.startsWith('data:') ? (img.length < 50000 ? img : '') : img)
             .filter(Boolean);
 
           return {
@@ -306,7 +306,7 @@ export const refreshWebCatalogSnapshot = async () => {
             webSpecs: p.webSpecs || { power: p.spec1 || '', specs: p.spec2 || '', voltage: '220V' },
             productType: p.productType || 'pump',
             featured: p.featured || false,
-            webImages: cleanImages.slice(0, 2),
+            webImages: cleanImages,
             showOnWeb: true
           };
         })

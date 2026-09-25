@@ -144,16 +144,35 @@ export const addProduct = (listId, data) => {
   return addDoc(collection(db, 'priceLists', listId, 'products'), rest)
 }
 
-export const deleteProduct = (listId, productId) =>
-  deleteDoc(doc(db, 'priceLists', listId, 'products', productId))
-
-export const updateProduct = (listId, productId, data) => {
-  const { id: _id, ...rest } = data
-  return updateDoc(doc(db, 'priceLists', listId, 'products', productId), rest)
+export const deleteProduct = async (listId, productId) => {
+  await deleteDoc(doc(db, 'priceLists', listId, 'products', productId))
+  try {
+    await deleteDoc(doc(db, 'web_product_overrides', productId))
+  } catch {}
 }
 
-export const updateProductImages = (listId, productId, images) =>
-  updateDoc(doc(db, 'priceLists', listId, 'products', productId), { images: images || [] })
+export const updateProduct = async (listId, productId, data) => {
+  const { id: _id, ...rest } = data
+  await updateDoc(doc(db, 'priceLists', listId, 'products', productId), rest)
+  // Tự động đồng bộ sang web_product_overrides để hiển thị ngay trên web
+  try {
+    if (data.showOnWeb === false) {
+      await deleteDoc(doc(db, 'web_product_overrides', productId))
+    } else {
+      const sanitized = sanitizeWebProduct({ id: productId, listId, ...data })
+      await setDoc(doc(db, 'web_product_overrides', productId), { ...sanitized, updatedAt: Date.now() }, { merge: true })
+    }
+  } catch (err) {
+    console.warn('Sync to web_product_overrides skipped:', err)
+  }
+}
+
+export const updateProductImages = async (listId, productId, images) => {
+  await updateDoc(doc(db, 'priceLists', listId, 'products', productId), { images: images || [] })
+  try {
+    await setDoc(doc(db, 'web_product_overrides', productId), { webImages: images || [], updatedAt: Date.now() }, { merge: true })
+  } catch {}
+}
 
 // Load ALL products from ALL price lists — used in order form for "giá bảng giá" picker
 // Returns flat array: [{ id, listId, listName, name, group, spec1, price, ... }]
@@ -170,7 +189,7 @@ export const getAllProductsFlat = async () => {
 }
 
 export const sanitizeWebProduct = (p, listId, listName) => {
-  const rawImages = p.webImages || p.images || []
+  const rawImages = (p.webImages && p.webImages.length > 0) ? p.webImages : (p.images || [])
   let webImages = []
   if (Array.isArray(rawImages)) {
     webImages = rawImages.filter(img => typeof img === 'string' && img.trim().length > 0)
@@ -190,7 +209,7 @@ export const sanitizeWebProduct = (p, listId, listName) => {
     group: p.group || '',
     category: p.category || '',
     featured: p.featured || false,
-    showOnWeb: p.showOnWeb === true,
+    showOnWeb: p.showOnWeb !== false,
     voltage: p.voltage || p.webSpecs?.voltage || '',
     pipe: p.pipe || '',
     webDesc: p.webDesc || p.desc || p.description || '',
@@ -254,95 +273,72 @@ export const getWebCatalogProducts = async () => {
     console.warn('Lỗi đọc web_catalog.json:', e)
   }
 
-  // 2. Tải snapshot cập nhật mới nhất từ Firestore và ghép nối an toàn (bảo toàn 100% hình ảnh)
+  // 2. Tải các thay đổi / ảnh thực tế mới nhất từ collection web_product_overrides
   try {
-    const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
-    const snapshotPromise = getDoc(snapshotRef)
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500))
-    const snapshotSnap = await Promise.race([snapshotPromise, timeoutPromise])
-
-    if (snapshotSnap && snapshotSnap.exists() && Array.isArray(snapshotSnap.data().products)) {
-      const liveProducts = snapshotSnap.data().products
+    const overridesSnap = await getDocs(collection(db, 'web_product_overrides'))
+    if (!overridesSnap.empty) {
+      const liveProducts = overridesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
       if (liveProducts.length > 0) {
         return mergeCatalogData(baseProducts, liveProducts)
       }
     }
   } catch (err) {
-    // Timeout hoặc offline -> dùng ngay baseProducts tĩnh siêu nhanh
+    console.warn('Lỗi đọc web_product_overrides:', err)
   }
 
-  if (baseProducts.length > 0) {
-    return baseProducts
-  }
-
-  return await refreshWebCatalogSnapshot()
+  return baseProducts
 }
 
 // Lắng nghe thay đổi sản phẩm Web thời gian thực (đổi ảnh/giá là lập tức ăn ngay mà không cần tải lại trang)
 export const subscribeWebCatalogProducts = (cb) => {
   let baseCatalog = []
+  let overrides = []
+
+  const emitMerged = () => {
+    const merged = mergeCatalogData(baseCatalog, overrides)
+    if (merged.length > 0) {
+      cb(merged)
+    }
+  }
+
   fetch('/web_catalog.json', { cache: 'no-cache' })
     .then(r => r.ok ? r.json() : [])
     .then(data => {
       if (Array.isArray(data) && data.length > 0) {
         baseCatalog = data
+        emitMerged()
       }
     })
     .catch(() => {})
 
-  const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
-  return onSnapshot(snapshotRef, (snap) => {
-    if (snap.exists() && Array.isArray(snap.data().products)) {
-      const liveProducts = snap.data().products
-      const merged = mergeCatalogData(baseCatalog, liveProducts)
-      cb(merged)
-    }
+  const q = collection(db, 'web_product_overrides')
+  return onSnapshot(q, (snap) => {
+    overrides = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    emitMerged()
   }, (err) => console.warn('subscribeWebCatalog error:', err))
 }
 
 export const refreshWebCatalogSnapshot = async () => {
   try {
     const lists = await getPriceLists()
-    const chunks = await Promise.all(
-      lists.map(l =>
-        getProducts(l.id).then(ps =>
-          ps.filter(p => p.showOnWeb === true).map(p => sanitizeWebProduct(p, l.id, l.name))
-        )
-      )
-    )
-    const allWebProducts = chunks.flat()
-    if (allWebProducts.length > 0) {
-      try {
-        // Lưu snapshot siêu nhẹ trên Firestore để cập nhật thời gian thực
-        const lightweightProducts = allWebProducts.map(p => {
-          const rawImages = (p.webImages && p.webImages.length > 0) ? p.webImages : (p.images || []);
-          const cleanImages = rawImages
-            .filter(img => typeof img === 'string' && img.trim().length > 0)
-            .map(img => img.startsWith('data:') ? (img.length < 50000 ? img : '') : img)
-            .filter(Boolean);
-
-          return {
-            id: p.id,
-            listId: p.listId,
-            listName: p.listName,
-            name: p.name || '',
-            code: p.code || '',
-            group: p.group || '',
-            category: p.category || p.group || '',
-            webBrand: p.webBrand || 'UPTI PUMP',
-            price: p.price || 0,
-            voltage: p.webSpecs?.voltage || (String(p.spec2 || '').includes('380V') ? '380V' : '220V'),
-            webSpecs: p.webSpecs || { power: p.spec1 || '', specs: p.spec2 || '', voltage: '220V' },
-            productType: p.productType || 'pump',
-            featured: p.featured || false,
-            webImages: cleanImages,
-            showOnWeb: true
-          };
-        })
-        const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
-        await setDoc(snapshotRef, { products: lightweightProducts, updatedAt: Date.now() })
-      } catch (saveErr) {
-        console.warn('Không lưu được web_catalog_snapshot lên Firestore (vẫn dùng data trực tiếp):', saveErr)
+    const allWebProducts = []
+    
+    for (const l of lists) {
+      const ps = await getProducts(l.id)
+      for (const p of ps) {
+        const rawImages = (p.webImages && p.webImages.length > 0) ? p.webImages : (p.images || [])
+        const validImages = Array.isArray(rawImages) ? rawImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
+        
+        if (p.showOnWeb === true || validImages.length > 0 || p.featured) {
+          const sanitized = sanitizeWebProduct(p, l.id, l.name)
+          allWebProducts.push(sanitized)
+          // Lưu override từng sản phẩm vào web_product_overrides để đảm bảo không bao giờ bị giới hạn dung lượng
+          try {
+            await setDoc(doc(db, 'web_product_overrides', p.id), { ...sanitized, updatedAt: Date.now() }, { merge: true })
+          } catch (e) {
+            console.warn(`Lỗi lưu override cho ${p.id}:`, e)
+          }
+        }
       }
     }
     return allWebProducts

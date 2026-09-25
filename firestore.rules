@@ -90,5 +90,10 @@ service cloud.firestore {
       allow write: if true;
       allow read: if request.auth != null || isAdmin();
     }
+
+    match /web_product_overrides/{overrideId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

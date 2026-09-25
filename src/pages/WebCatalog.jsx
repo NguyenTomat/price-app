@@ -1666,8 +1666,8 @@ export default function WebCatalog() {
 
   // Load products with LocalStorage cache and real-time Firestore sync
   useEffect(() => {
-    const CACHE_KEY = 'tt_web_products_cache_v5'
-    const CACHE_TIME_KEY = 'tt_web_products_cache_time_v5'
+    const CACHE_KEY = 'tt_web_products_cache_v6'
+    const CACHE_TIME_KEY = 'tt_web_products_cache_time_v6'
 
     const fetchCategories = async () => {
       try {

@@ -234,14 +234,17 @@ const localAIEngine = (promptText, products) => {
   return { responseText, suggestedProducts }
 }
 
-// High-performance Product Image with Skeleton Shimmer and Brand Fallback
+// High-performance Product Image with Instant Rendering & Brand Fallback
 function ProductImage({ src, alt, style = {}, className = '', fallbackTitle = '', priority = false, onClick, onMouseEnter, onMouseLeave, onMouseMove }) {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
+  const imgRef = useRef(null)
 
   useEffect(() => {
-    setLoaded(false)
     setError(false)
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      setLoaded(true)
+    }
   }, [src])
 
   const isValidSrc = src && typeof src === 'string' && src.trim().length > 0 && !src.includes('unsplash.com')
@@ -311,11 +314,10 @@ function ProductImage({ src, alt, style = {}, className = '', fallbackTitle = ''
         />
       )}
       <img
+        ref={imgRef}
         src={src}
         alt={alt || 'Máy bơm T&T'}
-        loading={priority ? 'eager' : 'lazy'}
         decoding="async"
-        fetchpriority={priority ? 'high' : 'auto'}
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
         className={className}
@@ -323,8 +325,8 @@ function ProductImage({ src, alt, style = {}, className = '', fallbackTitle = ''
           maxWidth: '100%',
           maxHeight: '100%',
           objectFit: 'contain',
-          opacity: loaded ? 1 : 0,
-          transition: 'opacity 0.22s ease-out, transform 0.3s ease',
+          display: 'block',
+          position: 'relative',
           zIndex: 2,
           ...style
         }}

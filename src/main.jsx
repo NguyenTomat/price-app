@@ -2,7 +2,6 @@ import React, { StrictMode, useState, useEffect, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import WebCatalog from './pages/WebCatalog.jsx'
-import PwaUpdateBanner from './components/PwaUpdateBanner.jsx'
 const App = lazy(() => import('./App.jsx'))
 
 class ErrorBoundary extends React.Component {
@@ -147,7 +146,6 @@ function RootRouter() {
 
   return (
     <>
-      <PwaUpdateBanner />
       {isWeb ? (
         <WebCatalog />
       ) : (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { subscribePriceLists, subscribeProducts, subscribeInventory, updateProduct, updateProductImages, addProduct, deleteProduct, deletePriceList, reorderProducts, updatePriceList, ensureProductStorageUrls } from '../firebase/firebase'
+import { subscribePriceLists, subscribeProducts, subscribeInventory, updateProduct, updateProductImages, addProduct, deleteProduct, deletePriceList, reorderProducts, updatePriceList, ensureProductStorageUrls, refreshWebCatalogSnapshot } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import ProductModal from '../components/ProductModal'
@@ -373,7 +373,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
   const handleSaveProduct = async (updated) => {
     try {
       const finalImages = await ensureProductStorageUrls(updated.images || [], selectedList.id, updated.id)
-      const cleanProduct = { ...updated, images: finalImages }
+      const cleanProduct = { ...updated, images: finalImages, webImages: finalImages }
       if (isAdmin) {
         await updateProduct(selectedList.id, updated.id, cleanProduct)
       } else {
@@ -381,6 +381,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
       }
       setSelectedProduct(null)
       toast(isAdmin ? 'Đã lưu sản phẩm' : 'Đã lưu ảnh', 'success')
+      refreshWebCatalogSnapshot().catch(console.warn)
     } catch (err) {
       console.error(err)
       toast('Lỗi lưu sản phẩm: ' + err.message, 'error')

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder, getProductDetail, logWebAnalyticsEvent } from '../firebase/firebase'
-import PwaUpdateBanner from '../components/PwaUpdateBanner'
+import { getWebCatalogProducts, subscribeWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder, getProductDetail, logWebAnalyticsEvent } from '../firebase/firebase'
 import { DEFAULT_HERO_SLIDES, normalizeHeroSlides } from './WebManagePage'
 
 // Bản đồ Logo & Xuất xứ các thương hiệu máy bơm
@@ -1663,7 +1662,7 @@ export default function WebCatalog() {
     return () => clearInterval(timer)
   }, [sliderInteracted, homepageSlides])
 
-  // Load products with LocalStorage cache (Stale-While-Revalidate)
+  // Load products with LocalStorage cache and real-time Firestore sync
   useEffect(() => {
     const CACHE_KEY = 'tt_web_products_cache_v5'
     const CACHE_TIME_KEY = 'tt_web_products_cache_time_v5'
@@ -1726,8 +1725,23 @@ export default function WebCatalog() {
       }
     } catch (e) {}
 
-    // Always fetch fresh data in background to stay up to date
+    // 1. Tải nhanh dữ liệu khởi tạo
     fetchAndCache()
+
+    // 2. Lắng nghe cập nhật thời gian thực (đổi ảnh/sửa thông tin từ admin là lập tức ăn ngay mà không cần reload)
+    const unsub = subscribeWebCatalogProducts((liveData) => {
+      if (Array.isArray(liveData) && liveData.length > 0) {
+        setProducts(liveData)
+        setLoading(false)
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(liveData))
+        } catch {}
+      }
+    })
+
+    return () => {
+      if (typeof unsub === 'function') unsub()
+    }
   }, [])
 
   // Analytics Tracking for Web Visits

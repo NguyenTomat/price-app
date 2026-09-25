@@ -207,6 +207,36 @@ export const sanitizeWebProduct = (p, listId, listName) => {
   }
 }
 
+export const mergeCatalogData = (baseProducts, liveProducts) => {
+  if (!Array.isArray(liveProducts) || liveProducts.length === 0) return baseProducts || []
+  if (!Array.isArray(baseProducts) || baseProducts.length === 0) return liveProducts
+
+  const baseMap = new Map(baseProducts.map(p => [p.id, p]))
+  const liveMap = new Map(liveProducts.map(p => [p.id, p]))
+
+  // Ghép nối: Ưu tiên ảnh mới và thông tin mới từ Live
+  const merged = baseProducts.map(bp => {
+    const lp = liveMap.get(bp.id)
+    if (!lp) return bp
+    const validLiveImages = Array.isArray(lp.webImages) ? lp.webImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
+    const images = (validLiveImages.length > 0) ? validLiveImages : (bp.webImages || [])
+    return {
+      ...bp,
+      ...lp,
+      webImages: images
+    }
+  })
+
+  // Bổ sung các sản phẩm mới tạo trên Live
+  liveProducts.forEach(lp => {
+    if (!baseMap.has(lp.id)) {
+      merged.push(lp)
+    }
+  })
+
+  return merged
+}
+
 // Lấy danh sách sản phẩm đăng lên Web Catalog công cộng siêu tốc & cập nhật thời gian thực
 export const getWebCatalogProducts = async () => {
   let baseProducts = []
@@ -228,36 +258,13 @@ export const getWebCatalogProducts = async () => {
   try {
     const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
     const snapshotPromise = getDoc(snapshotRef)
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1200))
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500))
     const snapshotSnap = await Promise.race([snapshotPromise, timeoutPromise])
 
     if (snapshotSnap && snapshotSnap.exists() && Array.isArray(snapshotSnap.data().products)) {
       const liveProducts = snapshotSnap.data().products
       if (liveProducts.length > 0) {
-        const baseMap = new Map(baseProducts.map(p => [p.id, p]))
-        const liveMap = new Map(liveProducts.map(p => [p.id, p]))
-
-        // Ghép nối: Giữ nguyên ảnh chuẩn từ baseCatalog nếu live không có ảnh
-        const merged = baseProducts.map(bp => {
-          const lp = liveMap.get(bp.id)
-          if (!lp) return bp
-          const validLiveImages = Array.isArray(lp.webImages) ? lp.webImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
-          const images = (validLiveImages.length > 0) ? validLiveImages : (bp.webImages || [])
-          return {
-            ...bp,
-            ...lp,
-            webImages: images
-          }
-        })
-
-        // Bổ sung các sản phẩm mới tạo trên Live nếu chưa có trong web_catalog.json
-        liveProducts.forEach(lp => {
-          if (!baseMap.has(lp.id)) {
-            merged.push(lp)
-          }
-        })
-
-        return merged
+        return mergeCatalogData(baseProducts, liveProducts)
       }
     }
   } catch (err) {
@@ -269,6 +276,28 @@ export const getWebCatalogProducts = async () => {
   }
 
   return await refreshWebCatalogSnapshot()
+}
+
+// Lắng nghe thay đổi sản phẩm Web thời gian thực (đổi ảnh/giá là lập tức ăn ngay mà không cần tải lại trang)
+export const subscribeWebCatalogProducts = (cb) => {
+  let baseCatalog = []
+  fetch('/web_catalog.json', { cache: 'no-cache' })
+    .then(r => r.ok ? r.json() : [])
+    .then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        baseCatalog = data
+      }
+    })
+    .catch(() => {})
+
+  const snapshotRef = doc(db, 'priceLists', 'web_catalog_snapshot')
+  return onSnapshot(snapshotRef, (snap) => {
+    if (snap.exists() && Array.isArray(snap.data().products)) {
+      const liveProducts = snap.data().products
+      const merged = mergeCatalogData(baseCatalog, liveProducts)
+      cb(merged)
+    }
+  }, (err) => console.warn('subscribeWebCatalog error:', err))
 }
 
 export const refreshWebCatalogSnapshot = async () => {

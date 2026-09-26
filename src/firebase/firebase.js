@@ -973,8 +973,9 @@ const getVNFormattedDate = () => {
 }
 
 let cachedGeoData = null
+let geoFetchPromise = null
 
-/** Lấy thông tin IP & Địa lý khách hàng (Cache theo phiên để tối ưu tốc độ) */
+/** Lấy thông tin IP & Địa lý khách hàng (Cache theo phiên để tối ưu tốc độ, timeout 1.2s tránh nghẽn luồng) */
 export const getVisitorGeoData = async () => {
   if (cachedGeoData) return cachedGeoData
   try {
@@ -985,40 +986,57 @@ export const getVisitorGeoData = async () => {
     }
   } catch {}
 
-  try {
-    const res = await fetch('https://ipwho.is/', { cache: 'no-cache' })
-    const data = await res.json()
-    if (data && data.success !== false) {
-      cachedGeoData = {
-        ip: data.ip || '',
-        city: data.city || '',
-        region: data.region || '',
-        country: data.country || 'Việt Nam',
-        countryCode: data.country_code || 'VN',
-        flag: data.flag?.emoji || '🇻🇳',
-        isp: data.connection?.isp || data.isp || '',
-        org: data.connection?.org || '',
-        lat: data.latitude || null,
-        lon: data.longitude || null,
-      }
-      try {
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem('tt_visitor_geo_v1', JSON.stringify(cachedGeoData))
-        }
-      } catch {}
-      return cachedGeoData
-    }
-  } catch (e) {
+  if (geoFetchPromise) return geoFetchPromise
+
+  geoFetchPromise = (async () => {
     try {
-      const res2 = await fetch('https://api.ipify.org?format=json')
-      const d2 = await res2.json()
-      if (d2 && d2.ip) {
-        cachedGeoData = { ip: d2.ip, country: 'Việt Nam', flag: '🇻🇳', city: '', region: '', isp: '' }
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+      const timer = controller ? setTimeout(() => controller.abort(), 1200) : null
+      const res = await fetch('https://ipwho.is/', { cache: 'no-cache', signal: controller?.signal })
+      if (timer) clearTimeout(timer)
+      const data = await res.json()
+      if (data && data.success !== false) {
+        cachedGeoData = {
+          ip: data.ip || '',
+          city: data.city || '',
+          region: data.region || '',
+          country: data.country || 'Việt Nam',
+          countryCode: data.country_code || 'VN',
+          flag: data.flag?.emoji || '🇻🇳',
+          isp: data.connection?.isp || data.isp || '',
+          org: data.connection?.org || '',
+          lat: data.latitude || null,
+          lon: data.longitude || null,
+        }
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('tt_visitor_geo_v1', JSON.stringify(cachedGeoData))
+          }
+        } catch {}
         return cachedGeoData
       }
-    } catch {}
-  }
-  return null
+    } catch (e) {
+      try {
+        const controller2 = typeof AbortController !== 'undefined' ? new AbortController() : null
+        const timer2 = controller2 ? setTimeout(() => controller2.abort(), 1000) : null
+        const res2 = await fetch('https://api.ipify.org?format=json', { signal: controller2?.signal })
+        if (timer2) clearTimeout(timer2)
+        const d2 = await res2.json()
+        if (d2 && d2.ip) {
+          cachedGeoData = { ip: d2.ip, country: 'Việt Nam', flag: '🇻🇳', city: '', region: '', isp: '' }
+          return cachedGeoData
+        }
+      } catch {}
+    }
+    return null
+  })()
+
+  return geoFetchPromise
+}
+
+// Pre-fetch geo data in background if running in browser
+if (typeof window !== 'undefined') {
+  setTimeout(() => { getVisitorGeoData().catch(() => {}) }, 500)
 }
 
 /** Nhận diện thiết bị, hệ điều hành, trình duyệt và nguồn truy cập chi tiết */

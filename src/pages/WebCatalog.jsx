@@ -418,6 +418,14 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
     setTimeout(() => setIsHovered(false), 2500)
   }
 
+  const brandSubtitle = useMemo(() => {
+    if (!catProducts || catProducts.length === 0) return 'Chính hãng'
+    const brands = [...new Set(catProducts.map(p => p.webBrand || p.brand).filter(Boolean))]
+    if (brands.length === 1) return `Hiệu ${brands[0]}`
+    if (brands.length > 1) return `Hiệu ${brands.slice(0, 2).join(' · ')}`
+    return 'Chính hãng CO/CQ'
+  }, [catProducts])
+
   return (
     <section
       className="category-section"
@@ -425,41 +433,33 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="category-header">
-        <div className="category-header-left">
-          <h3 className="category-title">{catName}</h3>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '2px 8px',
-              borderRadius: '12px',
-              background: '#EFF6FF',
-              color: '#0878D9',
-              fontSize: '11px',
-              fontWeight: 700,
-              border: '1px solid #DBEAFE'
-            }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#0878D9' }} />
-              Chính hãng
-            </span>
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '2px 8px',
-              borderRadius: '12px',
-              background: '#F8FAFC',
-              color: '#64748B',
-              fontSize: '11px',
-              fontWeight: 600,
-              border: '1px solid #E2E8F0'
-            }}>
-              {catProducts.length} sản phẩm
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+          <div style={{
+            width: 28,
+            height: 28,
+            minWidth: 28,
+            borderRadius: 7,
+            background: '#E6F1FB',
+            color: '#185FA5',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#185FA5" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+          </div>
+          <div className="category-header-left" style={{ minWidth: 0 }}>
+            <h3 className="category-title">{catName}</h3>
+            <span className="category-subtitle">
+              {brandSubtitle} · {catProducts.length} sản phẩm
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           {shouldSlide && (
             <div className="slider-header-controls desktop-only-flex" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button
@@ -485,12 +485,13 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
               </button>
             </div>
           )}
-          <span
+          <button
+            type="button"
             onClick={() => onSelectCategory(catName)}
             className="category-view-all"
           >
             Xem tất cả <ChevronRight size={12} />
-          </span>
+          </button>
         </div>
       </div>
 
@@ -1789,26 +1790,28 @@ export default function WebCatalog() {
       })
     } catch (e) {}
 
-    // Bắt sự kiện tương tác bấm Zalo / Gọi Hotline để ghi nhận vào Realtime Telemetry
+    // Bắt sự kiện tương tác bấm Zalo / Gọi Hotline để ghi nhận vào Realtime Telemetry (Non-blocking async)
     const handleGlobalContactClick = (e) => {
       try {
         const target = e.target?.closest?.('a, button')
         if (!target) return
         const href = target.href || target.getAttribute('href') || ''
         const text = target.innerText || ''
-        if (href.startsWith('tel:') || text.includes('0984 273 806') || text.includes('0984273806')) {
-          logWebAnalyticsEvent({
-            type: 'call_click',
-            title: 'Khách bấm gọi Hotline',
-            path: window.location.hash || '#contact'
-          })
-        } else if (href.includes('zalo.me') || text.toLowerCase().includes('zalo')) {
-          logWebAnalyticsEvent({
-            type: 'zalo_click',
-            title: 'Khách bấm Chat Zalo',
-            path: window.location.hash || '#contact'
-          })
-        }
+        setTimeout(() => {
+          if (href.startsWith('tel:') || text.includes('0984 273 806') || text.includes('0984273806')) {
+            logWebAnalyticsEvent({
+              type: 'call_click',
+              title: 'Khách bấm gọi Hotline',
+              path: window.location.hash || '#contact'
+            }).catch(() => {})
+          } else if (href.includes('zalo.me') || text.toLowerCase().includes('zalo')) {
+            logWebAnalyticsEvent({
+              type: 'zalo_click',
+              title: 'Khách bấm Chat Zalo',
+              path: window.location.hash || '#contact'
+            }).catch(() => {})
+          }
+        }, 0)
       } catch {}
     }
     window.addEventListener('click', handleGlobalContactClick, { capture: true })
@@ -2928,6 +2931,7 @@ export default function WebCatalog() {
                   color: '#101828',
                   outline: 'none',
                   boxSizing: 'border-box',
+                  textOverflow: 'ellipsis',
                   transition: 'all 0.2s'
                 }}
                 onFocus={e => e.currentTarget.style.borderColor = '#0878D9'}
@@ -4392,138 +4396,187 @@ export default function WebCatalog() {
               </div>
 
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: 20
-              }} className="brand-logos-grid">
-                {['SELANNI', 'UPTI PUMP', 'BERATI', 'MASTRA'].map((brandName, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      setActiveBrand(brandName);
-                      setViewMode('catalog');
-                      setActiveTab('products');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="brand-logo-card"
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: 12,
+                padding: '24px 20px',
+                boxShadow: '0 2px 10px rgba(15, 23, 42, 0.02)'
+              }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                  gap: 16
+                }} className="brand-logos-grid">
+                  {['SELANNI', 'UPTI PUMP', 'BERATI', 'MASTRA'].map((brandName, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        setActiveBrand(brandName);
+                        setViewMode('catalog');
+                        setActiveTab('products');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="brand-logo-card"
+                      style={{
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 8,
+                        padding: '16px 20px',
+                        height: 84,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease',
+                        boxSizing: 'border-box',
+                      }}
+                      onMouseOver={e => {
+                        e.currentTarget.style.borderColor = '#378ADD';
+                        e.currentTarget.style.background = '#FFFFFF';
+                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(55, 138, 221, 0.12)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }}
+                      onMouseOut={e => {
+                        e.currentTarget.style.borderColor = '#E2E8F0';
+                        e.currentTarget.style.background = '#F8FAFC';
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      {(() => {
+                        const normalized = brandName.toLowerCase();
+                        let src = '';
+                        if (normalized.includes('selanni')) src = './logo_selanni.png';
+                        else if (normalized.includes('upti')) src = './logo_upti.png';
+                        else if (normalized.includes('berati')) src = './logo_berati.png';
+                        else if (normalized.includes('mastra')) src = './logo_mastra.png';
+
+                        if (src) {
+                          const isSelanni = brandName === 'SELANNI';
+                          return (
+                            <img 
+                              src={src} 
+                              alt={brandName} 
+                              style={{ 
+                                height: isSelanni ? '40px' : '28px', 
+                                width: 'auto', 
+                                objectFit: 'contain', 
+                                filter: 'grayscale(100%)',
+                                opacity: 0.75,
+                                transition: 'all 0.2s'
+                              }} 
+                              onMouseOver={e => { e.currentTarget.style.filter = 'grayscale(0%)'; e.currentTarget.style.opacity = '1'; }}
+                              onMouseOut={e => { e.currentTarget.style.filter = 'grayscale(100%)'; e.currentTarget.style.opacity = '0.75'; }}
+                            />
+                          );
+                        }
+
+                        return (
+                          <div className="brand-logo-visual" style={{
+                            fontSize: 15,
+                            fontWeight: 900,
+                            color: '#071A2F',
+                            letterSpacing: '0.5px',
+                            fontFamily: 'monospace',
+                            textAlign: 'center'
+                          }}>
+                            {brandName}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ textAlign: 'center', marginTop: 20, paddingTop: 16, borderTop: '1px solid #EEF2F6' }}>
+                  <button
+                    onClick={handleNavBrands}
                     style={{
                       background: '#FFFFFF',
-                      border: '1px solid #EEF1F4',
-                      borderRadius: 6,
-                      padding: 20,
-                      height: 90,
+                      border: '1.5px solid #378ADD',
+                      color: '#185FA5',
+                      padding: '10px 24px',
+                      fontSize: 12.5,
+                      fontWeight: 800,
+                      borderRadius: 8,
                       cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
                       transition: 'all 0.2s ease',
-                      boxSizing: 'border-box',
-                      boxShadow: '0 1px 3px rgba(7,26,47,0.01)'
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
                     }}
-                    onMouseOver={e => {
-                      e.currentTarget.style.borderColor = '#0878D9';
-                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(7,26,47,0.03)';
-                    }}
-                    onMouseOut={e => {
-                      e.currentTarget.style.borderColor = '#EEF1F4';
-                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(7,26,47,0.01)';
-                    }}
+                    onMouseOver={e => { e.currentTarget.style.background = '#185FA5'; e.currentTarget.style.color = '#FFFFFF'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#185FA5'; }}
                   >
-                    {(() => {
-                      const normalized = brandName.toLowerCase();
-                      let src = '';
-                      if (normalized.includes('selanni')) src = './logo_selanni.png';
-                      else if (normalized.includes('upti')) src = './logo_upti.png';
-                      else if (normalized.includes('berati')) src = './logo_berati.png';
-                      else if (normalized.includes('mastra')) src = './logo_mastra.png';
-
-                      if (src) {
-                        const isSelanni = brandName === 'SELANNI';
-                        return (
-                          <img 
-                            src={src} 
-                            alt={brandName} 
-                            style={{ 
-                              height: isSelanni ? '42px' : '28px', 
-                              width: 'auto', 
-                              objectFit: 'contain', 
-                              filter: 'grayscale(100%)',
-                              opacity: 0.7,
-                              transition: 'all 0.2s'
-                            }} 
-                            onMouseOver={e => { e.currentTarget.style.filter = 'grayscale(0%)'; e.currentTarget.style.opacity = '1'; }}
-                            onMouseOut={e => { e.currentTarget.style.filter = 'grayscale(100%)'; e.currentTarget.style.opacity = '0.7'; }}
-                          />
-                        );
-                      }
-
-                      return (
-                        <div className="brand-logo-visual" style={{
-                          fontSize: 15,
-                          fontWeight: 900,
-                          color: '#071A2F',
-                          letterSpacing: '0.5px',
-                          fontFamily: 'monospace',
-                          textAlign: 'center'
-                        }}>
-                          {brandName}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ textAlign: 'center', marginTop: 32 }}>
-                <button
-                  onClick={handleNavBrands}
-                  style={{
-                    background: '#FFFFFF', border: '1px solid #0878D9', color: '#0878D9',
-                    padding: '11px 26px', fontSize: 13, fontWeight: 800, borderRadius: 6, cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  className="brand-btn"
-                >
-                  XEM TẤT CẢ THƯƠNG HIỆU →
-                </button>
+                    <span>XEM CHI TIẾT 4 THƯƠNG HIỆU PHÂN PHỐI</span>
+                    <span>→</span>
+                  </button>
+                </div>
               </div>
             </div>
           </section>
 
-          {/* 6. VỀ T&T — Editorial Company Introduction */}
-          <section style={{ background: '#071A2F', color: '#FFFFFF', padding: '80px 0', borderTop: '1px solid rgba(255,255,255,0.06)' }} id="about-section">
+          {/* 6. VỀ T&T — Editorial Company Introduction (Redesigned Light Surface) */}
+          <section style={{ background: '#FFFFFF', color: '#071A2F', padding: '76px 0', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }} id="about-section">
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', boxSizing: 'border-box' }}>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 52, alignItems: 'center' }} className="hero-editorial-grid">
+              <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 48, alignItems: 'center' }} className="hero-editorial-grid">
                 {/* Left Text */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: '#0878D9', letterSpacing: '2px', textTransform: 'uppercase' }}>
-                    VỀ T&amp;T
-                  </span>
-                  <h2 style={{ fontSize: 'clamp(24px, 2.8vw, 36px)', fontWeight: 900, color: '#FFFFFF', margin: 0, textTransform: 'uppercase', lineHeight: 1.2 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', width: 'fit-content' }}>
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: '#185FA5',
+                      background: '#E6F1FB',
+                      border: '1px solid #BFDBFE',
+                      padding: '4px 12px',
+                      borderRadius: 20,
+                      letterSpacing: '1.5px',
+                      textTransform: 'uppercase'
+                    }}>
+                      VỀ MÁY BƠM T&amp;T
+                    </span>
+                  </div>
+
+                  <h2 style={{ fontSize: 'clamp(24px, 2.8vw, 36px)', fontWeight: 900, color: '#0C447C', margin: 0, textTransform: 'uppercase', lineHeight: 1.25, letterSpacing: '-0.5px' }}>
                     HƠN 10 NĂM ĐỒNG HÀNH CÙNG CÔNG TRÌNH VIỆT
                   </h2>
-                  <p style={{ fontSize: 15, color: '#94A3B8', lineHeight: 1.7, margin: 0, fontWeight: 500 }}>
+
+                  <p style={{ fontSize: 15, color: '#334155', lineHeight: 1.7, margin: 0, fontWeight: 500 }}>
                     Công ty TNHH Máy Bơm T&amp;T là đơn vị uy tín hàng đầu trong lĩnh vực nhập khẩu và phân phối trực tiếp các giải pháp máy bơm nước tiêu chuẩn quốc tế cho công trình dân dụng, tòa nhà cao tầng, hệ thống tưới tiêu và nhà xưởng công nghiệp.
                   </p>
+
                   <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
-                    Với đội ngũ kỹ sư am hiểu kỹ thuật cùng kho hàng sẵn sàng hàng ngàn model, chúng tôi cam kết mang lại sự an tâm tuyệt đối về chất lượng, giá thành và tiến độ cho mọi đối tác.
+                    Với đội ngũ kỹ sư am hiểu kỹ thuật cùng kho hàng sẵn sàng hàng ngàn model (UPTI PUMP, SELANNI, MASTRA, BERATI), chúng tôi cam kết mang lại sự an tâm tuyệt đối về chất lượng, giá thành và tiến độ giao hàng cho mọi đối tác.
                   </p>
 
-                  <div style={{ marginTop: 8 }}>
+                  <div style={{ marginTop: 6 }}>
                     <button
                       onClick={handleNavIntro}
                       style={{
-                        background: '#0878D9', color: '#FFFFFF', border: 'none',
-                        padding: '13px 30px', fontSize: 13, fontWeight: 800, borderRadius: 6,
-                        cursor: 'pointer', textTransform: 'uppercase', transition: 'all 0.2s',
-                        boxShadow: '0 4px 16px rgba(8,120,217,0.35)', letterSpacing: '0.5px'
+                        background: '#0878D9',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        padding: '12px 28px',
+                        fontSize: 13,
+                        fontWeight: 800,
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        textTransform: 'uppercase',
+                        transition: 'all 0.2s ease',
+                        boxShadow: '0 4px 14px rgba(8, 120, 217, 0.25)',
+                        letterSpacing: '0.5px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 8
                       }}
-                      onMouseOver={e => e.currentTarget.style.background = '#0660B8'}
-                      onMouseOut={e => e.currentTarget.style.background = '#0878D9'}
+                      onMouseOver={e => { e.currentTarget.style.background = '#0660B8'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseOut={e => { e.currentTarget.style.background = '#0878D9'; e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
-                      KHÁM PHÁ VỀ T&amp;T →
+                      <span>KHÁM PHÁ VỀ T&amp;T</span>
+                      <span>→</span>
                     </button>
                   </div>
                 </div>
@@ -4535,40 +4588,69 @@ export default function WebCatalog() {
                     alt="Showroom và Kho Hàng Máy Bơm T&T"
                     style={{
                       width: '100%',
-                      borderRadius: 10,
+                      borderRadius: 12,
                       objectFit: 'cover',
                       maxHeight: 380,
-                      boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
-                      border: '1px solid rgba(255,255,255,0.08)'
+                      boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)',
+                      border: '1px solid #E2E8F0'
                     }}
                     loading="lazy"
                   />
                 </div>
               </div>
 
-              {/* 4 Strong Metrics */}
+              {/* 4 Strong Metrics (Clean light card with subtle vertical dividers) */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: 20,
-                marginTop: 64,
-                paddingTop: 48,
-                borderTop: '1px solid rgba(255,255,255,0.08)'
+                marginTop: 48,
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: 14,
+                padding: '24px 12px',
+                boxShadow: '0 2px 8px rgba(15, 23, 42, 0.02)',
+                boxSizing: 'border-box'
               }} className="tt-trust-grid">
                 {[
-                  { number: '10+', label: 'NĂM KINH NGHIỆM', desc: 'Thành lập từ 2015' },
-                  { number: '100%', label: 'CHÍNH HÃNG CO/CQ', desc: 'Nhập khẩu nguyên chiếc' },
-                  { number: 'TOÀN QUỐC', label: 'GIAO HÀNG TẬN NƠI', desc: 'Hỗ trợ chân công trình' },
-                  { number: '24/7', label: 'HỖ TRỢ KỸ THUẬT', desc: 'Tư vấn thông số chuẩn' }
+                  { icon: '🏢', number: '10+', label: 'NĂM KINH NGHIỆM', desc: 'Thành lập & phát triển từ 2015' },
+                  { icon: '🛡️', number: '100%', label: 'CHÍNH HÃNG CO/CQ', desc: 'Nhập khẩu nguyên chiếc từ nhà máy' },
+                  { icon: '🚚', number: 'TOÀN QUỐC', label: 'GIAO HÀNG TẬN NƠI', desc: 'Hỗ trợ giao nhanh chân công trình' },
+                  { icon: '💬', number: '24/7', label: 'HỖ TRỢ KỸ THUẬT', desc: 'Tư vấn thông số & lưu lượng chuẩn' }
                 ].map((metric, mi) => (
-                  <div key={mi} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ fontSize: 'clamp(26px, 2.8vw, 34px)', fontWeight: 900, color: '#0878D9', letterSpacing: '-0.5px' }}>
+                  <div
+                    key={mi}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      gap: 6,
+                      padding: '8px 16px',
+                      borderRight: mi < 3 ? '1px solid #E2E8F0' : 'none',
+                      boxSizing: 'border-box'
+                    }}
+                    className="metric-column"
+                  >
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: '#E6F1FB',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 18,
+                      marginBottom: 2
+                    }}>
+                      {metric.icon}
+                    </div>
+                    <span style={{ fontSize: 'clamp(24px, 2.6vw, 32px)', fontWeight: 900, color: '#0C447C', letterSpacing: '-0.5px', lineHeight: 1.1 }}>
                       {metric.number}
                     </span>
-                    <span style={{ fontSize: 13, fontWeight: 900, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 850, color: '#071A2F', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                       {metric.label}
                     </span>
-                    <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>
+                    <span style={{ fontSize: 11.5, color: '#64748B', fontWeight: 500, lineHeight: 1.35 }}>
                       {metric.desc}
                     </span>
                   </div>
@@ -4627,7 +4709,7 @@ export default function WebCatalog() {
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Tìm model, công suất, lưu lượng, cột áp hoặc thương hiệu..."
-                style={{ width: '100%', border: 'none', outline: 'none', fontSize: 13.5, fontWeight: 600, color: '#102A43', background: 'transparent' }}
+                style={{ width: '100%', border: 'none', outline: 'none', fontSize: 13.5, fontWeight: 600, color: '#102A43', background: 'transparent', textOverflow: 'ellipsis' }}
               />
               {searchTerm && (
                 <button
@@ -5120,18 +5202,44 @@ export default function WebCatalog() {
                   <div>
                     {/* Desktop Single Category / Search Header */}
                     <div className="desktop-only" style={{
-                      background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: '24px 28px',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28
+                      background: '#F0F4F8',
+                      border: '1px solid #E2E8F0',
+                      borderLeft: '3px solid #378ADD',
+                      borderRadius: 10,
+                      padding: '14px 20px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 24,
+                      boxShadow: '0 1px 3px rgba(15, 23, 42, 0.02)'
                     }}>
-                      <div>
-                        <h2 style={{ fontSize: 18, fontWeight: 900, color: '#082B4C', textTransform: 'uppercase', margin: 0 }}>
-                          {searchTerm.trim() ? `KẾT QUẢ TÌM KIẾM: "${searchTerm.trim()}"` : selectedCategory}
-                        </h2>
-                        <p style={{ fontSize: 12.5, color: '#64748B', margin: '4px 0 0', fontWeight: 500 }}>
-                          {searchTerm.trim() ? 'Danh sách máy bơm phù hợp với từ khóa tìm kiếm' : 'Nhập khẩu chính hãng · Phân phối chính thức tại Việt Nam'}
-                        </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          background: '#E6F1FB',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#185FA5',
+                          flexShrink: 0
+                        }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#185FA5" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                          </svg>
+                        </div>
+                        <div>
+                          <h2 style={{ fontSize: 16, fontWeight: 900, color: '#0C447C', textTransform: 'uppercase', margin: 0, letterSpacing: '0.3px' }}>
+                            {searchTerm.trim() ? `KẾT QUẢ TÌM KIẾM: "${searchTerm.trim()}"` : selectedCategory}
+                          </h2>
+                          <p style={{ fontSize: 12, color: '#64748B', margin: '2px 0 0', fontWeight: 500 }}>
+                            {searchTerm.trim() ? 'Danh sách model và cấu hình máy bơm phù hợp' : 'Sản phẩm nhập khẩu chính hãng · Phân phối chính thức tại Việt Nam'}
+                          </p>
+                        </div>
                       </div>
-                      <span style={{ fontSize: 12, color: '#0878D9', background: '#EAF3FF', padding: '6px 14px', borderRadius: 4, fontWeight: 800 }}>
+                      <span style={{ fontSize: 12, color: '#185FA5', background: '#FFFFFF', border: '1px solid #CBD5E1', padding: '6px 14px', borderRadius: 6, fontWeight: 750 }}>
                         {processedProducts.length} sản phẩm
                       </span>
                     </div>
@@ -5139,19 +5247,44 @@ export default function WebCatalog() {
                     {/* Mobile Single Category / Search Header */}
                     <div className="mobile-only-flex category-header-single" style={{
                       display: 'none',
-                      flexDirection: 'column',
-                      padding: '16px 0',
-                      marginBottom: 10,
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 14px',
+                      marginBottom: 14,
+                      background: '#F0F4F8',
+                      borderLeft: '3px solid #378ADD',
+                      borderTop: '1px solid #E2E8F0',
+                      borderRight: '1px solid #E2E8F0',
                       borderBottom: '1px solid #E2E8F0',
+                      borderRadius: 10,
                       boxSizing: 'border-box',
-                      gap: 4
                     }}>
-                      <h2 style={{ fontSize: 18, fontWeight: 900, color: '#082B4C', textTransform: 'uppercase', margin: 0, lineHeight: 1.3 }}>
-                        {searchTerm.trim() ? `KẾT QUẢ: "${searchTerm.trim()}"` : selectedCategory}
-                      </h2>
-                      <span style={{ fontSize: 12, color: '#64748B', fontWeight: 550 }}>
-                        {processedProducts.length} sản phẩm tìm thấy
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <div style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 7,
+                          background: '#E6F1FB',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#185FA5',
+                          flexShrink: 0
+                        }}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#185FA5" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                          </svg>
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <h2 style={{ fontSize: 14.5, fontWeight: 850, color: '#0C447C', textTransform: 'uppercase', margin: 0, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {searchTerm.trim() ? `KẾT QUẢ: "${searchTerm.trim()}"` : selectedCategory}
+                          </h2>
+                          <span style={{ fontSize: 11, color: '#64748B', fontWeight: 550, display: 'block', marginTop: 2 }}>
+                            {processedProducts.length} sản phẩm tìm thấy
+                          </span>
+                        </div>
+                      </div>
                     </div>
  
                     <div className="catalog-grid">
@@ -7180,21 +7313,47 @@ export default function WebCatalog() {
         </div>
       )}
 
-      {/* FOOTER */}
-      <footer style={{ background: '#071A2F', color: '#94A3B8', padding: '60px 24px 30px', borderTop: '1px solid #0B2742' }} id="footer-section">
-        <div style={{ maxWidth: 1200, margin: '0 auto 40px', display: 'grid', gridTemplateColumns: '1.2fr repeat(3, 1fr)', gap: 40 }} className="intro-grid">
-          <div>
-            <h4 style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', marginBottom: 20 }}>CÔNG TY</h4>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', margin: '0 0 10px 0' }}>Công ty TNHH Máy Bơm T&T</p>
-            <p style={{ fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>
-              Địa chỉ: LK 180 – NO04 Khu 27 – 28 Dương Nội – Hà Đông – Hà Nội
+      {/* FOOTER (Dark Navy #0c1e33 with Logo, 2 Main Columns & Social Links) */}
+      <footer style={{ background: '#0c1e33', color: '#94A3B8', padding: '56px 24px 28px', borderTop: '1px solid rgba(55, 138, 221, 0.2)' }} id="footer-section">
+        <div style={{
+          maxWidth: 1200,
+          margin: '0 auto 36px',
+          display: 'grid',
+          gridTemplateColumns: '1.4fr 1fr 1fr 1.2fr',
+          gap: 36
+        }} className="intro-grid">
+          {/* Column 1: Company Identity & Logo */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <img src="./logo_tt.png" alt="T&T Logo" style={{ height: 38, width: 'auto', objectFit: 'contain', filter: 'brightness(1.1)' }} />
+              <div>
+                <h4 style={{ fontSize: 15, fontWeight: 900, color: '#FFFFFF', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  MÁY BƠM T&amp;T
+                </h4>
+                <span style={{ fontSize: 11, color: '#38BDF8', fontWeight: 700, letterSpacing: '0.3px' }}>
+                  CHUYÊN GIA MÁY BƠM CÔNG TRÌNH
+                </span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 12.5, lineHeight: 1.6, color: '#94A3B8', margin: 0 }}>
+              Công ty TNHH Máy Bơm T&amp;T chuyên nhập khẩu và phân phối trực tiếp các dòng máy bơm nước công nghiệp &amp; dân dụng: UPTI PUMP, SELANNI, MASTRA, BERATI.
             </p>
+
+            <div style={{ fontSize: 12, color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
+              <div>📍 <strong>Kho &amp; VP:</strong> LK 27,28 KĐT Dương Nội, Hà Đông, Hà Nội</div>
+              <div>📞 <strong>Hotline/Zalo:</strong> <a href="tel:0984273806" style={{ color: '#38BDF8', fontWeight: 800, textDecoration: 'none' }}>0984 273 806</a> (Mr Tuấn)</div>
+            </div>
           </div>
+
+          {/* Column 2: 2 Main Columns - 1. SẢN PHẨM */}
           <div>
-            <h4 style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', marginBottom: 20 }}>SẢN PHẨM</h4>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {['Bơm ly tâm', 'Bơm chìm', 'Bơm hỏa tiễn', 'Bơm trục đứng', 'Bơm công nghiệp'].map((item, idx) => (
-                <li key={idx} style={{ marginBottom: 10 }}>
+            <h4 style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', marginBottom: 16, letterSpacing: '0.5px' }}>
+              DÒNG MÁY BƠM
+            </h4>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {['Bơm ly tâm', 'Bơm chìm nước thải', 'Bơm hỏa tiễn', 'Bơm trục đứng', 'Bơm tăng áp'].map((item, idx) => (
+                <li key={idx}>
                   <span
                     onClick={() => {
                       const matched = dbCategories.find(c => (typeof c === 'string' ? c : c?.name || '').toLowerCase().includes(item.toLowerCase()));
@@ -7203,53 +7362,199 @@ export default function WebCatalog() {
                       setActiveTab('products');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    style={{ fontSize: 12.5, cursor: 'pointer', color: '#94A3B8' }}
-                    onMouseOver={e => e.currentTarget.style.color = '#FFFFFF'}
-                    onMouseOut={e => e.currentTarget.style.color = '#94A3B8'}
+                    style={{ fontSize: 12.5, cursor: 'pointer', color: '#94A3B8', transition: 'all 0.2s' }}
+                    onMouseOver={e => { e.currentTarget.style.color = '#38BDF8'; e.currentTarget.style.paddingLeft = '4px'; }}
+                    onMouseOut={e => { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.paddingLeft = '0'; }}
                   >
-                    {item}
+                    › {item}
                   </span>
                 </li>
               ))}
             </ul>
           </div>
+
+          {/* Column 3: 2 Main Columns - 2. HỖ TRỢ & CHÍNH SÁCH */}
           <div>
-            <h4 style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', marginBottom: 20 }}>HỖ TRỢ</h4>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {['Tư vấn AI', 'Báo giá', 'Bảo hành', 'Đổi trả'].map((item, idx) => (
-                <li key={idx} style={{ marginBottom: 10 }}>
+            <h4 style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', marginBottom: 16, letterSpacing: '0.5px' }}>
+              HỖ TRỢ &amp; DỊCH VỤ
+            </h4>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                { label: 'Tư vấn chọn bơm AI', action: () => setShowFloatingChat(true) },
+                { label: 'Báo giá nhanh Zalo', action: () => window.open('https://zalo.me/0984273806?text=Chào%20bạn,%20tôi%20cần%20báo%20giá%20máy%20bơm', '_blank') },
+                { label: 'Chính sách bảo hành', action: () => { setViewMode('policy'); setActiveTab('policy'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+                { label: 'Chính sách đổi trả', action: () => { setViewMode('policy'); setActiveTab('policy'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+                { label: 'Về Máy Bơm T&T', action: handleNavIntro }
+              ].map((item, idx) => (
+                <li key={idx}>
                   <span
-                    onClick={() => {
-                      if (item === 'Tư vấn AI') {
-                        setShowFloatingChat(true);
-                      } else if (item === 'Bảo hành' || item === 'Đổi trả') {
-                        setViewMode('policy');
-                        setActiveTab('policy');
-                      } else {
-                        setShowCartDrawer(true);
-                      }
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    style={{ fontSize: 12.5, cursor: 'pointer', color: '#94A3B8' }}
-                    onMouseOver={e => e.currentTarget.style.color = '#FFFFFF'}
-                    onMouseOut={e => e.currentTarget.style.color = '#94A3B8'}
+                    onClick={item.action}
+                    style={{ fontSize: 12.5, cursor: 'pointer', color: '#94A3B8', transition: 'all 0.2s' }}
+                    onMouseOver={e => { e.currentTarget.style.color = '#38BDF8'; e.currentTarget.style.paddingLeft = '4px'; }}
+                    onMouseOut={e => { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.paddingLeft = '0'; }}
                   >
-                    {item}
+                    › {item.label}
                   </span>
                 </li>
               ))}
             </ul>
           </div>
-          <div>
-            <h4 style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', marginBottom: 20 }}>LIÊN HỆ</h4>
-            <p style={{ fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>
-              Hotline: <strong style={{ color: '#FFFFFF' }}>0984 273 806</strong><br />
-              Website: <a href="https://maybomtandt.com.vn" target="_blank" rel="noreferrer" style={{ color: '#94A3B8', textDecoration: 'none' }} onMouseOver={e => e.currentTarget.style.color = '#FFFFFF'} onMouseOut={e => e.currentTarget.style.color = '#94A3B8'}>maybomtandt.com.vn</a>
-            </p>
+
+          {/* Column 4: Hotline & Tư vấn trực tiếp */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <h4 style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', marginBottom: 4, letterSpacing: '0.5px' }}>
+              TỔNG ĐÀI TƯ VẤN
+            </h4>
+            <div style={{
+              background: 'rgba(55, 138, 221, 0.1)',
+              border: '1px solid rgba(55, 138, 221, 0.25)',
+              borderRadius: 10,
+              padding: '14px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8
+            }}>
+              <div style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', fontWeight: 700 }}>
+                Hỗ trợ kỹ thuật 24/7
+              </div>
+              <a
+                href="tel:0984273806"
+                style={{
+                  fontSize: 19,
+                  fontWeight: 900,
+                  color: '#38BDF8',
+                  textDecoration: 'none',
+                  letterSpacing: '0.5px'
+                }}
+              >
+                📞 0984 273 806
+              </a>
+              <div style={{ fontSize: 11.5, color: '#CBD5E1' }}>
+                Phục vụ mọi công trình trên toàn quốc
+              </div>
+            </div>
           </div>
         </div>
-        <div style={{ textAlign: 'center', fontSize: 11.5, color: '#667085', borderTop: '1px solid #1A2E44', paddingTop: 24 }}>
-          Copyright © 2026 maybomtandt.com.vn. All rights reserved.
+
+        {/* Bottom copyright & Social icons bar */}
+        <div style={{
+          maxWidth: 1200,
+          margin: '0 auto',
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          paddingTop: 20,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16
+        }}>
+          <div style={{ fontSize: 12, color: '#64748B' }}>
+            Copyright © 2026 <strong>maybomtandt.com.vn</strong> · Công ty TNHH Máy Bơm T&amp;T.
+          </div>
+
+          {/* Social Links with icons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <a
+              href="https://www.facebook.com/profile.php?id=61578469481516"
+              target="_blank"
+              rel="noreferrer"
+              title="Fanpage Facebook T&T"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#38BDF8',
+                textDecoration: 'none',
+                fontSize: 13,
+                fontWeight: 800,
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#1877F2'; e.currentTarget.style.color = '#FFFFFF'; }}
+              onMouseOut={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; e.currentTarget.style.color = '#38BDF8'; }}
+            >
+              f
+            </a>
+
+            <a
+              href="https://www.tiktok.com/@maybomtt"
+              target="_blank"
+              rel="noreferrer"
+              title="TikTok Máy Bơm T&T"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF',
+                textDecoration: 'none',
+                fontSize: 13,
+                fontWeight: 800,
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#FE2C55'; }}
+              onMouseOut={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; }}
+            >
+              ♪
+            </a>
+
+            <a
+              href="https://zalo.me/0984273806"
+              target="_blank"
+              rel="noreferrer"
+              title="Zalo Chat T&T"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#38BDF8',
+                textDecoration: 'none',
+                fontSize: 12,
+                fontWeight: 900,
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#0068FF'; e.currentTarget.style.color = '#FFFFFF'; }}
+              onMouseOut={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; e.currentTarget.style.color = '#38BDF8'; }}
+            >
+              Z
+            </a>
+
+            <a
+              href="tel:0984273806"
+              title="Gọi Hotline 0984 273 806"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#22C55E',
+                textDecoration: 'none',
+                fontSize: 14,
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#22C55E'; e.currentTarget.style.color = '#FFFFFF'; }}
+              onMouseOut={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; e.currentTarget.style.color = '#22C55E'; }}
+            >
+              📞
+            </a>
+          </div>
         </div>
       </footer>
 
@@ -7729,48 +8034,72 @@ export default function WebCatalog() {
           opacity: 1;
         }
 
-        /* Category Header Styles */
+        /* Category Header Styles (Redesigned Light Surface Card) */
         .category-section {
           margin-bottom: 36px;
         }
         .category-header {
           display: flex;
           justify-content: space-between;
-          align-items: flex-end;
-          border-bottom: 1px solid #E2E8F0;
-          padding-bottom: 8px;
+          align-items: center;
+          background: #F0F4F8;
+          border-radius: 10px;
+          border-left: 3px solid #378ADD;
+          padding: 10px 16px;
           margin-bottom: 16px;
+          border-top: 1px solid #E2E8F0;
+          border-right: 1px solid #E2E8F0;
+          border-bottom: 1px solid #E2E8F0;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
         }
         .category-header-left {
           display: flex;
           flex-direction: column;
           gap: 2px;
+          min-width: 0;
         }
         .category-title {
           font-size: 15px;
           font-weight: 800;
-          color: #082B4C;
+          color: #0C447C;
           text-transform: uppercase;
           margin: 0;
-          line-height: 1.2;
+          line-height: 1.25;
+          letter-spacing: 0.3px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .category-subtitle {
-          font-size: 12px;
+          font-size: 11.5px;
           color: #64748B;
-          font-weight: 500;
+          font-weight: 550;
+          line-height: 1.2;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .category-view-all {
-          font-size: 12.5px;
-          font-weight: 800;
-          color: #0878D9;
+          font-size: 12px;
+          font-weight: 750;
+          color: #185FA5;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          transition: color 0.2s;
+          padding: 6px 12px;
+          border-radius: 6px;
+          background: #FFFFFF;
+          border: 1px solid #CBD5E1;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+          text-decoration: none;
         }
         .category-view-all:hover {
-          color: #0766B8;
+          color: #0C447C;
+          border-color: #378ADD;
+          background: #F8FAFC;
+          box-shadow: 0 2px 6px rgba(55, 138, 221, 0.15);
         }
 
         /* ── CATEGORY PRODUCT SLIDER STYLES ── */
@@ -8138,51 +8467,71 @@ export default function WebCatalog() {
           }
           .category-header {
             align-items: center !important;
-            padding-bottom: 8px !important;
-            margin-top: 24px !important;
+            padding: 8px 12px !important;
+            margin-top: 18px !important;
             margin-bottom: 12px !important;
-            margin-left: 12px !important;
-            margin-right: 12px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            background: #F0F4F8 !important;
+            border-radius: 10px !important;
+            border-left: 3px solid #378ADD !important;
+            border-top: 1px solid #E2E8F0 !important;
+            border-right: 1px solid #E2E8F0 !important;
             border-bottom: 1px solid #E2E8F0 !important;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02) !important;
           }
           .category-header-single {
-            margin-left: 12px !important;
-            margin-right: 12px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
             margin-top: 12px !important;
             margin-bottom: 12px !important;
-            padding-bottom: 8px !important;
+            padding: 10px 12px !important;
+            background: #F0F4F8 !important;
+            border-radius: 10px !important;
+            border-left: 3px solid #378ADD !important;
+            border-top: 1px solid #E2E8F0 !important;
+            border-right: 1px solid #E2E8F0 !important;
             border-bottom: 1px solid #E2E8F0 !important;
           }
           .category-title {
-            font-size: 22px !important;
+            font-size: 14.5px !important;
             font-weight: 850 !important;
+            color: #0C447C !important;
             line-height: 1.25 !important;
-            max-width: 210px !important;
+            max-width: 190px !important;
             display: -webkit-box !important;
-            -webkit-line-clamp: 2 !important;
-            line-clamp: 2 !important;
+            -webkit-line-clamp: 1 !important;
+            line-clamp: 1 !important;
             -webkit-box-orient: vertical !important;
             overflow: hidden !important;
+            text-overflow: ellipsis !important;
           }
           .category-subtitle {
-            font-size: 13px !important;
+            font-size: 11px !important;
             color: #64748B !important;
             font-weight: 550 !important;
-            margin-top: 4px !important;
+            margin-top: 2px !important;
             display: block !important;
-          }
-          .category-view-all {
-            font-size: 14px !important;
-            font-weight: 800 !important;
-            color: #0878D9 !important;
+            max-width: 190px !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
             white-space: nowrap !important;
           }
+          .category-view-all {
+            font-size: 11.5px !important;
+            font-weight: 750 !important;
+            color: #185FA5 !important;
+            white-space: nowrap !important;
+            padding: 4px 8px !important;
+            background: #FFFFFF !important;
+            border-radius: 6px !important;
+            border: 1px solid #CBD5E1 !important;
+          }
           .category-view-all svg {
-            display: none !important;
+            display: inline-block !important;
           }
           .category-view-all::after {
-            content: " →" !important;
-            display: inline !important;
+            display: none !important;
           }
 
           /* Hide scrollbars on horizontal carousels */

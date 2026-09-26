@@ -3641,17 +3641,18 @@ export default function WebCatalog() {
 
                 {/* ── 2. TRUST BAR / DẢI ICON TIN CẬY (Placed immediately below Hero) ── */}
                 <section style={{
-                  maxWidth: 1320,
+                  maxWidth: 1040,
                   margin: '18px auto 0',
-                  padding: '0 20px',
+                  padding: '0 24px',
                   boxSizing: 'border-box',
+                  width: '100%'
                 }}>
                   <div style={{
                     background: '#FFFFFF',
                     borderRadius: 14,
                     padding: '16px 20px',
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                     gap: 16,
                     boxShadow: '0 4px 20px rgba(30, 58, 95, 0.06)',
                     border: '1px solid #E2E8F0',

@@ -3268,7 +3268,7 @@ export default function WebCatalog() {
                 onMouseEnter={() => setSliderPaused(true)}
                 onMouseLeave={() => setSliderPaused(false)}
               >
-                {/* ── LỚP 1 (DƯỚI CÙNG): Ảnh bạn cài trong Quản trị App hiển thị rõ nét góc phải ── */}
+                {/* ── LỚP 1 (DƯỚI CÙNG): Ảnh poster với filter: blur(2.5px) làm mịn chi tiết, biến thành phông nền trang trí ── */}
                 <div
                   key={`layer1-poster-${slide.id}-${slide.poster}`}
                   style={{
@@ -3276,21 +3276,23 @@ export default function WebCatalog() {
                     right: 0,
                     top: 0,
                     bottom: 0,
-                    width: 'clamp(320px, 55vw, 750px)',
+                    width: 'clamp(340px, 58vw, 800px)',
                     backgroundImage: `url(${slide.poster})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
+                    filter: 'blur(2.5px)',
+                    transform: 'scale(1.04)',
                     zIndex: 1,
                     transition: 'all 0.5s ease'
                   }}
                 />
 
-                {/* ── LỚP 2: Gradient chuyển tiếp (Bên trái tối 100% để chữ rõ nét, bên phải trong suốt để thấy trọn ảnh) ── */}
+                {/* ── LỚP 2: Gradient chuyển tiếp mượt mà rộng dải (Trái tối 100%, phải tối 45-50% để xóa mờ thông số) ── */}
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(90deg, #0c1e33 0%, #0c1e33 44%, rgba(12, 30, 51, 0.88) 60%, rgba(12, 30, 51, 0.25) 85%, rgba(12, 30, 51, 0.05) 100%)',
+                    background: 'linear-gradient(90deg, #0c1e33 0%, #0c1e33 36%, rgba(12, 30, 51, 0.92) 52%, rgba(12, 30, 51, 0.72) 70%, rgba(12, 30, 51, 0.48) 88%, rgba(12, 30, 51, 0.35) 100%)',
                     zIndex: 2
                   }}
                 />
@@ -3304,7 +3306,7 @@ export default function WebCatalog() {
                     transform: 'translateY(-50%)',
                     width: '40vw',
                     height: '40vw',
-                    background: 'radial-gradient(circle, rgba(55, 138, 221, 0.2) 0%, transparent 65%)',
+                    background: 'radial-gradient(circle, rgba(55, 138, 221, 0.22) 0%, transparent 65%)',
                     zIndex: 3,
                     pointerEvents: 'none'
                   }}

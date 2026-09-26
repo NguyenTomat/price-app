@@ -3238,85 +3238,20 @@ export default function WebCatalog() {
       {viewMode === 'home' && (
         <div style={{ background: '#F5F7FA', color: '#101828', minHeight: '100vh' }}>
 
-          {/* 1. HERO BANNER — 4-LAYER BLURRED POSTER BACKGROUND (8 DEDICATED SLIDES) */}
+          {/* 1. HERO BANNER — 4-LAYER OVERLAY BOUND DIRECTLY TO APP MANAGEMENT CONFIG */}
           {(() => {
-            const HERO_POSTER_SLIDES = [
-              {
-                id: 1,
-                poster: './pump_vertical_cdlf.jpg',
-                pill: 'giải pháp điều áp thông minh',
-                headline: 'Bơm Biến Tần Tiết Kiệm',
-                desc: 'Tự động điều chỉnh áp lực nước, tiết kiệm điện năng cho công trình.',
-                cta: 'Xem sản phẩm & báo giá →',
-                category: 'BƠM BIẾN TẦN'
-              },
-              {
-                id: 2,
-                poster: './pump_booster_green.jpg',
-                pill: 'tăng áp tự động gia đình',
-                headline: 'Bơm Tăng Áp Điện Tử',
-                desc: 'Vận hành êm ái, tăng áp lực nước mạnh mẽ và chống cạn an toàn.',
-                cta: 'Xem sản phẩm & báo giá →',
-                category: 'BƠM TĂNG ÁP'
-              },
-              {
-                id: 3,
-                poster: './pump_submersible_blue.jpg',
-                pill: 'khai thác nước ngầm sâu',
-                headline: 'Bơm Chìm Giếng Khoan',
-                desc: 'Động cơ giải nhiệt dầu bền bỉ, đẩy cao vượt trội cho giếng sâu.',
-                cta: 'Xem sản phẩm & báo giá →',
-                category: 'BƠM HỎA TIỄN'
-              },
-              {
-                id: 4,
-                poster: './pump_horizontal_blue.jpg',
-                pill: 'cấp thoát lưu lượng lớn',
-                headline: 'Bơm Ly Tâm Trục Ngang',
-                desc: 'Lưu lượng nước lớn, phục vụ sản xuất công nghiệp và tưới tiêu nông nghiệp.',
-                cta: 'Xem sản phẩm & báo giá →',
-                category: 'BƠM LY TÂM'
-              },
-              {
-                id: 5,
-                poster: './pump_submersible_ss.jpg',
-                pill: 'chống ăn mòn hóa chất',
-                headline: 'Bơm Thải Toàn Thân Inox',
-                desc: 'Vật liệu inox chống rỉ sét, chuyên dụng cho nước thải có tính ăn mòn.',
-                cta: 'Xem sản phẩm & báo giá →',
-                category: 'bơm thải toàn bộ INOX có mặt bích'
-              },
-              {
-                id: 6,
-                poster: './pump_submersible.jpg',
-                pill: 'xử lý nước thải hố móng',
-                headline: 'Bơm Chìm Hút Bùn Thải',
-                desc: 'Cánh cắt rác chống nghẹt, hút xả bùn loãng và thoát nước ngập úng.',
-                cta: 'Xem sản phẩm & báo giá →',
-                category: 'BƠM CHÌM NƯỚC THẢI'
-              },
-              {
-                id: 7,
-                poster: './pump_vertical.jpg',
-                pill: 'tòa nhà cao tầng & ro',
-                headline: 'Bơm Ly Tâm Trục Đứng',
-                desc: 'Cột áp siêu cao, vận hành liên tục 24/7 ổn định và bền bỉ.',
-                cta: 'Xem sản phẩm & báo giá →',
-                category: 'BƠM TRỤC ĐỨNG'
-              },
-              {
-                id: 8,
-                poster: './pump_showroom.jpg',
-                pill: 'hệ thống cấp nước tổng thể',
-                headline: 'Dàn Bơm Công Nghiệp Lớn',
-                desc: 'Thiết kế lắp ráp cụm bơm song song phục vụ chung cư nhà xưởng.',
-                cta: 'Xem sản phẩm & báo giá →',
-                category: 'DÀN BƠM'
-              }
-            ];
+            const activeSlides = (homepageSlides && homepageSlides.length > 0 ? homepageSlides : DEFAULT_HERO_SLIDES).map((s, idx) => ({
+              id: s.id || `slide-${idx + 1}`,
+              poster: s.img || s.defaultImg || './pump_vertical_cdlf.jpg',
+              pill: (s.badge || s.pill || s.sub || 'máy bơm chính hãng').toLowerCase(),
+              headline: s.headline || s.title || 'Máy Bơm Nước Chuyên Dụng',
+              desc: s.desc || 'Cung cấp giải pháp máy bơm chính hãng, bảo hành dài hạn toàn quốc.',
+              cta: s.cta || 'Xem sản phẩm & báo giá →',
+              category: s.category || 'TẤT CẢ'
+            }));
 
-            const currentIdx = currentSlide % HERO_POSTER_SLIDES.length;
-            const slide = HERO_POSTER_SLIDES[currentIdx];
+            const currentIdx = currentSlide % activeSlides.length;
+            const slide = activeSlides[currentIdx] || activeSlides[0];
 
             return (
               <section
@@ -3333,9 +3268,9 @@ export default function WebCatalog() {
                 onMouseEnter={() => setSliderPaused(true)}
                 onMouseLeave={() => setSliderPaused(false)}
               >
-                {/* ── LỚP 1 (DƯỚI CÙNG): Ảnh poster góc phải hiển thị rõ nét, sắc sảo ── */}
+                {/* ── LỚP 1 (DƯỚI CÙNG): Ảnh bạn cài trong Quản trị App hiển thị rõ nét góc phải ── */}
                 <div
-                  key={`layer1-poster-${slide.id}`}
+                  key={`layer1-poster-${slide.id}-${slide.poster}`}
                   style={{
                     position: 'absolute',
                     right: 0,
@@ -3350,7 +3285,7 @@ export default function WebCatalog() {
                   }}
                 />
 
-                {/* ── LỚP 2: Gradient chuyển tiếp thông minh (Bên trái tối 100% để chữ rõ, bên phải trong suốt để thấy rõ ảnh máy bơm) ── */}
+                {/* ── LỚP 2: Gradient chuyển tiếp (Bên trái tối 100% để chữ rõ nét, bên phải trong suốt để thấy trọn ảnh) ── */}
                 <div
                   style={{
                     position: 'absolute',
@@ -3375,7 +3310,7 @@ export default function WebCatalog() {
                   }}
                 />
 
-                {/* ── LỚP 4: TEXT MỚI HOÀN TOÀN (CĂN TRÁI, ĐỘ TƯƠNG PHẢN TUYỆT ĐỐI) ── */}
+                {/* ── LỚP 4: TEXT VÀ NÚT CTA (CĂN TRÁI, ĐỘ TƯƠNG PHẢN TUYỆT ĐỐI) ── */}
                 <div
                   style={{
                     maxWidth: 1320,
@@ -3473,9 +3408,9 @@ export default function WebCatalog() {
                       </button>
                     </div>
 
-                    {/* Pagination Dots (8 slide navigation) */}
+                    {/* Pagination Dots */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16 }}>
-                      {HERO_POSTER_SLIDES.map((_, idx) => (
+                      {activeSlides.map((_, idx) => (
                         <div
                           key={idx}
                           onClick={() => { setSliderInteracted(true); setCurrentSlide(idx); }}
@@ -3491,7 +3426,7 @@ export default function WebCatalog() {
                         />
                       ))}
                       <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace', fontWeight: 700, marginLeft: 6 }}>
-                        {String(currentIdx + 1).padStart(2, '0')} / {String(HERO_POSTER_SLIDES.length).padStart(2, '0')}
+                        {String(currentIdx + 1).padStart(2, '0')} / {String(activeSlides.length).padStart(2, '0')}
                       </span>
                     </div>
                   </div>
@@ -3501,7 +3436,7 @@ export default function WebCatalog() {
                 <button
                   onClick={() => {
                     setSliderInteracted(true);
-                    setCurrentSlide(prev => (prev - 1 + HERO_POSTER_SLIDES.length) % HERO_POSTER_SLIDES.length);
+                    setCurrentSlide(prev => (prev - 1 + activeSlides.length) % activeSlides.length);
                   }}
                   style={{
                     position: 'absolute',
@@ -3532,7 +3467,7 @@ export default function WebCatalog() {
                 <button
                   onClick={() => {
                     setSliderInteracted(true);
-                    setCurrentSlide(prev => (prev + 1) % HERO_POSTER_SLIDES.length);
+                    setCurrentSlide(prev => (prev + 1) % activeSlides.length);
                   }}
                   style={{
                     position: 'absolute',

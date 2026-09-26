@@ -3323,7 +3323,7 @@ export default function WebCatalog() {
                 style={{
                   position: 'relative',
                   overflow: 'hidden',
-                  minHeight: 'clamp(320px, 34vw, 420px)',
+                  minHeight: 'clamp(380px, 40vw, 480px)',
                   display: 'flex',
                   alignItems: 'center',
                   borderBottom: '1px solid rgba(55, 138, 221, 0.25)',
@@ -3333,40 +3333,45 @@ export default function WebCatalog() {
                 onMouseEnter={() => setSliderPaused(true)}
                 onMouseLeave={() => setSliderPaused(false)}
               >
-                {/* ── LỚP 1 (DƯỚI CÙNG): Ảnh poster gốc full-cover kèm hiệu ứng làm mờ để biến text thành mảng màu trừu tượng ── */}
+                {/* ── LỚP 1 (DƯỚI CÙNG): Ảnh poster góc phải hiển thị rõ nét, sắc sảo ── */}
                 <div
                   key={`layer1-poster-${slide.id}`}
                   style={{
                     position: 'absolute',
-                    inset: -10,
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 'clamp(320px, 55vw, 750px)',
                     backgroundImage: `url(${slide.poster})`,
                     backgroundSize: 'cover',
-                    backgroundPosition: 'center 40%',
-                    filter: 'blur(7px) saturate(1.15)',
-                    transform: 'scale(1.06)',
+                    backgroundPosition: 'center',
                     zIndex: 1,
-                    transition: 'opacity 0.6s ease'
+                    transition: 'all 0.5s ease'
                   }}
                 />
 
-                {/* ── LỚP 2: Overlay màu solid navy (#0c1e33) với opacity 85% phủ TOÀN BỘ ảnh để xóa sạch chữ cũ ── */}
+                {/* ── LỚP 2: Gradient chuyển tiếp thông minh (Bên trái tối 100% để chữ rõ, bên phải trong suốt để thấy rõ ảnh máy bơm) ── */}
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    backgroundColor: '#0c1e33',
-                    opacity: 0.85,
+                    background: 'linear-gradient(90deg, #0c1e33 0%, #0c1e33 44%, rgba(12, 30, 51, 0.88) 60%, rgba(12, 30, 51, 0.25) 85%, rgba(12, 30, 51, 0.05) 100%)',
                     zIndex: 2
                   }}
                 />
 
-                {/* ── LỚP 3: Gradient ngang đậm hơn ở bên trái (100% #0c1e33) và nhạt dần sang phải để tạo điểm nhấn ── */}
+                {/* ── LỚP 3: Ánh sáng xanh dương tỏa dịu phía sau máy bơm ── */}
                 <div
                   style={{
                     position: 'absolute',
-                    inset: 0,
-                    background: 'linear-gradient(90deg, #0c1e33 0%, #0c1e33 38%, rgba(12, 30, 51, 0.78) 72%, rgba(12, 30, 51, 0.28) 100%)',
-                    zIndex: 3
+                    right: '12%',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '40vw',
+                    height: '40vw',
+                    background: 'radial-gradient(circle, rgba(55, 138, 221, 0.2) 0%, transparent 65%)',
+                    zIndex: 3,
+                    pointerEvents: 'none'
                   }}
                 />
 
@@ -3375,7 +3380,7 @@ export default function WebCatalog() {
                   style={{
                     maxWidth: 1320,
                     margin: '0 auto',
-                    padding: '44px 24px',
+                    padding: '54px 24px 48px',
                     width: '100%',
                     position: 'relative',
                     zIndex: 4,

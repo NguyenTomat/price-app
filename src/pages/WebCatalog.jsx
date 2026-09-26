@@ -2754,6 +2754,7 @@ export default function WebCatalog() {
             border-radius: 16px !important;
             border: 1px solid #E2E8F0 !important;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2) !important;
+          }
           .homepage-hero-section {
             padding: 16px 12px 24px !important;
           }
@@ -2772,6 +2773,16 @@ export default function WebCatalog() {
             grid-template-columns: 1fr 1fr !important;
             gap: 12px !important;
             padding: 12px !important;
+          }
+          .hero-split-grid {
+            flex-direction: column-reverse !important;
+            text-align: center !important;
+            align-items: center !important;
+            gap: 24px !important;
+          }
+          .hero-split-grid > div {
+            max-width: 100% !important;
+            align-items: center !important;
           }
         }
         @keyframes beaconRipple {
@@ -3330,7 +3341,7 @@ export default function WebCatalog() {
                 {/* Main 2-Column Container */}
                 <div
                   style={{
-                    maxWidth: 1320,
+                    maxWidth: 1040,
                     margin: '0 auto',
                     padding: '0 24px',
                     width: '100%',
@@ -3341,16 +3352,16 @@ export default function WebCatalog() {
                 >
                   <div
                     style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1.22fr) minmax(0, 0.78fr)',
+                      display: 'flex',
                       alignItems: 'center',
-                      gap: 'clamp(24px, 4vw, 56px)',
+                      justifyContent: 'flex-start',
+                      gap: 'clamp(28px, 3.5vw, 44px)',
                       width: '100%'
                     }}
                     className="hero-split-grid"
                   >
                     {/* ── CỘT TRÁI: TEXT & NÚT CTA (CĂN TRÁI, TƯƠNG PHẢN TUYỆT ĐỐI) ── */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{ flex: '1 1 58%', maxWidth: 580, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
                       {/* Vạch ngang ngắn tạo phân cấp thị giác */}
                       <div style={{ width: 28, height: 2, background: '#378ADD', borderRadius: 2, marginBottom: 2 }} />
 
@@ -3462,6 +3473,7 @@ export default function WebCatalog() {
                     {/* ── CỘT PHẢI: THẺ ĐÓNG KHUNG XOAY 4 ĐỘ + QUẦNG SÁNG + HUY HIỆU GÓC ── */}
                     <div
                       style={{
+                        flex: '0 0 auto',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',

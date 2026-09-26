@@ -3350,6 +3350,8 @@ export default function WebCatalog() {
                   {/* Main 2-Column Container */}
                   <div
                     style={{
+                      maxWidth: 960,
+                      margin: '0 auto',
                       width: '100%',
                       position: 'relative',
                       zIndex: 3,
@@ -3360,14 +3362,14 @@ export default function WebCatalog() {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 'clamp(24px, 3.5vw, 48px)',
+                        justifyContent: 'center',
+                        gap: 'clamp(28px, 4vw, 56px)',
                         width: '100%'
                       }}
                       className="hero-split-grid"
                     >
                       {/* ── CỘT TRÁI: TEXT & NÚT CTA (CĂN TRÁI, TƯƠNG PHẢN TUYỆT ĐỐI) ── */}
-                      <div style={{ flex: '1 1 58%', maxWidth: 580, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ flex: '1 1 520px', maxWidth: 520, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
                         {/* Vạch ngang ngắn tạo phân cấp thị giác */}
                         <div style={{ width: 28, height: 2, background: '#378ADD', borderRadius: 2, marginBottom: 2 }} />
 

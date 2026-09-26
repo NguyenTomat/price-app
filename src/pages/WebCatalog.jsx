@@ -3238,7 +3238,7 @@ export default function WebCatalog() {
       {viewMode === 'home' && (
         <div style={{ background: '#F5F7FA', color: '#101828', minHeight: '100vh' }}>
 
-          {/* 1. HERO BANNER — 4-LAYER OVERLAY BOUND DIRECTLY TO APP MANAGEMENT CONFIG */}
+          {/* 1. HERO BANNER — FRAMED CARD POSTER LAYOUT (ELEGANT 3D FLOATING CARD) */}
           {(() => {
             const activeSlides = (homepageSlides && homepageSlides.length > 0 ? homepageSlides : DEFAULT_HERO_SLIDES).map((s, idx) => ({
               id: s.id || `slide-${idx + 1}`,
@@ -3258,129 +3258,184 @@ export default function WebCatalog() {
                 style={{
                   position: 'relative',
                   overflow: 'hidden',
-                  minHeight: 'clamp(380px, 40vw, 480px)',
+                  minHeight: 'clamp(400px, 42vw, 500px)',
                   display: 'flex',
                   alignItems: 'center',
                   borderBottom: '1px solid rgba(55, 138, 221, 0.25)',
                   boxSizing: 'border-box',
-                  background: '#0c1e33'
+                  background: 'linear-gradient(135deg, #0c1e33 0%, #1e3a5f 60%, #0c1e33 100%)',
+                  padding: '44px 0'
                 }}
                 onMouseEnter={() => setSliderPaused(true)}
                 onMouseLeave={() => setSliderPaused(false)}
               >
-                {/* ── LỚP 1 (DƯỚI CÙNG): Ảnh poster với filter: blur(2.5px) làm mịn chi tiết, biến thành phông nền trang trí ── */}
-                <div
-                  key={`layer1-poster-${slide.id}-${slide.poster}`}
-                  style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 'clamp(340px, 58vw, 800px)',
-                    backgroundImage: `url(${slide.poster})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    filter: 'blur(2.5px)',
-                    transform: 'scale(1.04)',
-                    zIndex: 1,
-                    transition: 'all 0.5s ease'
-                  }}
-                />
-
-                {/* ── LỚP 2: Gradient chuyển tiếp mượt mà rộng dải (Trái tối 100%, phải tối 45-50% để xóa mờ thông số) ── */}
+                {/* Subtle Blueprint Grid Pattern */}
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(90deg, #0c1e33 0%, #0c1e33 36%, rgba(12, 30, 51, 0.92) 52%, rgba(12, 30, 51, 0.72) 70%, rgba(12, 30, 51, 0.48) 88%, rgba(12, 30, 51, 0.35) 100%)',
-                    zIndex: 2
+                    backgroundImage: 'radial-gradient(rgba(55, 138, 221, 0.15) 1px, transparent 1px)',
+                    backgroundSize: '28px 28px',
+                    opacity: 0.6,
+                    zIndex: 1,
+                    pointerEvents: 'none'
                   }}
                 />
 
-                {/* ── LỚP 3: Ánh sáng xanh dương tỏa dịu phía sau máy bơm ── */}
+                {/* Soft Blue Ambient Glow behind the Card */}
                 <div
                   style={{
                     position: 'absolute',
                     right: '12%',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: '40vw',
-                    height: '40vw',
-                    background: 'radial-gradient(circle, rgba(55, 138, 221, 0.22) 0%, transparent 65%)',
-                    zIndex: 3,
+                    width: '45vw',
+                    height: '45vw',
+                    background: 'radial-gradient(circle, rgba(55, 138, 221, 0.28) 0%, transparent 65%)',
+                    zIndex: 2,
                     pointerEvents: 'none'
                   }}
                 />
 
-                {/* ── LỚP 4: TEXT VÀ NÚT CTA (CĂN TRÁI, ĐỘ TƯƠNG PHẢN TUYỆT ĐỐI) ── */}
+                {/* Main 2-Column Container */}
                 <div
                   style={{
                     maxWidth: 1320,
                     margin: '0 auto',
-                    padding: '54px 24px 48px',
+                    padding: '0 24px',
                     width: '100%',
                     position: 'relative',
-                    zIndex: 4,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
+                    zIndex: 3,
                     boxSizing: 'border-box'
                   }}
                 >
-                  <div style={{ maxWidth: 660, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
-                    {/* Thành phần 1: Nhãn nhỏ dạng pill, chữ thường, 1 dòng */}
-                    <span
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1.15fr) minmax(0, 0.85fr)',
+                      alignItems: 'center',
+                      gap: 'clamp(24px, 4vw, 56px)',
+                      width: '100%'
+                    }}
+                    className="hero-split-grid"
+                  >
+                    {/* ── CỘT TRÁI: TEXT & NÚT CTA (CĂN TRÁI, TƯƠNG PHẢN TUYỆT ĐỐI) ── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
+                      {/* Thành phần 1: Nhãn nhỏ dạng pill, chữ thường, 1 dòng */}
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          background: 'rgba(55, 138, 221, 0.18)',
+                          border: '1px solid rgba(55, 138, 221, 0.45)',
+                          borderRadius: 16,
+                          padding: '5px 14px',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: '#38BDF8',
+                          letterSpacing: '0.4px',
+                          lineHeight: '1.4',
+                          textTransform: 'lowercase',
+                          whiteSpace: 'nowrap',
+                          backdropFilter: 'blur(6px)'
+                        }}
+                      >
+                        {slide.pill}
+                      </span>
+
+                      {/* Thành phần 2: Tiêu đề H1, tối đa 6 từ */}
+                      <h1
+                        style={{
+                          fontSize: 'clamp(28px, 3.8vw, 44px)',
+                          fontWeight: 900,
+                          color: '#FFFFFF',
+                          margin: 0,
+                          lineHeight: 1.18,
+                          letterSpacing: '-0.3px',
+                          textShadow: '0 2px 8px rgba(0,0,0,0.5)'
+                        }}
+                      >
+                        {slide.headline}
+                      </h1>
+
+                      {/* Thành phần 3: Mô tả ngắn, tối đa 15 từ */}
+                      <p
+                        style={{
+                          fontSize: 'clamp(14.5px, 1.2vw, 16.5px)',
+                          color: '#E2E8F0',
+                          margin: 0,
+                          lineHeight: 1.6,
+                          maxWidth: 540,
+                          fontWeight: 400
+                        }}
+                      >
+                        {slide.desc}
+                      </p>
+
+                      {/* Thành phần 4: Một nút CTA duy nhất */}
+                      <div style={{ marginTop: 8 }}>
+                        <button
+                          onClick={() => {
+                            setSelectedCategory(slide.category || 'TẤT CẢ');
+                            setViewMode('catalog');
+                            setActiveTab('products');
+                            window.location.hash = '#web/catalog';
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          style={{
+                            background: 'linear-gradient(135deg, #378ADD 0%, #0284C7 100%)',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: 8,
+                            padding: '13px 28px',
+                            fontSize: 14,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 18px rgba(55, 138, 221, 0.45)',
+                            transition: 'all 0.2s ease',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}
+                          onMouseOver={e => { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                          onMouseOut={e => { e.currentTarget.style.filter = 'brightness(1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                        >
+                          {slide.cta}
+                        </button>
+                      </div>
+
+                      {/* Pagination Dots (Điều hướng slide) */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16 }}>
+                        {activeSlides.map((_, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => { setSliderInteracted(true); setCurrentSlide(idx); }}
+                            style={{
+                              width: idx === currentIdx ? 24 : 7,
+                              height: 6,
+                              borderRadius: 3,
+                              background: idx === currentIdx ? '#38BDF8' : 'rgba(255, 255, 255, 0.25)',
+                              cursor: 'pointer',
+                              transition: 'all 0.25s ease'
+                            }}
+                            title={`Chuyển tới slide ${idx + 1}`}
+                          />
+                        ))}
+                        <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace', fontWeight: 700, marginLeft: 6 }}>
+                          {String(currentIdx + 1).padStart(2, '0')} / {String(activeSlides.length).padStart(2, '0')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* ── CỘT PHẢI: THẺ ĐÓNG KHUNG NỔI BẬT (SHARP 100%, XOAY NHẸ 3 ĐỘ, BÓNG ĐỔ ĐẬM) ── */}
+                    <div
                       style={{
-                        display: 'inline-block',
-                        background: 'rgba(55, 138, 221, 0.22)',
-                        border: '1px solid rgba(55, 138, 221, 0.45)',
-                        borderRadius: 16,
-                        padding: '4px 14px',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: '#38BDF8',
-                        letterSpacing: '0.4px',
-                        lineHeight: '1.4',
-                        textTransform: 'lowercase',
-                        whiteSpace: 'nowrap',
-                        backdropFilter: 'blur(6px)'
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        position: 'relative'
                       }}
                     >
-                      {slide.pill}
-                    </span>
-
-                    {/* Thành phần 2: Tiêu đề H1, tối đa 6 từ */}
-                    <h1
-                      style={{
-                        fontSize: 'clamp(28px, 3.8vw, 44px)',
-                        fontWeight: 900,
-                        color: '#FFFFFF',
-                        margin: 0,
-                        lineHeight: 1.18,
-                        letterSpacing: '-0.3px',
-                        textShadow: '0 2px 10px rgba(0,0,0,0.6)'
-                      }}
-                    >
-                      {slide.headline}
-                    </h1>
-
-                    {/* Thành phần 3: Mô tả ngắn, tối đa 15 từ */}
-                    <p
-                      style={{
-                        fontSize: 'clamp(14.5px, 1.2vw, 16.5px)',
-                        color: '#E2E8F0',
-                        margin: 0,
-                        lineHeight: 1.6,
-                        fontWeight: 400,
-                        textShadow: '0 1px 4px rgba(0,0,0,0.6)'
-                      }}
-                    >
-                      {slide.desc}
-                    </p>
-
-                    {/* Thành phần 4: Một nút CTA duy nhất */}
-                    <div style={{ marginTop: 8 }}>
-                      <button
+                      <div
                         onClick={() => {
                           setSelectedCategory(slide.category || 'TẤT CẢ');
                           setViewMode('catalog');
@@ -3389,47 +3444,43 @@ export default function WebCatalog() {
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
                         style={{
-                          background: 'linear-gradient(135deg, #378ADD 0%, #0284C7 100%)',
-                          color: '#FFFFFF',
-                          border: 'none',
-                          borderRadius: 8,
-                          padding: '13px 28px',
-                          fontSize: 14,
-                          fontWeight: 700,
+                          background: '#FFFFFF',
+                          padding: 8,
+                          borderRadius: 12,
+                          boxShadow: '0 16px 36px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.25)',
+                          transform: 'rotate(3deg)',
+                          transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
                           cursor: 'pointer',
-                          boxShadow: '0 4px 18px rgba(55, 138, 221, 0.45)',
-                          transition: 'all 0.2s ease',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6
+                          maxWidth: 'clamp(280px, 32vw, 400px)',
+                          width: '100%',
+                          boxSizing: 'border-box'
                         }}
-                        onMouseOver={e => { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                        onMouseOut={e => { e.currentTarget.style.filter = 'brightness(1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.transform = 'rotate(0deg) scale(1.03)';
+                          e.currentTarget.style.boxShadow = '0 22px 48px rgba(55, 138, 221, 0.4), 0 6px 16px rgba(0, 0, 0, 0.3)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.transform = 'rotate(3deg)';
+                          e.currentTarget.style.boxShadow = '0 16px 36px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.25)';
+                        }}
+                        title={`Bấm xem danh mục: ${slide.headline}`}
                       >
-                        {slide.cta}
-                      </button>
-                    </div>
-
-                    {/* Pagination Dots */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16 }}>
-                      {activeSlides.map((_, idx) => (
-                        <div
-                          key={idx}
-                          onClick={() => { setSliderInteracted(true); setCurrentSlide(idx); }}
+                        <img
+                          key={`card-poster-${slide.id}-${slide.poster}`}
+                          src={slide.poster}
+                          alt={slide.headline}
+                          loading="eager"
                           style={{
-                            width: idx === currentIdx ? 24 : 7,
-                            height: 6,
-                            borderRadius: 3,
-                            background: idx === currentIdx ? '#38BDF8' : 'rgba(255, 255, 255, 0.25)',
-                            cursor: 'pointer',
-                            transition: 'all 0.25s ease'
+                            width: '100%',
+                            height: 'auto',
+                            maxHeight: 350,
+                            objectFit: 'contain',
+                            borderRadius: 8,
+                            display: 'block',
+                            backgroundColor: '#F8FAFC'
                           }}
-                          title={`Chuyển tới slide ${idx + 1}`}
                         />
-                      ))}
-                      <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace', fontWeight: 700, marginLeft: 6 }}>
-                        {String(currentIdx + 1).padStart(2, '0')} / {String(activeSlides.length).padStart(2, '0')}
-                      </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3445,13 +3496,13 @@ export default function WebCatalog() {
                     left: 16,
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: 36,
-                    height: 36,
+                    width: 38,
+                    height: 38,
                     borderRadius: '50%',
-                    background: 'rgba(12, 30, 51, 0.7)',
+                    background: 'rgba(12, 30, 51, 0.75)',
                     border: '1px solid rgba(55, 138, 221, 0.35)',
                     color: '#FFFFFF',
-                    fontSize: 18,
+                    fontSize: 20,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -3461,7 +3512,7 @@ export default function WebCatalog() {
                     transition: 'all 0.2s'
                   }}
                   onMouseOver={e => { e.currentTarget.style.background = '#378ADD'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(12, 30, 51, 0.7)'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(12, 30, 51, 0.75)'; }}
                   aria-label="Slide trước"
                 >
                   ‹
@@ -3476,13 +3527,13 @@ export default function WebCatalog() {
                     right: 16,
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: 36,
-                    height: 36,
+                    width: 38,
+                    height: 38,
                     borderRadius: '50%',
-                    background: 'rgba(12, 30, 51, 0.7)',
+                    background: 'rgba(12, 30, 51, 0.75)',
                     border: '1px solid rgba(55, 138, 221, 0.35)',
                     color: '#FFFFFF',
-                    fontSize: 18,
+                    fontSize: 20,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -3492,7 +3543,7 @@ export default function WebCatalog() {
                     transition: 'all 0.2s'
                   }}
                   onMouseOver={e => { e.currentTarget.style.background = '#378ADD'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(12, 30, 51, 0.7)'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(12, 30, 51, 0.75)'; }}
                   aria-label="Slide tiếp theo"
                 >
                   ›

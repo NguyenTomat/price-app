@@ -1832,6 +1832,8 @@ export default function WebCatalog() {
 
   // Brand, Category, Search Filtering & Sorting
   const processedProducts = useMemo(() => {
+    let result = [...products]
+
     // 1. FAST & ACCURATE SEARCH (Debounced for 60fps typing)
     if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
       const rawTerm = debouncedSearchTerm.toLowerCase().trim();

@@ -3309,24 +3309,24 @@ export default function WebCatalog() {
                     minHeight: 'clamp(360px, 36vw, 430px)',
                     display: 'flex',
                     alignItems: 'center',
-                    borderRadius: 16,
-                    boxShadow: '0 12px 36px rgba(12, 30, 51, 0.22)',
-                    border: '1px solid rgba(55, 138, 221, 0.35)',
+                    borderRadius: 18,
+                    boxShadow: '0 16px 40px -8px rgba(12, 30, 51, 0.35), 0 4px 12px rgba(0,0,0,0.15)',
+                    border: '1px solid rgba(56, 189, 248, 0.28)',
                     boxSizing: 'border-box',
-                    background: 'linear-gradient(135deg, #0c1e33 0%, #1e3a5f 60%, #0c1e33 100%)',
+                    background: 'linear-gradient(135deg, #091a2f 0%, #112e52 50%, #0c2038 100%)',
                     padding: '36px clamp(20px, 4vw, 44px)'
                   }}
                   onMouseEnter={() => setSliderPaused(true)}
                   onMouseLeave={() => setSliderPaused(false)}
                 >
-                  {/* Subtle Blueprint Grid Pattern */}
+                  {/* Blueprint Grid Pattern */}
                   <div
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      backgroundImage: 'radial-gradient(rgba(55, 138, 221, 0.15) 1px, transparent 1px)',
+                      backgroundImage: 'radial-gradient(rgba(56, 189, 248, 0.16) 1px, transparent 1px)',
                       backgroundSize: '28px 28px',
-                      opacity: 0.6,
+                      opacity: 0.7,
                       zIndex: 1,
                       pointerEvents: 'none'
                     }}
@@ -3336,12 +3336,26 @@ export default function WebCatalog() {
                   <div
                     style={{
                       position: 'absolute',
-                      right: '10%',
+                      right: '12%',
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      width: '400px',
-                      height: '400px',
-                      background: 'radial-gradient(circle, rgba(55, 138, 221, 0.32) 0%, transparent 65%)',
+                      width: '420px',
+                      height: '420px',
+                      background: 'radial-gradient(circle, rgba(56, 189, 248, 0.32) 0%, rgba(2, 132, 199, 0.12) 50%, transparent 70%)',
+                      zIndex: 2,
+                      pointerEvents: 'none'
+                    }}
+                  />
+
+                  {/* Bottom-Left Ambient Glow */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: '-5%',
+                      bottom: '-20%',
+                      width: '320px',
+                      height: '320px',
+                      background: 'radial-gradient(circle, rgba(24, 95, 165, 0.22) 0%, transparent 65%)',
                       zIndex: 2,
                       pointerEvents: 'none'
                     }}
@@ -3371,39 +3385,43 @@ export default function WebCatalog() {
                       {/* ── CỘT TRÁI: TEXT & NÚT CTA (CĂN TRÁI, TƯƠNG PHẢN TUYỆT ĐỐI) ── */}
                       <div style={{ flex: '1 1 520px', maxWidth: 520, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
                         {/* Vạch ngang ngắn tạo phân cấp thị giác */}
-                        <div style={{ width: 28, height: 2, background: '#378ADD', borderRadius: 2, marginBottom: 2 }} />
+                        <div style={{ width: 30, height: 2.5, background: 'linear-gradient(90deg, #38BDF8 0%, #378ADD 100%)', borderRadius: 2, marginBottom: 2 }} />
 
-                        {/* Thành phần 1: Nhãn nhỏ dạng pill, chữ thường, 1 dòng */}
+                        {/* Thành phần 1: Nhãn nhỏ dạng pill kèm chấm phát sáng */}
                         <span
                           style={{
-                            display: 'inline-block',
-                            background: 'rgba(55, 138, 221, 0.18)',
-                            border: '1px solid rgba(55, 138, 221, 0.45)',
-                            borderRadius: 16,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            background: 'rgba(56, 189, 248, 0.14)',
+                            border: '1px solid rgba(56, 189, 248, 0.45)',
+                            borderRadius: 20,
                             padding: '5px 14px',
                             fontSize: 12,
-                            fontWeight: 600,
+                            fontWeight: 700,
                             color: '#38BDF8',
                             letterSpacing: '0.4px',
                             lineHeight: '1.4',
                             textTransform: 'lowercase',
                             whiteSpace: 'nowrap',
-                            backdropFilter: 'blur(6px)'
+                            backdropFilter: 'blur(8px)',
+                            boxShadow: '0 2px 8px rgba(56, 189, 248, 0.15)'
                           }}
                         >
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38BDF8', boxShadow: '0 0 8px #38BDF8', display: 'inline-block' }} />
                           {slide.pill}
                         </span>
 
                         {/* Thành phần 2: Tiêu đề H1, tối đa 6 từ */}
                         <h1
                           style={{
-                            fontSize: 'clamp(26px, 3.5vw, 40px)',
+                            fontSize: 'clamp(26px, 3.4vw, 38px)',
                             fontWeight: 900,
                             color: '#FFFFFF',
                             margin: 0,
-                            lineHeight: 1.2,
+                            lineHeight: 1.18,
                             letterSpacing: '-0.3px',
-                            textShadow: '0 2px 8px rgba(0,0,0,0.5)'
+                            textShadow: '0 2px 10px rgba(0,0,0,0.45)'
                           }}
                         >
                           {slide.headline}
@@ -3412,11 +3430,11 @@ export default function WebCatalog() {
                         {/* Thành phần 3: Mô tả ngắn, tối đa 15 từ */}
                         <p
                           style={{
-                            fontSize: 'clamp(14px, 1.15vw, 16px)',
-                            color: '#E2E8F0',
+                            fontSize: 'clamp(14px, 1.15vw, 15.5px)',
+                            color: '#CBD5E1',
                             margin: 0,
                             lineHeight: 1.6,
-                            maxWidth: 540,
+                            maxWidth: 520,
                             fontWeight: 400
                           }}
                         >
@@ -3438,20 +3456,28 @@ export default function WebCatalog() {
                               color: '#FFFFFF',
                               border: 'none',
                               borderRadius: 8,
-                              padding: '12px 26px',
+                              padding: '12px 28px',
                               fontSize: 14,
-                              fontWeight: 700,
+                              fontWeight: 800,
                               cursor: 'pointer',
-                              boxShadow: '0 4px 18px rgba(55, 138, 221, 0.45)',
-                              transition: 'all 0.2s ease',
+                              boxShadow: '0 6px 20px rgba(2, 132, 199, 0.45)',
+                              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: 6
+                              gap: 8
                             }}
-                            onMouseOver={e => { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                            onMouseOut={e => { e.currentTarget.style.filter = 'brightness(1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                            onMouseOver={e => {
+                              e.currentTarget.style.filter = 'brightness(1.12)';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = '0 8px 24px rgba(2, 132, 199, 0.6)';
+                            }}
+                            onMouseOut={e => {
+                              e.currentTarget.style.filter = 'brightness(1)';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 6px 20px rgba(2, 132, 199, 0.45)';
+                            }}
                           >
-                            {slide.cta}
+                            <span>{slide.cta}</span>
                           </button>
                         </div>
 
@@ -3462,12 +3488,13 @@ export default function WebCatalog() {
                               key={idx}
                               onClick={() => { setSliderInteracted(true); setCurrentSlide(idx); }}
                               style={{
-                                width: idx === currentIdx ? 24 : 7,
+                                width: idx === currentIdx ? 26 : 7,
                                 height: 6,
                                 borderRadius: 3,
                                 background: idx === currentIdx ? '#38BDF8' : 'rgba(255, 255, 255, 0.25)',
                                 cursor: 'pointer',
-                                transition: 'all 0.25s ease'
+                                transition: 'all 0.25s ease',
+                                boxShadow: idx === currentIdx ? '0 0 8px rgba(56, 189, 248, 0.6)' : 'none'
                               }}
                               title={`Chuyển tới slide ${idx + 1}`}
                             />
@@ -3478,7 +3505,7 @@ export default function WebCatalog() {
                         </div>
                       </div>
 
-                      {/* ── CỘT PHẢI: THẺ ĐÓNG KHUNG XOAY 4 ĐỘ + QUẦNG SÁNG + HUY HIỆU GÓC ── */}
+                      {/* ── CỘT PHẢI: THẺ ĐÓNG KHUNG XOAY 3.5 ĐỘ + QUẦNG SÁNG + HUY HIỆU GÓC ── */}
                       <div
                         style={{
                           flex: '0 0 auto',
@@ -3492,12 +3519,12 @@ export default function WebCatalog() {
                         <div
                           style={{
                             position: 'absolute',
-                            inset: -16,
-                            background: 'radial-gradient(circle, rgba(55, 138, 221, 0.38) 0%, rgba(55, 138, 221, 0.12) 50%, transparent 70%)',
-                            filter: 'blur(8px)',
+                            inset: -18,
+                            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.4) 0%, rgba(2, 132, 199, 0.15) 50%, transparent 72%)',
+                            filter: 'blur(10px)',
                             zIndex: 1,
                             pointerEvents: 'none',
-                            borderRadius: 18
+                            borderRadius: 20
                           }}
                         />
 
@@ -3515,9 +3542,9 @@ export default function WebCatalog() {
                             zIndex: 2,
                             background: '#FFFFFF',
                             padding: 8,
-                            borderRadius: 12,
-                            boxShadow: '0 16px 36px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.25)',
-                            transform: 'rotate(4deg)',
+                            borderRadius: 14,
+                            boxShadow: '0 20px 45px -8px rgba(0, 0, 0, 0.55), 0 6px 18px rgba(0, 0, 0, 0.25)',
+                            transform: 'rotate(3.5deg)',
                             transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
                             cursor: 'pointer',
                             maxWidth: 'clamp(230px, 24vw, 300px)',
@@ -3525,16 +3552,16 @@ export default function WebCatalog() {
                             boxSizing: 'border-box'
                           }}
                           onMouseOver={e => {
-                            e.currentTarget.style.transform = 'rotate(0deg) scale(1.02)';
-                            e.currentTarget.style.boxShadow = '0 22px 48px rgba(55, 138, 221, 0.45), 0 6px 16px rgba(0, 0, 0, 0.3)';
+                            e.currentTarget.style.transform = 'rotate(0deg) scale(1.025)';
+                            e.currentTarget.style.boxShadow = '0 24px 50px rgba(55, 138, 221, 0.45), 0 8px 20px rgba(0, 0, 0, 0.3)';
                           }}
                           onMouseOut={e => {
-                            e.currentTarget.style.transform = 'rotate(4deg)';
-                            e.currentTarget.style.boxShadow = '0 16px 36px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.25)';
+                            e.currentTarget.style.transform = 'rotate(3.5deg)';
+                            e.currentTarget.style.boxShadow = '0 20px 45px -8px rgba(0, 0, 0, 0.55), 0 6px 18px rgba(0, 0, 0, 0.25)';
                           }}
                           title={`Bấm xem danh mục: ${slide.headline}`}
                         >
-                          {/* 3. Huy hiệu nhỏ nổi ở góc trên bên phải (xoay ngược -4deg) */}
+                          {/* 3. Huy hiệu nhỏ nổi ở góc trên bên phải (xoay ngược -3.5deg) */}
                           <div
                             style={{
                               position: 'absolute',
@@ -3542,13 +3569,13 @@ export default function WebCatalog() {
                               right: -12,
                               background: '#FFFFFF',
                               borderRadius: 8,
-                              padding: '4px 10px',
-                              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
+                              padding: '5px 11px',
+                              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
                               border: '1px solid #E2E8F0',
-                              transform: 'rotate(-4deg)',
-                              fontSize: '11px',
+                              transform: 'rotate(-3.5deg)',
+                              fontSize: '11.5px',
                               fontWeight: 800,
-                              color: '#0C447C',
+                              color: '#0369A1',
                               whiteSpace: 'nowrap',
                               zIndex: 4,
                               display: 'inline-flex',
@@ -3580,7 +3607,7 @@ export default function WebCatalog() {
                     </div>
                   </div>
 
-                  {/* Left / Right Nav Arrows */}
+                  {/* Left / Right Glassmorphic Nav Arrows */}
                   <button
                     onClick={() => {
                       setSliderInteracted(true);
@@ -3588,29 +3615,36 @@ export default function WebCatalog() {
                     }}
                     style={{
                       position: 'absolute',
-                      left: 12,
+                      left: 14,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      width: 36,
-                      height: 36,
+                      width: 38,
+                      height: 38,
                       borderRadius: '50%',
-                      background: 'rgba(12, 30, 51, 0.75)',
-                      border: '1px solid rgba(55, 138, 221, 0.35)',
+                      background: 'rgba(255, 255, 255, 0.12)',
+                      backdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255, 255, 255, 0.22)',
                       color: '#FFFFFF',
-                      fontSize: 18,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
                       zIndex: 5,
-                      backdropFilter: 'blur(4px)',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.25s ease'
                     }}
-                    onMouseOver={e => { e.currentTarget.style.background = '#378ADD'; }}
-                    onMouseOut={e => { e.currentTarget.style.background = 'rgba(12, 30, 51, 0.75)'; }}
+                    onMouseOver={e => {
+                      e.currentTarget.style.background = 'rgba(56, 189, 248, 0.35)';
+                      e.currentTarget.style.borderColor = '#38BDF8';
+                      e.currentTarget.style.transform = 'translateY(-50%) scale(1.08)';
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.22)';
+                      e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                    }}
                     aria-label="Slide trước"
                   >
-                    ‹
+                    <ChevronLeft size={20} strokeWidth={2.5} color="#FFFFFF" />
                   </button>
                   <button
                     onClick={() => {
@@ -3619,29 +3653,36 @@ export default function WebCatalog() {
                     }}
                     style={{
                       position: 'absolute',
-                      right: 12,
+                      right: 14,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      width: 36,
-                      height: 36,
+                      width: 38,
+                      height: 38,
                       borderRadius: '50%',
-                      background: 'rgba(12, 30, 51, 0.75)',
-                      border: '1px solid rgba(55, 138, 221, 0.35)',
+                      background: 'rgba(255, 255, 255, 0.12)',
+                      backdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255, 255, 255, 0.22)',
                       color: '#FFFFFF',
-                      fontSize: 18,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
                       zIndex: 5,
-                      backdropFilter: 'blur(4px)',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.25s ease'
                     }}
-                    onMouseOver={e => { e.currentTarget.style.background = '#378ADD'; }}
-                    onMouseOut={e => { e.currentTarget.style.background = 'rgba(12, 30, 51, 0.75)'; }}
+                    onMouseOver={e => {
+                      e.currentTarget.style.background = 'rgba(56, 189, 248, 0.35)';
+                      e.currentTarget.style.borderColor = '#38BDF8';
+                      e.currentTarget.style.transform = 'translateY(-50%) scale(1.08)';
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.22)';
+                      e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                    }}
                     aria-label="Slide tiếp theo"
                   >
-                    ›
+                    <ChevronRight size={20} strokeWidth={2.5} color="#FFFFFF" />
                   </button>
                 </section>
               </div>

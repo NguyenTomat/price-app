@@ -3238,256 +3238,323 @@ export default function WebCatalog() {
       {viewMode === 'home' && (
         <div style={{ background: '#F5F7FA', color: '#101828', minHeight: '100vh' }}>
 
-          {/* 1. HERO BANNER — ULTRA-MINIMALIST 5-COMPONENT LAYOUT (STRICT COMPLIANCE) */}
+          {/* 1. HERO BANNER — 4-LAYER BLURRED POSTER BACKGROUND (8 DEDICATED SLIDES) */}
           {(() => {
-            const HERO_CLEAN_SLIDES = [
+            const HERO_POSTER_SLIDES = [
               {
-                pill: 'tổng kho máy bơm chính hãng',
-                headline: 'Máy Bơm Nước Công Nghiệp',
-                desc: 'Cung cấp máy bơm chính hãng bảo hành 12 tháng giao hàng toàn quốc.',
-                cta: 'Xem sản phẩm & báo giá →',
-                category: 'TẤT CẢ',
-                type: 'industrial'
-              },
-              {
+                id: 1,
+                poster: './pump_vertical_cdlf.jpg',
                 pill: 'giải pháp điều áp thông minh',
                 headline: 'Bơm Biến Tần Tiết Kiệm',
-                desc: 'Tối ưu điện năng tiêu thụ, duy trì áp lực nước ổn định liên tục.',
+                desc: 'Tự động điều chỉnh áp lực nước, tiết kiệm điện năng cho công trình.',
                 cta: 'Xem sản phẩm & báo giá →',
-                category: 'BƠM BIẾN TẦN',
-                type: 'inverter'
+                category: 'BƠM BIẾN TẦN'
               },
               {
-                pill: 'xử lý nước thải công trình',
-                headline: 'Bơm Chìm Nước Thải',
-                desc: 'Thoát nước ngập, hút bùn hố móng chống ăn mòn hiệu quả cao.',
+                id: 2,
+                poster: './pump_booster_green.jpg',
+                pill: 'tăng áp tự động gia đình',
+                headline: 'Bơm Tăng Áp Điện Tử',
+                desc: 'Vận hành êm ái, tăng áp lực nước mạnh mẽ và chống cạn an toàn.',
                 cta: 'Xem sản phẩm & báo giá →',
-                category: 'BƠM CHÌM NƯỚC THẢI',
-                type: 'submersible'
+                category: 'BƠM TĂNG ÁP'
               },
               {
-                pill: 'công trình cao tầng & ro',
-                headline: 'Bơm Trục Đứng Đa Tầng',
-                desc: 'Cột áp nước vượt trội, vận hành liên tục 24/7 bền bỉ ổn định.',
+                id: 3,
+                poster: './pump_submersible_blue.jpg',
+                pill: 'khai thác nước ngầm sâu',
+                headline: 'Bơm Chìm Giếng Khoan',
+                desc: 'Động cơ giải nhiệt dầu bền bỉ, đẩy cao vượt trội cho giếng sâu.',
                 cta: 'Xem sản phẩm & báo giá →',
-                category: 'BƠM TRỤC ĐỨNG',
-                type: 'vertical'
+                category: 'BƠM HỎA TIỄN'
+              },
+              {
+                id: 4,
+                poster: './pump_horizontal_blue.jpg',
+                pill: 'cấp thoát lưu lượng lớn',
+                headline: 'Bơm Ly Tâm Trục Ngang',
+                desc: 'Lưu lượng nước lớn, phục vụ sản xuất công nghiệp và tưới tiêu nông nghiệp.',
+                cta: 'Xem sản phẩm & báo giá →',
+                category: 'BƠM LY TÂM'
+              },
+              {
+                id: 5,
+                poster: './pump_submersible_ss.jpg',
+                pill: 'chống ăn mòn hóa chất',
+                headline: 'Bơm Thải Toàn Thân Inox',
+                desc: 'Vật liệu inox chống rỉ sét, chuyên dụng cho nước thải có tính ăn mòn.',
+                cta: 'Xem sản phẩm & báo giá →',
+                category: 'bơm thải toàn bộ INOX có mặt bích'
+              },
+              {
+                id: 6,
+                poster: './pump_submersible.jpg',
+                pill: 'xử lý nước thải hố móng',
+                headline: 'Bơm Chìm Hút Bùn Thải',
+                desc: 'Cánh cắt rác chống nghẹt, hút xả bùn loãng và thoát nước ngập úng.',
+                cta: 'Xem sản phẩm & báo giá →',
+                category: 'BƠM CHÌM NƯỚC THẢI'
+              },
+              {
+                id: 7,
+                poster: './pump_vertical.jpg',
+                pill: 'tòa nhà cao tầng & ro',
+                headline: 'Bơm Ly Tâm Trục Đứng',
+                desc: 'Cột áp siêu cao, vận hành liên tục 24/7 ổn định và bền bỉ.',
+                cta: 'Xem sản phẩm & báo giá →',
+                category: 'BƠM TRỤC ĐỨNG'
+              },
+              {
+                id: 8,
+                poster: './pump_showroom.jpg',
+                pill: 'hệ thống cấp nước tổng thể',
+                headline: 'Dàn Bơm Công Nghiệp Lớn',
+                desc: 'Thiết kế lắp ráp cụm bơm song song phục vụ chung cư nhà xưởng.',
+                cta: 'Xem sản phẩm & báo giá →',
+                category: 'DÀN BƠM'
               }
             ];
 
-            const currentIdx = currentSlide % HERO_CLEAN_SLIDES.length;
-            const slide = HERO_CLEAN_SLIDES[currentIdx];
+            const currentIdx = currentSlide % HERO_POSTER_SLIDES.length;
+            const slide = HERO_POSTER_SLIDES[currentIdx];
 
             return (
               <section
                 style={{
-                  background: 'linear-gradient(135deg, #0c1e33 0%, #1e3a5f 60%, #0c1e33 100%)',
-                  padding: '48px 24px',
                   position: 'relative',
                   overflow: 'hidden',
-                  borderBottom: '1px solid rgba(55, 138, 221, 0.25)',
-                  minHeight: 280,
+                  minHeight: 'clamp(320px, 34vw, 420px)',
                   display: 'flex',
                   alignItems: 'center',
-                  boxSizing: 'border-box'
+                  borderBottom: '1px solid rgba(55, 138, 221, 0.25)',
+                  boxSizing: 'border-box',
+                  background: '#0c1e33'
                 }}
+                onMouseEnter={() => setSliderPaused(true)}
+                onMouseLeave={() => setSliderPaused(false)}
               >
-                {/* 5. BACKGROUND WATERMARK ICON: Pure technical outline vector, faint opacity, no text/logos */}
+                {/* ── LỚP 1 (DƯỚI CÙNG): Ảnh poster gốc full-cover kèm hiệu ứng làm mờ để biến text thành mảng màu trừu tượng ── */}
+                <div
+                  key={`layer1-poster-${slide.id}`}
+                  style={{
+                    position: 'absolute',
+                    inset: -10,
+                    backgroundImage: `url(${slide.poster})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center 40%',
+                    filter: 'blur(7px) saturate(1.15)',
+                    transform: 'scale(1.06)',
+                    zIndex: 1,
+                    transition: 'opacity 0.6s ease'
+                  }}
+                />
+
+                {/* ── LỚP 2: Overlay màu solid navy (#0c1e33) với opacity 85% phủ TOÀN BỘ ảnh để xóa sạch chữ cũ ── */}
                 <div
                   style={{
                     position: 'absolute',
-                    right: '4%',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: 'clamp(220px, 32vw, 420px)',
-                    height: 'clamp(220px, 32vw, 420px)',
-                    color: '#38BDF8',
-                    opacity: 0.11,
-                    pointerEvents: 'none',
-                    zIndex: 1,
-                    transition: 'opacity 0.5s ease'
+                    inset: 0,
+                    backgroundColor: '#0c1e33',
+                    opacity: 0.85,
+                    zIndex: 2
                   }}
-                >
-                  {slide.type === 'industrial' && (
-                    <svg viewBox="0 0 400 400" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
-                      <rect x="50" y="140" width="140" height="120" rx="8" />
-                      <line x1="70" y1="140" x2="70" y2="260" />
-                      <line x1="90" y1="140" x2="90" y2="260" />
-                      <line x1="110" y1="140" x2="110" y2="260" />
-                      <line x1="130" y1="140" x2="130" y2="260" />
-                      <line x1="150" y1="140" x2="150" y2="260" />
-                      <line x1="170" y1="140" x2="170" y2="260" />
-                      <rect x="90" y="100" width="60" height="40" rx="4" />
-                      <path d="M 190 200 C 190 130, 270 130, 310 170 C 350 210, 330 280, 260 280 C 200 280, 190 240, 190 200 Z" />
-                      <path d="M 280 140 L 280 80 L 320 80 L 320 140" />
-                      <line x1="270" y1="80" x2="330" y2="80" strokeWidth="3" />
-                      <circle cx="260" cy="210" r="35" />
-                      <circle cx="260" cy="210" r="18" />
-                      <path d="M 40 260 L 40 285 L 180 285 L 180 260" />
-                      <path d="M 240 280 L 240 295 L 300 295 L 300 280" />
-                      <line x1="30" y1="295" x2="330" y2="295" strokeDasharray="6 6" />
-                    </svg>
-                  )}
-                  {slide.type === 'inverter' && (
-                    <svg viewBox="0 0 400 400" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
-                      <rect x="70" y="180" width="130" height="100" rx="8" />
-                      <line x1="90" y1="180" x2="90" y2="280" />
-                      <line x1="110" y1="180" x2="110" y2="280" />
-                      <line x1="130" y1="180" x2="130" y2="280" />
-                      <line x1="150" y1="180" x2="150" y2="280" />
-                      <line x1="170" y1="180" x2="170" y2="280" />
-                      <rect x="85" y="110" width="90" height="70" rx="6" />
-                      <rect x="105" y="125" width="50" height="25" rx="3" />
-                      <circle cx="120" cy="165" r="4" />
-                      <circle cx="140" cy="165" r="4" />
-                      <path d="M 240 90 C 240 60, 310 60, 310 90 L 310 200 C 310 220, 240 220, 240 200 Z" />
-                      <line x1="230" y1="150" x2="320" y2="150" />
-                      <path d="M 200 230 L 330 230 L 330 270 L 200 270 Z" />
-                      <line x1="330" y1="250" x2="360" y2="250" />
-                      <line x1="360" y1="235" x2="360" y2="265" strokeWidth="3" />
-                      <line x1="50" y1="290" x2="350" y2="290" strokeDasharray="6 6" />
-                    </svg>
-                  )}
-                  {slide.type === 'submersible' && (
-                    <svg viewBox="0 0 400 400" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
-                      <path d="M 170 80 L 230 80 L 230 110 L 170 110 Z" />
-                      <path d="M 180 50 C 180 35, 220 35, 220 50 L 220 80 L 180 80 Z" />
-                      <rect x="150" y="110" width="100" height="120" rx="6" />
-                      <line x1="170" y1="110" x2="170" y2="230" />
-                      <line x1="190" y1="110" x2="190" y2="230" />
-                      <line x1="210" y1="110" x2="210" y2="230" />
-                      <line x1="230" y1="110" x2="230" y2="230" />
-                      <rect x="140" y="230" width="120" height="25" rx="3" />
-                      <path d="M 130 255 L 270 255 L 270 310 C 270 330, 130 330, 130 310 Z" />
-                      <path d="M 270 270 L 320 270 L 320 210 L 350 210" />
-                      <line x1="350" y1="195" x2="350" y2="225" strokeWidth="3" />
-                      <line x1="145" y1="325" x2="145" y2="350" />
-                      <line x1="200" y1="325" x2="200" y2="350" />
-                      <line x1="255" y1="325" x2="255" y2="350" />
-                      <line x1="120" y1="350" x2="280" y2="350" strokeWidth="2" />
-                      <line x1="100" y1="365" x2="360" y2="365" strokeDasharray="6 6" />
-                    </svg>
-                  )}
-                  {slide.type === 'vertical' && (
-                    <svg viewBox="0 0 400 400" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
-                      <rect x="155" y="40" width="90" height="70" rx="4" />
-                      <line x1="170" y1="40" x2="170" y2="110" />
-                      <line x1="185" y1="40" x2="185" y2="110" />
-                      <line x1="200" y1="40" x2="200" y2="110" />
-                      <line x1="215" y1="40" x2="215" y2="110" />
-                      <line x1="230" y1="40" x2="230" y2="110" />
-                      <rect x="175" y="20" width="50" height="20" rx="2" />
-                      <polygon points="155,110 245,110 235,150 165,150" />
-                      <rect x="165" y="150" width="70" height="150" rx="2" />
-                      <line x1="165" y1="180" x2="235" y2="180" />
-                      <line x1="165" y1="210" x2="235" y2="210" />
-                      <line x1="165" y1="240" x2="235" y2="240" />
-                      <line x1="165" y1="270" x2="235" y2="270" />
-                      <rect x="145" y="300" width="110" height="40" rx="4" />
-                      <path d="M 145 315 L 100 315 L 100 335 L 145 335" />
-                      <line x1="100" y1="305" x2="100" y2="345" strokeWidth="3" />
-                      <path d="M 255 315 L 300 315 L 300 335 L 255 335" />
-                      <line x1="300" y1="305" x2="300" y2="345" strokeWidth="3" />
-                      <line x1="80" y1="355" x2="320" y2="355" strokeDasharray="6 6" />
-                    </svg>
-                  )}
-                </div>
+                />
 
-                {/* CONTENT WRAPPER: EXACTLY 5 ALLOWED COMPONENTS */}
+                {/* ── LỚP 3: Gradient ngang đậm hơn ở bên trái (100% #0c1e33) và nhạt dần sang phải để tạo điểm nhấn ── */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(90deg, #0c1e33 0%, #0c1e33 38%, rgba(12, 30, 51, 0.78) 72%, rgba(12, 30, 51, 0.28) 100%)',
+                    zIndex: 3
+                  }}
+                />
+
+                {/* ── LỚP 4: TEXT MỚI HOÀN TOÀN (CĂN TRÁI, ĐỘ TƯƠNG PHẢN TUYỆT ĐỐI) ── */}
                 <div
                   style={{
                     maxWidth: 1320,
                     margin: '0 auto',
+                    padding: '44px 24px',
                     width: '100%',
                     position: 'relative',
-                    zIndex: 2,
+                    zIndex: 4,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'flex-start',
-                    gap: 14,
                     boxSizing: 'border-box'
                   }}
                 >
-                  {/* THÀNH PHẦN 1: Một nhãn nhỏ dạng pill, chữ thường, 1 dòng */}
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      background: 'rgba(55, 138, 221, 0.15)',
-                      border: '1px solid rgba(55, 138, 221, 0.35)',
-                      borderRadius: 16,
-                      padding: '4px 14px',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#38BDF8',
-                      letterSpacing: '0.3px',
-                      lineHeight: '1.4',
-                      textTransform: 'lowercase',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {slide.pill}
-                  </span>
-
-                  {/* THÀNH PHẦN 2: Một tiêu đề (H1), tối đa 6 từ */}
-                  <h1
-                    style={{
-                      fontSize: 'clamp(26px, 3.8vw, 42px)',
-                      fontWeight: 900,
-                      color: '#FFFFFF',
-                      margin: 0,
-                      lineHeight: 1.2,
-                      letterSpacing: '-0.3px'
-                    }}
-                  >
-                    {slide.headline}
-                  </h1>
-
-                  {/* THÀNH PHẦN 3: Một câu mô tả, tối đa 15 từ */}
-                  <p
-                    style={{
-                      fontSize: 'clamp(14px, 1.2vw, 16px)',
-                      color: '#CBD5E1',
-                      margin: 0,
-                      lineHeight: 1.55,
-                      maxWidth: 580,
-                      fontWeight: 400
-                    }}
-                  >
-                    {slide.desc}
-                  </p>
-
-                  {/* THÀNH PHẦN 4: Một nút CTA duy nhất */}
-                  <div style={{ marginTop: 6 }}>
-                    <button
-                      onClick={() => {
-                        setSelectedCategory(slide.category || 'TẤT CẢ');
-                        setViewMode('catalog');
-                        setActiveTab('products');
-                        window.location.hash = '#web/catalog';
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
+                  <div style={{ maxWidth: 660, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
+                    {/* Thành phần 1: Nhãn nhỏ dạng pill, chữ thường, 1 dòng */}
+                    <span
                       style={{
-                        background: 'linear-gradient(135deg, #378ADD 0%, #0284C7 100%)',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        borderRadius: 8,
-                        padding: '12px 24px',
-                        fontSize: 14,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 14px rgba(55, 138, 221, 0.35)',
-                        transition: 'all 0.2s ease',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6
+                        display: 'inline-block',
+                        background: 'rgba(55, 138, 221, 0.22)',
+                        border: '1px solid rgba(55, 138, 221, 0.45)',
+                        borderRadius: 16,
+                        padding: '4px 14px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: '#38BDF8',
+                        letterSpacing: '0.4px',
+                        lineHeight: '1.4',
+                        textTransform: 'lowercase',
+                        whiteSpace: 'nowrap',
+                        backdropFilter: 'blur(6px)'
                       }}
-                      onMouseOver={e => { e.currentTarget.style.filter = 'brightness(1.08)'; }}
-                      onMouseOut={e => { e.currentTarget.style.filter = 'brightness(1)'; }}
                     >
-                      {slide.cta}
-                    </button>
+                      {slide.pill}
+                    </span>
+
+                    {/* Thành phần 2: Tiêu đề H1, tối đa 6 từ */}
+                    <h1
+                      style={{
+                        fontSize: 'clamp(28px, 3.8vw, 44px)',
+                        fontWeight: 900,
+                        color: '#FFFFFF',
+                        margin: 0,
+                        lineHeight: 1.18,
+                        letterSpacing: '-0.3px',
+                        textShadow: '0 2px 10px rgba(0,0,0,0.6)'
+                      }}
+                    >
+                      {slide.headline}
+                    </h1>
+
+                    {/* Thành phần 3: Mô tả ngắn, tối đa 15 từ */}
+                    <p
+                      style={{
+                        fontSize: 'clamp(14.5px, 1.2vw, 16.5px)',
+                        color: '#E2E8F0',
+                        margin: 0,
+                        lineHeight: 1.6,
+                        fontWeight: 400,
+                        textShadow: '0 1px 4px rgba(0,0,0,0.6)'
+                      }}
+                    >
+                      {slide.desc}
+                    </p>
+
+                    {/* Thành phần 4: Một nút CTA duy nhất */}
+                    <div style={{ marginTop: 8 }}>
+                      <button
+                        onClick={() => {
+                          setSelectedCategory(slide.category || 'TẤT CẢ');
+                          setViewMode('catalog');
+                          setActiveTab('products');
+                          window.location.hash = '#web/catalog';
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        style={{
+                          background: 'linear-gradient(135deg, #378ADD 0%, #0284C7 100%)',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          borderRadius: 8,
+                          padding: '13px 28px',
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 18px rgba(55, 138, 221, 0.45)',
+                          transition: 'all 0.2s ease',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}
+                        onMouseOver={e => { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                        onMouseOut={e => { e.currentTarget.style.filter = 'brightness(1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                      >
+                        {slide.cta}
+                      </button>
+                    </div>
+
+                    {/* Pagination Dots (8 slide navigation) */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16 }}>
+                      {HERO_POSTER_SLIDES.map((_, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => { setSliderInteracted(true); setCurrentSlide(idx); }}
+                          style={{
+                            width: idx === currentIdx ? 24 : 7,
+                            height: 6,
+                            borderRadius: 3,
+                            background: idx === currentIdx ? '#38BDF8' : 'rgba(255, 255, 255, 0.25)',
+                            cursor: 'pointer',
+                            transition: 'all 0.25s ease'
+                          }}
+                          title={`Chuyển tới slide ${idx + 1}`}
+                        />
+                      ))}
+                      <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace', fontWeight: 700, marginLeft: 6 }}>
+                        {String(currentIdx + 1).padStart(2, '0')} / {String(HERO_POSTER_SLIDES.length).padStart(2, '0')}
+                      </span>
+                    </div>
                   </div>
                 </div>
+
+                {/* Left / Right Nav Arrows */}
+                <button
+                  onClick={() => {
+                    setSliderInteracted(true);
+                    setCurrentSlide(prev => (prev - 1 + HERO_POSTER_SLIDES.length) % HERO_POSTER_SLIDES.length);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: 16,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    background: 'rgba(12, 30, 51, 0.7)',
+                    border: '1px solid rgba(55, 138, 221, 0.35)',
+                    color: '#FFFFFF',
+                    fontSize: 18,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 5,
+                    backdropFilter: 'blur(4px)',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={e => { e.currentTarget.style.background = '#378ADD'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(12, 30, 51, 0.7)'; }}
+                  aria-label="Slide trước"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={() => {
+                    setSliderInteracted(true);
+                    setCurrentSlide(prev => (prev + 1) % HERO_POSTER_SLIDES.length);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: 16,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    background: 'rgba(12, 30, 51, 0.7)',
+                    border: '1px solid rgba(55, 138, 221, 0.35)',
+                    color: '#FFFFFF',
+                    fontSize: 18,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 5,
+                    backdropFilter: 'blur(4px)',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={e => { e.currentTarget.style.background = '#378ADD'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(12, 30, 51, 0.7)'; }}
+                  aria-label="Slide tiếp theo"
+                >
+                  ›
+                </button>
               </section>
             );
           })()}

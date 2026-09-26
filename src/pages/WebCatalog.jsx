@@ -3238,8 +3238,37 @@ export default function WebCatalog() {
       {viewMode === 'home' && (
         <div style={{ background: '#F5F7FA', color: '#101828', minHeight: '100vh' }}>
 
-          {/* 1. HERO BANNER — FRAMED CARD POSTER LAYOUT (ELEGANT 3D FLOATING CARD) */}
+          {/* 1. HERO BANNER — FRAMED CARD POSTER LAYOUT WITH HALO GLOW, 4DEG ROTATION & CORNER BADGE */}
           {(() => {
+            const getSlideKeyBadge = (s) => {
+              const name = `${s.headline || s.title || ''} ${s.category || ''} ${s.badge || s.sub || ''}`.toLowerCase();
+              if (name.includes('biến tần') || name.includes('cdlf') || name.includes('inverter')) {
+                return '⚡ Inverter · Tiết Kiệm 40%';
+              }
+              if (name.includes('tăng áp') || name.includes('điện tử') || name.includes('booster')) {
+                return '🛡️ Tự Động · IP55';
+              }
+              if (name.includes('hỏa tiễn') || name.includes('giếng khoan') || name.includes('4sl')) {
+                return '💧 IP68 · Đẩy Cao 285m';
+              }
+              if (name.includes('nước thải') || name.includes('bùn') || name.includes('hố móng')) {
+                return '⚙️ Cánh Cắt Rác · Chống Nghẹt';
+              }
+              if (name.includes('thải toàn thân inox') || name.includes('inox') || name.includes('dwmt')) {
+                return '✨ Inox 304 · Chống Ăn Mòn';
+              }
+              if (name.includes('trục đứng') || name.includes('đa tầng')) {
+                return '🏢 Hmax 240m · Áp Siêu Cao';
+              }
+              if (name.includes('dàn bơm') || name.includes('cụm bơm')) {
+                return '🏭 Cụm Bơm PLC · 24/7';
+              }
+              if (name.includes('ly tâm') || name.includes('trục ngang')) {
+                return '🌊 Qmax 180m³/h · 380V';
+              }
+              return '⭐ Chính Hãng · Bảo Hành 12T';
+            };
+
             const activeSlides = (homepageSlides && homepageSlides.length > 0 ? homepageSlides : DEFAULT_HERO_SLIDES).map((s, idx) => ({
               id: s.id || `slide-${idx + 1}`,
               poster: s.img || s.defaultImg || './pump_vertical_cdlf.jpg',
@@ -3252,6 +3281,7 @@ export default function WebCatalog() {
 
             const currentIdx = currentSlide % activeSlides.length;
             const slide = activeSlides[currentIdx] || activeSlides[0];
+            const cornerBadge = getSlideKeyBadge(slide);
 
             return (
               <section
@@ -3312,7 +3342,7 @@ export default function WebCatalog() {
                   <div
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1.15fr) minmax(0, 0.85fr)',
+                      gridTemplateColumns: 'minmax(0, 1.22fr) minmax(0, 0.78fr)',
                       alignItems: 'center',
                       gap: 'clamp(24px, 4vw, 56px)',
                       width: '100%'
@@ -3320,7 +3350,10 @@ export default function WebCatalog() {
                     className="hero-split-grid"
                   >
                     {/* ── CỘT TRÁI: TEXT & NÚT CTA (CĂN TRÁI, TƯƠNG PHẢN TUYỆT ĐỐI) ── */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
+                      {/* Vạch ngang ngắn tạo phân cấp thị giác */}
+                      <div style={{ width: 28, height: 2, background: '#378ADD', borderRadius: 2, marginBottom: 2 }} />
+
                       {/* Thành phần 1: Nhãn nhỏ dạng pill, chữ thường, 1 dòng */}
                       <span
                         style={{
@@ -3426,7 +3459,7 @@ export default function WebCatalog() {
                       </div>
                     </div>
 
-                    {/* ── CỘT PHẢI: THẺ ĐÓNG KHUNG NỔI BẬT (SHARP 100%, XOAY NHẸ 3 ĐỘ, BÓNG ĐỔ ĐẬM) ── */}
+                    {/* ── CỘT PHẢI: THẺ ĐÓNG KHUNG XOAY 4 ĐỘ + QUẦNG SÁNG + HUY HIỆU GÓC ── */}
                     <div
                       style={{
                         display: 'flex',
@@ -3435,6 +3468,20 @@ export default function WebCatalog() {
                         position: 'relative'
                       }}
                     >
+                      {/* 1. Quầng sáng (Halo Glow) phía sau thẻ ảnh */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: -20,
+                          background: 'radial-gradient(circle, rgba(55, 138, 221, 0.38) 0%, rgba(55, 138, 221, 0.12) 50%, transparent 70%)',
+                          filter: 'blur(8px)',
+                          zIndex: 1,
+                          pointerEvents: 'none',
+                          borderRadius: 20
+                        }}
+                      />
+
+                      {/* 2. Thẻ đóng khung (Card Container) */}
                       <div
                         onClick={() => {
                           setSelectedCategory(slide.category || 'TẤT CẢ');
@@ -3444,27 +3491,55 @@ export default function WebCatalog() {
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
                         style={{
+                          position: 'relative',
+                          zIndex: 2,
                           background: '#FFFFFF',
                           padding: 8,
                           borderRadius: 12,
                           boxShadow: '0 16px 36px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.25)',
-                          transform: 'rotate(3deg)',
+                          transform: 'rotate(4deg)',
                           transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
                           cursor: 'pointer',
-                          maxWidth: 'clamp(280px, 32vw, 400px)',
+                          maxWidth: 'clamp(240px, 25vw, 320px)',
                           width: '100%',
                           boxSizing: 'border-box'
                         }}
                         onMouseOver={e => {
-                          e.currentTarget.style.transform = 'rotate(0deg) scale(1.03)';
-                          e.currentTarget.style.boxShadow = '0 22px 48px rgba(55, 138, 221, 0.4), 0 6px 16px rgba(0, 0, 0, 0.3)';
+                          e.currentTarget.style.transform = 'rotate(0deg) scale(1.02)';
+                          e.currentTarget.style.boxShadow = '0 22px 48px rgba(55, 138, 221, 0.45), 0 6px 16px rgba(0, 0, 0, 0.3)';
                         }}
                         onMouseOut={e => {
-                          e.currentTarget.style.transform = 'rotate(3deg)';
+                          e.currentTarget.style.transform = 'rotate(4deg)';
                           e.currentTarget.style.boxShadow = '0 16px 36px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.25)';
                         }}
                         title={`Bấm xem danh mục: ${slide.headline}`}
                       >
+                        {/* 3. Huy hiệu nhỏ nổi ở góc trên bên phải (xoay ngược -4deg) */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: -12,
+                            right: -12,
+                            background: '#FFFFFF',
+                            borderRadius: 8,
+                            padding: '4px 10px',
+                            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
+                            border: '1px solid #E2E8F0',
+                            transform: 'rotate(-4deg)',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            color: '#0C447C',
+                            whiteSpace: 'nowrap',
+                            zIndex: 4,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          {cornerBadge}
+                        </div>
+
+                        {/* Ảnh Poster sắc nét 100% */}
                         <img
                           key={`card-poster-${slide.id}-${slide.poster}`}
                           src={slide.poster}
@@ -3473,7 +3548,7 @@ export default function WebCatalog() {
                           style={{
                             width: '100%',
                             height: 'auto',
-                            maxHeight: 350,
+                            maxHeight: 310,
                             objectFit: 'contain',
                             borderRadius: 8,
                             display: 'block',

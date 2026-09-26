@@ -3238,555 +3238,259 @@ export default function WebCatalog() {
       {viewMode === 'home' && (
         <div style={{ background: '#F5F7FA', color: '#101828', minHeight: '100vh' }}>
 
-          {/* 1. HERO BANNER — DEDICATED DESKTOP (SPLIT CINEMA) & DEDICATED MOBILE-FIRST COMPOSITION */}
+          {/* 1. HERO BANNER — ULTRA-MINIMALIST 5-COMPONENT LAYOUT (STRICT COMPLIANCE) */}
           {(() => {
-            const currentSlideItem = homepageSlides[currentSlide] || homepageSlides[0];
-            const nextSlideIdx = (currentSlide + 1) % homepageSlides.length;
-            const nextSlideItem = homepageSlides[nextSlideIdx];
+            const HERO_CLEAN_SLIDES = [
+              {
+                pill: 'tổng kho máy bơm chính hãng',
+                headline: 'Máy Bơm Nước Công Nghiệp',
+                desc: 'Cung cấp máy bơm chính hãng bảo hành 12 tháng giao hàng toàn quốc.',
+                cta: 'Xem sản phẩm & báo giá →',
+                category: 'TẤT CẢ',
+                type: 'industrial'
+              },
+              {
+                pill: 'giải pháp điều áp thông minh',
+                headline: 'Bơm Biến Tần Tiết Kiệm',
+                desc: 'Tối ưu điện năng tiêu thụ, duy trì áp lực nước ổn định liên tục.',
+                cta: 'Xem sản phẩm & báo giá →',
+                category: 'BƠM BIẾN TẦN',
+                type: 'inverter'
+              },
+              {
+                pill: 'xử lý nước thải công trình',
+                headline: 'Bơm Chìm Nước Thải',
+                desc: 'Thoát nước ngập, hút bùn hố móng chống ăn mòn hiệu quả cao.',
+                cta: 'Xem sản phẩm & báo giá →',
+                category: 'BƠM CHÌM NƯỚC THẢI',
+                type: 'submersible'
+              },
+              {
+                pill: 'công trình cao tầng & ro',
+                headline: 'Bơm Trục Đứng Đa Tầng',
+                desc: 'Cột áp nước vượt trội, vận hành liên tục 24/7 bền bỉ ổn định.',
+                cta: 'Xem sản phẩm & báo giá →',
+                category: 'BƠM TRỤC ĐỨNG',
+                type: 'vertical'
+              }
+            ];
+
+            const currentIdx = currentSlide % HERO_CLEAN_SLIDES.length;
+            const slide = HERO_CLEAN_SLIDES[currentIdx];
 
             return (
-              <>
-                {/* ── DESKTOP HERO (Screens > 768px) ── */}
-                <section
-                  className="homepage-hero-cinema desktop-only"
+              <section
+                style={{
+                  background: 'linear-gradient(135deg, #0c1e33 0%, #1e3a5f 60%, #0c1e33 100%)',
+                  padding: '48px 24px',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderBottom: '1px solid rgba(55, 138, 221, 0.25)',
+                  minHeight: 280,
+                  display: 'flex',
+                  alignItems: 'center',
+                  boxSizing: 'border-box'
+                }}
+              >
+                {/* 5. BACKGROUND WATERMARK ICON: Pure technical outline vector, faint opacity, no text/logos */}
+                <div
                   style={{
-                    background: 'linear-gradient(135deg, #0d1f33 0%, #1e3a5f 55%, #0d1f33 100%)',
-                    padding: '40px 0 36px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    borderBottom: '1px solid rgba(55, 138, 221, 0.25)',
-                  }}
-                  onMouseEnter={() => setSliderPaused(true)}
-                  onMouseLeave={() => setSliderPaused(false)}
-                >
-                  {/* Dynamic Ambient Glow Backlight */}
-                  {currentSlideItem?.img && (
-                    <div
-                      key={`ambient-desk-${currentSlide}`}
-                      style={{
-                        position: 'absolute',
-                        right: '8%',
-                        top: '12%',
-                        width: '45vw',
-                        height: '45vw',
-                        backgroundImage: `url(${currentSlideItem.img})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        filter: 'blur(100px) saturate(1.8)',
-                        opacity: 0.18,
-                        pointerEvents: 'none',
-                        zIndex: 1,
-                        transition: 'opacity 0.6s ease',
-                      }}
-                    />
-                  )}
-
-                  {/* Blueprint Grid Pattern */}
-                  <div style={{
                     position: 'absolute',
-                    inset: 0,
-                    backgroundImage: 'radial-gradient(rgba(55, 138, 221, 0.15) 1px, transparent 1px)',
-                    backgroundSize: '32px 32px',
-                    opacity: 0.7,
-                    zIndex: 2,
-                    pointerEvents: 'none',
-                  }} />
-
-                  <div style={{
-                    maxWidth: 1320,
-                    margin: '0 auto',
-                    padding: '0 24px',
-                    position: 'relative',
-                    zIndex: 3,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    boxSizing: 'border-box',
-                  }}>
-                    {/* Split 2-Column Grid */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)',
-                      alignItems: 'center',
-                      gap: 48,
-                      width: '100%',
-                    }}>
-                      {/* Left Column: Information & CTA */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'flex-start' }}>
-                        {/* 1. Small Brand Badge */}
-                        <div style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          background: 'rgba(55, 138, 221, 0.15)',
-                          border: '1px solid rgba(55, 138, 221, 0.4)',
-                          borderRadius: 20,
-                          padding: '5px 14px',
-                          backdropFilter: 'blur(8px)',
-                        }}>
-                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#38BDF8', boxShadow: '0 0 8px #38BDF8', display: 'inline-block' }} />
-                          <span style={{ fontSize: 11, fontWeight: 800, color: '#38BDF8', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
-                            {currentSlideItem?.badge || 'UPTI PUMP · SELANNI · MASTRA · BERATI'}
-                          </span>
-                        </div>
-
-                        {/* 2. Headline */}
-                        <h1 style={{
-                          fontSize: 'clamp(28px, 3.4vw, 42px)',
-                          fontWeight: 900,
-                          color: '#FFFFFF',
-                          margin: 0,
-                          lineHeight: 1.18,
-                          letterSpacing: '-0.5px',
-                          textTransform: 'uppercase',
-                        }}>
-                          {currentSlideItem?.headline || currentSlideItem?.title}
-                        </h1>
-
-                        {/* 3. Short Description */}
-                        <p style={{ fontSize: 'clamp(14px, 1.1vw, 15.5px)', color: '#CBD5E1', margin: '2px 0 0', lineHeight: 1.6, maxWidth: 520, fontWeight: 400 }}>
-                          {currentSlideItem?.desc || 'Giải pháp máy bơm nước công nghiệp & dân dụng tiêu chuẩn chất lượng cao, vận hành bền bỉ 24/7 và tối ưu điện năng vượt trội.'}
-                        </p>
-
-                        {/* 4. Single Primary CTA Button */}
-                        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 10 }}>
-                          <button
-                            onClick={() => {
-                              const catName = currentSlideItem?.category || '';
-                              setSelectedCategory(catName || 'TẤT CẢ');
-                              setViewMode('catalog'); setActiveTab('products');
-                              window.location.hash = '#web/catalog';
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            style={{
-                              background: 'linear-gradient(135deg, #378ADD 0%, #0284C7 100%)',
-                              color: '#FFFFFF',
-                              border: 'none',
-                              borderRadius: 10,
-                              padding: '13px 28px',
-                              fontSize: 14,
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                              boxShadow: '0 8px 24px rgba(55, 138, 221, 0.45)',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 8,
-                              transition: 'all 0.2s ease',
-                            }}
-                            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.filter = 'brightness(1.08)'; }}
-                            onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.filter = 'brightness(1)'; }}
-                          >
-                            XEM SẢN PHẨM &amp; BÁO GIÁ →
-                          </button>
-                        </div>
-
-                        {/* 5. Carousel Progress / Pagination Dots (spaced well below CTA) */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 24, zIndex: 3 }}>
-                          {homepageSlides.map((_, idx) => (
-                            <div
-                              key={idx}
-                              onClick={() => { setSliderInteracted(true); setCurrentSlide(idx); }}
-                              style={{
-                                width: idx === currentSlide ? 28 : 8,
-                                height: 7,
-                                borderRadius: 4,
-                                background: idx === currentSlide ? '#38BDF8' : 'rgba(255, 255, 255, 0.25)',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                              }}
-                              title={`Chuyển tới slide ${idx + 1}`}
-                            />
-                          ))}
-                          <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace', fontWeight: 700, marginLeft: 8 }}>
-                            {String(currentSlide + 1).padStart(2, '0')} / {String(homepageSlides.length).padStart(2, '0')}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Right Column: Clean Product Showcase Image */}
-                      <div style={{
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '100%',
-                        height: 'clamp(340px, 38vw, 480px)',
-                      }}>
-                        {/* Soft blue glow backdrop */}
-                        <div style={{
-                          position: 'absolute',
-                          width: '85%',
-                          height: '85%',
-                          background: 'radial-gradient(ellipse at center, rgba(55,138,221,0.28) 0%, rgba(13,31,51,0) 70%)',
-                          borderRadius: '50%',
-                          pointerEvents: 'none',
-                        }} />
-
-                        {/* Product Image */}
-                        <div
-                          style={{
-                            position: 'relative',
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                          }}
-                          onClick={() => {
-                            const catName = currentSlideItem?.category || '';
-                            setSelectedCategory(catName || 'TẤT CẢ');
-                            setViewMode('catalog'); setActiveTab('products');
-                            window.location.hash = '#web/catalog';
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                        >
-                          {currentSlideItem?.img && (
-                            <img
-                              key={`desk-img-${currentSlide}`}
-                              src={currentSlideItem.img}
-                              alt={currentSlideItem?.title || 'Máy bơm T&T'}
-                              loading="eager"
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                maxHeight: 420,
-                                objectFit: 'contain',
-                                objectPosition: 'center',
-                                position: 'relative',
-                                zIndex: 2,
-                                filter: 'drop-shadow(0 20px 36px rgba(0,0,0,0.55))',
-                                transition: 'transform 0.3s ease',
-                              }}
-                            />
-                          )}
-                        </div>
-
-                        {/* Previous Slide Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSliderInteracted(true);
-                            setCurrentSlide(prev => (prev - 1 + homepageSlides.length) % homepageSlides.length);
-                          }}
-                          style={{
-                            position: 'absolute',
-                            left: -8,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            zIndex: 10,
-                            width: 40,
-                            height: 40,
-                            borderRadius: '50%',
-                            background: 'rgba(13, 31, 51, 0.85)',
-                            border: '1px solid rgba(55, 138, 221, 0.4)',
-                            color: '#FFFFFF',
-                            fontSize: 20,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backdropFilter: 'blur(8px)',
-                            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-                            transition: 'all 0.2s ease',
-                          }}
-                          onMouseOver={e => { e.currentTarget.style.background = '#378ADD'; e.currentTarget.style.borderColor = '#38BDF8'; }}
-                          onMouseOut={e => { e.currentTarget.style.background = 'rgba(13, 31, 51, 0.85)'; e.currentTarget.style.borderColor = 'rgba(55, 138, 221, 0.4)'; }}
-                          aria-label="Slide trước"
-                        >
-                          ‹
-                        </button>
-
-                        {/* Next Slide Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSliderInteracted(true);
-                            setCurrentSlide(prev => (prev + 1) % homepageSlides.length);
-                          }}
-                          style={{
-                            position: 'absolute',
-                            right: -8,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            zIndex: 10,
-                            width: 40,
-                            height: 40,
-                            borderRadius: '50%',
-                            background: 'rgba(13, 31, 51, 0.85)',
-                            border: '1px solid rgba(55, 138, 221, 0.4)',
-                            color: '#FFFFFF',
-                            fontSize: 20,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backdropFilter: 'blur(8px)',
-                            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-                            transition: 'all 0.2s ease',
-                          }}
-                          onMouseOver={e => { e.currentTarget.style.background = '#378ADD'; e.currentTarget.style.borderColor = '#38BDF8'; }}
-                          onMouseOut={e => { e.currentTarget.style.background = 'rgba(13, 31, 51, 0.85)'; e.currentTarget.style.borderColor = 'rgba(55, 138, 221, 0.4)'; }}
-                          aria-label="Slide tiếp theo"
-                        >
-                          ›
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                {/* ── MOBILE-FIRST HERO (Screens <= 768px) ── */}
-                <section
-                  className="mobile-only-flex"
-                  style={{
-                    display: 'none',
-                    background: 'linear-gradient(180deg, #1e3a5f 0%, #0d1f33 100%)',
-                    padding: '24px 16px 22px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    borderBottom: '1px solid rgba(55, 138, 221, 0.25)',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    textAlign: 'center',
-                    boxSizing: 'border-box',
-                    gap: 12,
-                  }}
-                  onTouchStart={(e) => { touchStartXRef.current = e.touches[0].clientX; }}
-                  onTouchEnd={(e) => {
-                    if (!touchStartXRef.current) return;
-                    const diff = touchStartXRef.current - e.changedTouches[0].clientX;
-                    if (diff > 40) {
-                      setSliderInteracted(true);
-                      setCurrentSlide(prev => (prev + 1) % homepageSlides.length);
-                    } else if (diff < -40) {
-                      setSliderInteracted(true);
-                      setCurrentSlide(prev => (prev - 1 + homepageSlides.length) % homepageSlides.length);
-                    }
-                    touchStartXRef.current = null;
-                  }}
-                >
-                  {/* Subtle Blueprint Grid Pattern */}
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    backgroundImage: 'radial-gradient(rgba(55, 138, 221, 0.12) 1px, transparent 1px)',
-                    backgroundSize: '32px 32px',
-                    opacity: 0.6,
+                    right: '4%',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 'clamp(220px, 32vw, 420px)',
+                    height: 'clamp(220px, 32vw, 420px)',
+                    color: '#38BDF8',
+                    opacity: 0.11,
                     pointerEvents: 'none',
                     zIndex: 1,
-                  }} />
+                    transition: 'opacity 0.5s ease'
+                  }}
+                >
+                  {slide.type === 'industrial' && (
+                    <svg viewBox="0 0 400 400" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+                      <rect x="50" y="140" width="140" height="120" rx="8" />
+                      <line x1="70" y1="140" x2="70" y2="260" />
+                      <line x1="90" y1="140" x2="90" y2="260" />
+                      <line x1="110" y1="140" x2="110" y2="260" />
+                      <line x1="130" y1="140" x2="130" y2="260" />
+                      <line x1="150" y1="140" x2="150" y2="260" />
+                      <line x1="170" y1="140" x2="170" y2="260" />
+                      <rect x="90" y="100" width="60" height="40" rx="4" />
+                      <path d="M 190 200 C 190 130, 270 130, 310 170 C 350 210, 330 280, 260 280 C 200 280, 190 240, 190 200 Z" />
+                      <path d="M 280 140 L 280 80 L 320 80 L 320 140" />
+                      <line x1="270" y1="80" x2="330" y2="80" strokeWidth="3" />
+                      <circle cx="260" cy="210" r="35" />
+                      <circle cx="260" cy="210" r="18" />
+                      <path d="M 40 260 L 40 285 L 180 285 L 180 260" />
+                      <path d="M 240 280 L 240 295 L 300 295 L 300 280" />
+                      <line x1="30" y1="295" x2="330" y2="295" strokeDasharray="6 6" />
+                    </svg>
+                  )}
+                  {slide.type === 'inverter' && (
+                    <svg viewBox="0 0 400 400" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+                      <rect x="70" y="180" width="130" height="100" rx="8" />
+                      <line x1="90" y1="180" x2="90" y2="280" />
+                      <line x1="110" y1="180" x2="110" y2="280" />
+                      <line x1="130" y1="180" x2="130" y2="280" />
+                      <line x1="150" y1="180" x2="150" y2="280" />
+                      <line x1="170" y1="180" x2="170" y2="280" />
+                      <rect x="85" y="110" width="90" height="70" rx="6" />
+                      <rect x="105" y="125" width="50" height="25" rx="3" />
+                      <circle cx="120" cy="165" r="4" />
+                      <circle cx="140" cy="165" r="4" />
+                      <path d="M 240 90 C 240 60, 310 60, 310 90 L 310 200 C 310 220, 240 220, 240 200 Z" />
+                      <line x1="230" y1="150" x2="320" y2="150" />
+                      <path d="M 200 230 L 330 230 L 330 270 L 200 270 Z" />
+                      <line x1="330" y1="250" x2="360" y2="250" />
+                      <line x1="360" y1="235" x2="360" y2="265" strokeWidth="3" />
+                      <line x1="50" y1="290" x2="350" y2="290" strokeDasharray="6 6" />
+                    </svg>
+                  )}
+                  {slide.type === 'submersible' && (
+                    <svg viewBox="0 0 400 400" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+                      <path d="M 170 80 L 230 80 L 230 110 L 170 110 Z" />
+                      <path d="M 180 50 C 180 35, 220 35, 220 50 L 220 80 L 180 80 Z" />
+                      <rect x="150" y="110" width="100" height="120" rx="6" />
+                      <line x1="170" y1="110" x2="170" y2="230" />
+                      <line x1="190" y1="110" x2="190" y2="230" />
+                      <line x1="210" y1="110" x2="210" y2="230" />
+                      <line x1="230" y1="110" x2="230" y2="230" />
+                      <rect x="140" y="230" width="120" height="25" rx="3" />
+                      <path d="M 130 255 L 270 255 L 270 310 C 270 330, 130 330, 130 310 Z" />
+                      <path d="M 270 270 L 320 270 L 320 210 L 350 210" />
+                      <line x1="350" y1="195" x2="350" y2="225" strokeWidth="3" />
+                      <line x1="145" y1="325" x2="145" y2="350" />
+                      <line x1="200" y1="325" x2="200" y2="350" />
+                      <line x1="255" y1="325" x2="255" y2="350" />
+                      <line x1="120" y1="350" x2="280" y2="350" strokeWidth="2" />
+                      <line x1="100" y1="365" x2="360" y2="365" strokeDasharray="6 6" />
+                    </svg>
+                  )}
+                  {slide.type === 'vertical' && (
+                    <svg viewBox="0 0 400 400" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+                      <rect x="155" y="40" width="90" height="70" rx="4" />
+                      <line x1="170" y1="40" x2="170" y2="110" />
+                      <line x1="185" y1="40" x2="185" y2="110" />
+                      <line x1="200" y1="40" x2="200" y2="110" />
+                      <line x1="215" y1="40" x2="215" y2="110" />
+                      <line x1="230" y1="40" x2="230" y2="110" />
+                      <rect x="175" y="20" width="50" height="20" rx="2" />
+                      <polygon points="155,110 245,110 235,150 165,150" />
+                      <rect x="165" y="150" width="70" height="150" rx="2" />
+                      <line x1="165" y1="180" x2="235" y2="180" />
+                      <line x1="165" y1="210" x2="235" y2="210" />
+                      <line x1="165" y1="240" x2="235" y2="240" />
+                      <line x1="165" y1="270" x2="235" y2="270" />
+                      <rect x="145" y="300" width="110" height="40" rx="4" />
+                      <path d="M 145 315 L 100 315 L 100 335 L 145 335" />
+                      <line x1="100" y1="305" x2="100" y2="345" strokeWidth="3" />
+                      <path d="M 255 315 L 300 315 L 300 335 L 255 335" />
+                      <line x1="300" y1="305" x2="300" y2="345" strokeWidth="3" />
+                      <line x1="80" y1="355" x2="320" y2="355" strokeDasharray="6 6" />
+                    </svg>
+                  )}
+                </div>
 
-                  {/* 1. Small Category / Brand Badge */}
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    background: 'rgba(55, 138, 221, 0.15)',
-                    border: '1px solid rgba(55, 138, 221, 0.4)',
-                    borderRadius: 20,
-                    padding: '4px 12px',
-                    zIndex: 2,
-                  }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38BDF8', boxShadow: '0 0 6px #38BDF8' }} />
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: '#38BDF8', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
-                      {currentSlideItem?.badge || 'UPTI PUMP · SELANNI · MASTRA'}
-                    </span>
-                  </div>
-
-                  {/* 2. Mobile Headline */}
-                  <h1 style={{
-                    fontSize: 'clamp(20px, 6.2vw, 26px)',
-                    fontWeight: 900,
-                    color: '#FFFFFF',
-                    margin: 0,
-                    lineHeight: 1.2,
-                    letterSpacing: '-0.3px',
-                    textTransform: 'uppercase',
-                    zIndex: 2,
-                    maxWidth: 340,
-                  }}>
-                    {currentSlideItem?.headline || currentSlideItem?.title}
-                  </h1>
-
-                  {/* 3. Short Description */}
-                  <p style={{
-                    fontSize: 13,
-                    color: '#CBD5E1',
-                    margin: 0,
-                    lineHeight: 1.45,
-                    maxWidth: 320,
-                    zIndex: 2,
-                    fontWeight: 400,
-                  }}>
-                    {currentSlideItem?.desc || 'Giải pháp bơm nước hiệu suất cao cho công trình và dân dụng.'}
-                  </p>
-
-                  {/* 4. Product Visual with Nav Arrows */}
-                  <div style={{
-                    position: 'relative',
+                {/* CONTENT WRAPPER: EXACTLY 5 ALLOWED COMPONENTS */}
+                <div
+                  style={{
+                    maxWidth: 1320,
+                    margin: '0 auto',
                     width: '100%',
-                    maxWidth: 320,
-                    height: 195,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '2px 0',
+                    position: 'relative',
                     zIndex: 2,
-                  }}>
-                    {/* Soft radial blue lighting */}
-                    <div style={{
-                      position: 'absolute',
-                      width: '75%',
-                      height: '75%',
-                      background: 'radial-gradient(circle, rgba(55, 138, 221, 0.25) 0%, rgba(13, 31, 51, 0) 70%)',
-                      borderRadius: '50%',
-                      pointerEvents: 'none',
-                    }} />
-
-                    {/* Product Image */}
-                    {currentSlideItem?.img && (
-                      <img
-                        key={`mob-hero-img-${currentSlide}`}
-                        src={currentSlideItem.img}
-                        alt={currentSlideItem?.title || 'Máy bơm T&T'}
-                        fetchpriority="high"
-                        loading="eager"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          maxHeight: 185,
-                          objectFit: 'contain',
-                          position: 'relative',
-                          zIndex: 3,
-                          filter: 'drop-shadow(0 12px 24px rgba(0,0,0,0.5))',
-                        }}
-                        onClick={() => {
-                          const catName = currentSlideItem?.category || '';
-                          setSelectedCategory(catName || 'TẤT CẢ');
-                          setViewMode('catalog'); setActiveTab('products');
-                          window.location.hash = '#web/catalog';
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                      />
-                    )}
-
-                    {/* Small 32px circular arrows */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSliderInteracted(true);
-                        setCurrentSlide(prev => (prev - 1 + homepageSlides.length) % homepageSlides.length);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        left: -4,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 32,
-                        height: 32,
-                        borderRadius: '50%',
-                        background: 'rgba(13, 31, 51, 0.85)',
-                        border: '1px solid rgba(55, 138, 221, 0.4)',
-                        color: '#FFFFFF',
-                        fontSize: 16,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        zIndex: 4,
-                      }}
-                      aria-label="Slide trước"
-                    >
-                      ‹
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSliderInteracted(true);
-                        setCurrentSlide(prev => (prev + 1) % homepageSlides.length);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        right: -4,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 32,
-                        height: 32,
-                        borderRadius: '50%',
-                        background: 'rgba(13, 31, 51, 0.85)',
-                        border: '1px solid rgba(55, 138, 221, 0.4)',
-                        color: '#FFFFFF',
-                        fontSize: 16,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        zIndex: 4,
-                      }}
-                      aria-label="Slide tiếp theo"
-                    >
-                      ›
-                    </button>
-                  </div>
-
-                  {/* 5. Primary CTA Button */}
-                  <button
-                    onClick={() => {
-                      const catName = currentSlideItem?.category || '';
-                      setSelectedCategory(catName || 'TẤT CẢ');
-                      setViewMode('catalog'); setActiveTab('products');
-                      window.location.hash = '#web/catalog';
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 14,
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {/* THÀNH PHẦN 1: Một nhãn nhỏ dạng pill, chữ thường, 1 dòng */}
+                  <span
                     style={{
-                      background: 'linear-gradient(135deg, #378ADD 0%, #0284C7 100%)',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: 10,
-                      height: 44,
-                      padding: '0 24px',
-                      fontSize: 13,
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      boxShadow: '0 6px 18px rgba(55, 138, 221, 0.4)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      zIndex: 2,
-                      marginTop: 2,
+                      display: 'inline-block',
+                      background: 'rgba(55, 138, 221, 0.15)',
+                      border: '1px solid rgba(55, 138, 221, 0.35)',
+                      borderRadius: 16,
+                      padding: '4px 14px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#38BDF8',
+                      letterSpacing: '0.3px',
+                      lineHeight: '1.4',
+                      textTransform: 'lowercase',
+                      whiteSpace: 'nowrap'
                     }}
                   >
-                    XEM SẢN PHẨM &amp; BÁO GIÁ →
-                  </button>
+                    {slide.pill}
+                  </span>
 
-                  {/* 6. Slider Dots Control (spaced well below CTA) */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    marginTop: 18,
-                    zIndex: 2,
-                  }}>
-                    {homepageSlides.map((_, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => { setSliderInteracted(true); setCurrentSlide(idx); }}
-                        style={{
-                          width: idx === currentSlide ? 18 : 6,
-                          height: 6,
-                          borderRadius: 3,
-                          background: idx === currentSlide ? '#38BDF8' : 'rgba(255, 255, 255, 0.25)',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                        }}
-                      />
-                    ))}
-                    <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace', fontWeight: 700, marginLeft: 6 }}>
-                      {String(currentSlide + 1).padStart(2, '0')} / {String(homepageSlides.length).padStart(2, '0')}
-                    </span>
+                  {/* THÀNH PHẦN 2: Một tiêu đề (H1), tối đa 6 từ */}
+                  <h1
+                    style={{
+                      fontSize: 'clamp(26px, 3.8vw, 42px)',
+                      fontWeight: 900,
+                      color: '#FFFFFF',
+                      margin: 0,
+                      lineHeight: 1.2,
+                      letterSpacing: '-0.3px'
+                    }}
+                  >
+                    {slide.headline}
+                  </h1>
+
+                  {/* THÀNH PHẦN 3: Một câu mô tả, tối đa 15 từ */}
+                  <p
+                    style={{
+                      fontSize: 'clamp(14px, 1.2vw, 16px)',
+                      color: '#CBD5E1',
+                      margin: 0,
+                      lineHeight: 1.55,
+                      maxWidth: 580,
+                      fontWeight: 400
+                    }}
+                  >
+                    {slide.desc}
+                  </p>
+
+                  {/* THÀNH PHẦN 4: Một nút CTA duy nhất */}
+                  <div style={{ marginTop: 6 }}>
+                    <button
+                      onClick={() => {
+                        setSelectedCategory(slide.category || 'TẤT CẢ');
+                        setViewMode('catalog');
+                        setActiveTab('products');
+                        window.location.hash = '#web/catalog';
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      style={{
+                        background: 'linear-gradient(135deg, #378ADD 0%, #0284C7 100%)',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '12px 24px',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(55, 138, 221, 0.35)',
+                        transition: 'all 0.2s ease',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                      onMouseOver={e => { e.currentTarget.style.filter = 'brightness(1.08)'; }}
+                      onMouseOut={e => { e.currentTarget.style.filter = 'brightness(1)'; }}
+                    >
+                      {slide.cta}
+                    </button>
                   </div>
-                </section>
+                </div>
+              </section>
+            );
+          })()}
 
                 {/* ── 2. TRUST BAR / DẢI ICON TIN CẬY (Placed immediately below Hero) ── */}
                 <section style={{
@@ -3848,9 +3552,6 @@ export default function WebCatalog() {
                     </div>
                   </div>
                 </section>
-              </>
-            );
-          })()}
           {/* 2. PRODUCT CATEGORY NAVIGATION */}
           <section style={{ maxWidth: 1240, margin: '48px auto 32px', padding: '0 20px', boxSizing: 'border-box' }} id="categories-section">
             <div style={{ textAlign: 'center', marginBottom: 24 }}>

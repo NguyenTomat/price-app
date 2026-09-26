@@ -1,6 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { getWebCatalogProducts, subscribeWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder, getProductDetail, logWebAnalyticsEvent } from '../firebase/firebase'
 import { DEFAULT_HERO_SLIDES, normalizeHeroSlides } from './WebManagePage'
+import {
+  ShieldCheck, Zap, Truck, Headphones, ShoppingBag, MessageSquare, Phone,
+  Building2, Layers, Search as SearchIcon, ChevronRight, ChevronLeft,
+  SlidersHorizontal, Bot, Clock, Award, CheckCircle
+} from '../components/LucideIcons'
 
 // Bản đồ Logo & Xuất xứ các thương hiệu máy bơm
 const BRAND_METADATA = {
@@ -626,6 +631,14 @@ export default function WebCatalog() {
   const [viewMode, setViewMode] = useState('catalog')
   const [detailProductId, setDetailProductId] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
   const [isZoomed, setIsZoomed] = useState(false)
   const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 })
   const [activeImageIndex, setActiveImageIndex] = useState(0)
@@ -1862,12 +1875,10 @@ export default function WebCatalog() {
 
   // Brand, Category, Search Filtering & Sorting
   const processedProducts = useMemo(() => {
-    let result = [...products]
-
-    // 1. FAST & ACCURATE SEARCH
-    if (searchTerm && searchTerm.trim()) {
-      const rawTerm = searchTerm.toLowerCase().trim();
-      const normTerm = normalizeSearchStr(searchTerm);
+    // 1. FAST & ACCURATE SEARCH (Debounced for 60fps typing)
+    if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
+      const rawTerm = debouncedSearchTerm.toLowerCase().trim();
+      const normTerm = normalizeSearchStr(debouncedSearchTerm);
       const cleanTerm = rawTerm.replace(/[^a-z0-9]/g, '');
       const tokens = normTerm.split(/\s+/).filter(Boolean);
 
@@ -2025,7 +2036,7 @@ export default function WebCatalog() {
     }
 
     return result
-  }, [products, activeBrand, selectedCategory, searchTerm, sortType, filterGroups, filterPower, filterVoltage, filterProductType])
+  }, [products, activeBrand, selectedCategory, debouncedSearchTerm, sortType, filterGroups, filterPower, filterVoltage, filterProductType])
 
   const calcListPrice = (basePrice) => {
     if (!basePrice) return 0
@@ -2971,17 +2982,65 @@ export default function WebCatalog() {
             ))}
           </div>
 
-          {/* Hotline & Action */}
-          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <a href="tel:0984273806" style={{ textDecoration: 'none', color: '#071A2F', fontSize: 12.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }} className="brand-btn">
-              <span style={{ color: '#0878D9' }}>📞</span> 0984 273 806
+          {/* Hotline & Header Actions */}
+          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <a href="tel:0984273806" style={{ textDecoration: 'none', color: '#071A2F', fontSize: 12.5, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }} className="brand-btn">
+              <Phone size={16} color="#0878D9" strokeWidth={2.2} />
+              <span>0984 273 806</span>
             </a>
+
+            {/* Standalone Cart Button in Header */}
+            <button
+              onClick={() => setShowCartDrawer(true)}
+              title="Giỏ hàng báo giá"
+              style={{
+                position: 'relative',
+                width: 40,
+                height: 40,
+                borderRadius: 8,
+                border: '1px solid #CBD5E1',
+                background: '#F8FAFC',
+                color: '#071A2F',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseOver={e => { e.currentTarget.style.borderColor = '#378ADD'; e.currentTarget.style.background = '#EFF6FF'; e.currentTarget.style.color = '#185FA5'; }}
+              onMouseOut={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.color = '#071A2F'; }}
+            >
+              <ShoppingBag size={18} color="currentColor" strokeWidth={2} />
+              {cart && cart.length > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: -5,
+                  right: -5,
+                  background: '#EF4444',
+                  color: '#FFFFFF',
+                  fontSize: 10.5,
+                  fontWeight: 900,
+                  minWidth: 18,
+                  height: 18,
+                  padding: '0 4px',
+                  borderRadius: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)',
+                  boxSizing: 'border-box'
+                }}>
+                  {cart.length}
+                </span>
+              )}
+            </button>
+
             <button 
               onClick={() => setShowCartDrawer(true)}
               style={{
                 background: '#0878D9', color: '#fff', border: 'none', padding: '0 18px',
-                height: 40, fontSize: 12, fontWeight: 800, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6,
-                boxShadow: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
+                height: 40, fontSize: 12, fontWeight: 800, cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6,
+                boxShadow: '0 2px 8px rgba(8, 120, 217, 0.25)', transition: 'all 0.2s', boxSizing: 'border-box'
               }}
               onMouseOver={e => e.currentTarget.style.background = '#065da9'}
               onMouseOut={e => e.currentTarget.style.background = '#0878D9'}
@@ -2991,26 +3050,67 @@ export default function WebCatalog() {
             </button>
           </div>
 
-          {/* Hamburger Menu Button for Mobile */}
-          <button
-            className="header-menu-btn"
-            onClick={() => setShowMobileMenu(true)}
-            style={{
-              display: 'none',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 6,
-              fontSize: 24,
-              color: '#102A43',
-              justifyContent: 'center',
-              alignItems: 'center',
-              justifySelf: 'end'
-            }}
-            aria-label="Mở menu điều hướng"
-          >
-            ☰
-          </button>
+          {/* Mobile Right Controls: Cart + Hamburger */}
+          <div className="mobile-only-flex" style={{ display: 'none', alignItems: 'center', gap: 8, justifySelf: 'end' }}>
+            <button
+              onClick={() => setShowCartDrawer(true)}
+              title="Giỏ hàng báo giá"
+              style={{
+                position: 'relative',
+                width: 38,
+                height: 38,
+                borderRadius: 8,
+                border: '1px solid #CBD5E1',
+                background: '#F8FAFC',
+                color: '#071A2F',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <ShoppingBag size={18} color="currentColor" strokeWidth={2} />
+              {cart && cart.length > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  background: '#EF4444',
+                  color: '#FFFFFF',
+                  fontSize: 10,
+                  fontWeight: 900,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  padding: '0 3px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  {cart.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              className="header-menu-btn"
+              onClick={() => setShowMobileMenu(true)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 6,
+                fontSize: 24,
+                color: '#102A43',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              aria-label="Mở menu điều hướng"
+            >
+              ☰
+            </button>
+          </div>
         </div>
       </header>
 
@@ -3749,8 +3849,8 @@ export default function WebCatalog() {
                     boxSizing: 'border-box',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
-                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, color: '#378ADD' }}>
-                        🛡️
+                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
+                        <ShieldCheck size={22} color="#185FA5" strokeWidth={2} />
                       </div>
                       <div>
                         <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>100% Chính Hãng</div>
@@ -3759,8 +3859,8 @@ export default function WebCatalog() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
-                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, color: '#378ADD' }}>
-                        ⚡
+                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
+                        <Award size={22} color="#185FA5" strokeWidth={2} />
                       </div>
                       <div>
                         <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>Bảo Hành 12 - 24 Tháng</div>
@@ -3769,8 +3869,8 @@ export default function WebCatalog() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
-                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, color: '#378ADD' }}>
-                        🚚
+                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
+                        <Truck size={22} color="#185FA5" strokeWidth={2} />
                       </div>
                       <div>
                         <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>Giao Hàng Siêu Tốc</div>
@@ -3779,8 +3879,8 @@ export default function WebCatalog() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
-                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, color: '#378ADD' }}>
-                        🔧
+                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
+                        <Headphones size={22} color="#185FA5" strokeWidth={2} />
                       </div>
                       <div>
                         <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>Tư Vấn Kỹ Thuật 24/7</div>
@@ -4612,10 +4712,10 @@ export default function WebCatalog() {
                 boxSizing: 'border-box'
               }} className="tt-trust-grid">
                 {[
-                  { icon: '🏢', number: '10+', label: 'NĂM KINH NGHIỆM', desc: 'Thành lập & phát triển từ 2015' },
-                  { icon: '🛡️', number: '100%', label: 'CHÍNH HÃNG CO/CQ', desc: 'Nhập khẩu nguyên chiếc từ nhà máy' },
-                  { icon: '🚚', number: 'TOÀN QUỐC', label: 'GIAO HÀNG TẬN NƠI', desc: 'Hỗ trợ giao nhanh chân công trình' },
-                  { icon: '💬', number: '24/7', label: 'HỖ TRỢ KỸ THUẬT', desc: 'Tư vấn thông số & lưu lượng chuẩn' }
+                  { icon: <Building2 size={20} color="#185FA5" strokeWidth={2} />, number: '10+', label: 'NĂM KINH NGHIỆM', desc: 'Thành lập & phát triển từ 2015' },
+                  { icon: <ShieldCheck size={20} color="#185FA5" strokeWidth={2} />, number: '100%', label: 'CHÍNH HÃNG CO/CQ', desc: 'Nhập khẩu nguyên chiếc từ nhà máy' },
+                  { icon: <Truck size={20} color="#185FA5" strokeWidth={2} />, number: 'TOÀN QUỐC', label: 'GIAO HÀNG TẬN NƠI', desc: 'Hỗ trợ giao nhanh chân công trình' },
+                  { icon: <Headphones size={20} color="#185FA5" strokeWidth={2} />, number: '24/7', label: 'HỖ TRỢ KỸ THUẬT', desc: 'Tư vấn thông số & lưu lượng chuẩn' }
                 ].map((metric, mi) => (
                   <div
                     key={mi}
@@ -4632,14 +4732,13 @@ export default function WebCatalog() {
                     className="metric-column"
                   >
                     <div style={{
-                      width: 36,
-                      height: 36,
+                      width: 38,
+                      height: 38,
                       borderRadius: '50%',
                       background: '#E6F1FB',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 18,
                       marginBottom: 2
                     }}>
                       {metric.icon}
@@ -8886,7 +8985,7 @@ export default function WebCatalog() {
       {/* Speed Dial Container */}
       <div className="speed-dial-container">
         
-        {/* Expanded Menu Actions */}
+        {/* Expanded Menu Actions (Only 5 Contact Actions: AI, Zalo, Hotline, FB, TikTok) */}
         {showContactMenu && (
           <div className="speed-dial-menu">
             {/* 1. Trợ Lý AI */}
@@ -8898,16 +8997,9 @@ export default function WebCatalog() {
                 setShowContactMenu(false);
               }}
             >
-              <span className="speed-dial-label">🤖 Trợ lý tư vấn AI 24/7</span>
+              <span className="speed-dial-label">Trợ lý tư vấn AI 24/7</span>
               <div className="speed-dial-btn" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="6" width="18" height="14" rx="5" fill="#FFFFFF" fillOpacity="0.95" />
-                  <circle cx="8.5" cy="12" r="1.8" fill="#2563EB" />
-                  <circle cx="15.5" cy="12" r="1.8" fill="#2563EB" />
-                  <path d="M9.5 16C10.2 16.8 11.1 17.2 12 17.2C12.9 17.2 13.8 16.8 14.5 16" stroke="#2563EB" strokeWidth="1.6" strokeLinecap="round" />
-                  <line x1="12" y1="2" x2="12" y2="6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="12" cy="2" r="1.5" fill="#38BDF8" />
-                </svg>
+                <Bot size={20} color="#FFFFFF" strokeWidth={2} />
               </div>
             </div>
 
@@ -8919,12 +9011,9 @@ export default function WebCatalog() {
                 setShowContactMenu(false);
               }}
             >
-              <span className="speed-dial-label">💬 Nhắn tin Zalo (0984 273 806)</span>
+              <span className="speed-dial-label">Nhắn tin Zalo (0984 273 806)</span>
               <div className="speed-dial-btn" style={{ background: '#0068FF' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2C6.48 2 2 5.58 2 10C2 12.3 3.16 14.36 5 15.78V19.5C5 19.78 5.22 20 5.5 20C5.62 20 5.74 19.96 5.84 19.88L9.2 17.64C10.1 17.88 11.04 18 12 18C17.52 18 22 14.42 22 10C22 5.58 17.52 2 12 2Z" fill="#FFFFFF"/>
-                  <text x="12" y="13.5" fontSize="8" fontWeight="900" fill="#0068FF" textAnchor="middle" fontFamily="'Inter', sans-serif">Zalo</text>
-                </svg>
+                <MessageSquare size={19} color="#FFFFFF" strokeWidth={2} />
               </div>
             </div>
 
@@ -8936,42 +9025,13 @@ export default function WebCatalog() {
                 setShowContactMenu(false);
               }}
             >
-              <span className="speed-dial-label">📞 Gọi Hotline 0984 273 806</span>
+              <span className="speed-dial-label">Gọi Hotline 0984 273 806</span>
               <div className="speed-dial-btn" style={{ background: '#071A2F' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                </svg>
+                <Phone size={18} color="#FFFFFF" strokeWidth={2.2} />
               </div>
             </div>
 
-            {/* 4. Giỏ Hàng / Báo Giá */}
-            <div
-              className="speed-dial-item"
-              onClick={() => {
-                setShowCartDrawer(true);
-                setShowContactMenu(false);
-              }}
-            >
-              <span className="speed-dial-label">🛒 Giỏ hàng / Báo giá ({cart.length})</span>
-              <div className="speed-dial-btn" style={{ background: '#0878D9', position: 'relative' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="9" cy="21" r="1"></circle>
-                  <circle cx="20" cy="21" r="1"></circle>
-                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                </svg>
-                {cart && cart.length > 0 && (
-                  <span style={{
-                    position: 'absolute', top: -3, right: -3, background: '#E11D48', color: '#FFF',
-                    borderRadius: '50%', width: 16, height: 16, fontSize: 9.5, fontWeight: 900,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {cart.length}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* 5. Fanpage Facebook */}
+            {/* 4. Fanpage Facebook */}
             <div
               className="speed-dial-item"
               onClick={() => {
@@ -8979,7 +9039,7 @@ export default function WebCatalog() {
                 setShowContactMenu(false);
               }}
             >
-              <span className="speed-dial-label">🌐 Fanpage Facebook</span>
+              <span className="speed-dial-label">Fanpage Facebook</span>
               <div className="speed-dial-btn" style={{ background: '#1877F2' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -8987,7 +9047,7 @@ export default function WebCatalog() {
               </div>
             </div>
 
-            {/* 6. TikTok */}
+            {/* 5. TikTok */}
             <div
               className="speed-dial-item"
               onClick={() => {
@@ -8995,7 +9055,7 @@ export default function WebCatalog() {
                 setShowContactMenu(false);
               }}
             >
-              <span className="speed-dial-label">🎵 Kênh TikTok T&T</span>
+              <span className="speed-dial-label">Kênh TikTok T&T</span>
               <div className="speed-dial-btn" style={{ background: '#000000' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF">
                   <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.85.12V9.32a6.34 6.34 0 0 0-.85-.06A6.33 6.33 0 0 0 3.1 15.6a6.34 6.34 0 0 0 10.84 4.47 6.28 6.28 0 0 0 1.95-4.52V8.04a8.17 8.17 0 0 0 4.7 1.48V6.69h-1z"/>
@@ -9016,7 +9076,7 @@ export default function WebCatalog() {
             <span style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', transform: 'rotate(90deg)', transition: 'transform 0.25s ease' }}>✕</span>
           ) : (
             <>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
               </svg>
               {/* Online Green Pulsing Beacon */}
@@ -9025,20 +9085,10 @@ export default function WebCatalog() {
                 background: '#10B981', border: '2px solid #FFFFFF', borderRadius: '50%',
                 boxShadow: '0 0 8px #10B981'
               }} />
-              {/* Cart Count Badge on master FAB when closed */}
-              {cart && cart.length > 0 && (
-                <span style={{
-                  position: 'absolute', bottom: -2, right: -2, background: '#E11D48', color: '#FFF',
-                  borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 900,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
-                }}>
-                  {cart.length}
-                </span>
-              )}
             </>
           )}
           <span className="floating-tooltip">
-            {showContactMenu ? 'Đóng menu' : '💬 Liên hệ & Tư vấn'}
+            {showContactMenu ? 'Đóng menu' : 'Liên hệ & Tư vấn'}
           </span>
         </div>
 

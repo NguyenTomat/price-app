@@ -1208,59 +1208,59 @@ export default function WebCatalog() {
         </div>
 
         <div className="product-card-content">
-          <span className="product-card-brand" style={{ fontSize: 10, fontWeight: 800, color: '#667085', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            {p.group || 'MÁY BƠM NƯỚC'} / {p.webBrand || 'UPTI PUMP'}
+          <span className="product-card-brand" style={{ fontSize: 10, fontWeight: 800, color: '#378ADD', textTransform: 'uppercase', letterSpacing: '0.8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {p.group || 'MÁY BƠM'} · {p.webBrand || 'UPTI PUMP'}
           </span>
 
-          <h4 className="product-card-title" onClick={() => navigateToProduct(p.id)} style={{ fontSize: 16, fontWeight: 700, color: '#071A2F', margin: '4px 0' }}>
+          <h4 className="product-card-title" onClick={() => navigateToProduct(p.id)} style={{ fontSize: 14.5, fontWeight: 700, color: '#071A2F', margin: '4px 0 2px', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, lineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: 38, cursor: 'pointer' }} title={p.name}>
             {p.name}
           </h4>
 
-          <h3 className="product-card-model" style={{ fontSize: 12.5, fontWeight: 500, color: '#667085', margin: '0 0 10px 0' }}>
+          <h3 className="product-card-model" style={{ fontSize: 12, fontWeight: 500, color: '#64748B', margin: '0 0 8px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {p.code || mainTitle}
           </h3>
 
-          <div className="product-card-specs" style={{ borderTop: '1px dashed #EEF1F4', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6, margin: '8px 0' }}>
+          <div className="product-card-specs" style={{ borderTop: '1px dashed #EEF1F4', paddingTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px', margin: '6px 0 10px' }}>
             {pow && (
-              <div className="spec-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
-                <span className="spec-label" style={{ color: '#667085' }}>⚡ Công suất</span>
-                <span className="spec-value" style={{ fontWeight: 700, color: '#101828' }}>{pow}</span>
-              </div>
-            )}
-            {qRange && (
-              <div className="spec-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
-                <span className="spec-label" style={{ color: '#667085' }}>💧 Lưu lượng</span>
-                <span className="spec-value" style={{ fontWeight: 700, color: '#101828' }}>{qRange}</span>
+              <div className="spec-row" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
+                <span className="spec-label" style={{ color: '#64748B' }}>⚡</span>
+                <span className="spec-value" style={{ fontWeight: 700, color: '#071A2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pow}</span>
               </div>
             )}
             {hRange && (
-              <div className="spec-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
-                <span className="spec-label" style={{ color: '#667085' }}>↑ Cột áp</span>
-                <span className="spec-value" style={{ fontWeight: 700, color: '#101828' }}>{hRange}</span>
+              <div className="spec-row" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
+                <span className="spec-label" style={{ color: '#64748B' }}>↑</span>
+                <span className="spec-value" style={{ fontWeight: 700, color: '#071A2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hRange}</span>
+              </div>
+            )}
+            {qRange && (
+              <div className="spec-row" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
+                <span className="spec-label" style={{ color: '#64748B' }}>💧</span>
+                <span className="spec-value" style={{ fontWeight: 700, color: '#071A2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{qRange}</span>
               </div>
             )}
             {volt && (
-              <div className="spec-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
-                <span className="spec-label" style={{ color: '#667085' }}>◉ Điện áp</span>
-                <span className="spec-value" style={{ fontWeight: 700, color: '#101828' }}>{volt}</span>
+              <div className="spec-row" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
+                <span className="spec-label" style={{ color: '#64748B' }}>◉</span>
+                <span className="spec-value" style={{ fontWeight: 700, color: '#071A2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{volt}</span>
               </div>
             )}
           </div>
 
-          <div style={{ borderTop: '1px solid #EEF1F4', margin: '12px 0 8px 0' }} />
+          <div style={{ borderTop: '1px solid #EEF1F4', margin: '6px 0 8px 0' }} />
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 0 12px 0' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#667085', textTransform: 'uppercase' }}>GIÁ</span>
-            <span style={{ fontSize: 13.5, fontWeight: 800, color: '#0878D9' }}>LIÊN HỆ</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '2px 0 10px 0' }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>GIÁ</span>
+            <span style={{ fontSize: 13, fontWeight: 900, color: '#378ADD' }}>LIÊN HỆ</span>
           </div>
 
-          <div className="product-card-actions" style={{ display: 'flex', gap: 8, marginTop: 'auto', borderTop: 'none', paddingTop: 0 }}>
+          <div className="product-card-actions" style={{ display: 'flex', gap: 6, marginTop: 'auto', borderTop: 'none', paddingTop: 0 }}>
             <button
               onClick={() => navigateToProduct(p.id)}
               className="product-card-btn brand-btn"
-              style={{ flex: 1, height: 38, border: '1px solid #EEF1F4', background: '#FFFFFF', color: '#071A2F', borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: 'pointer', textTransform: 'uppercase' }}
+              style={{ flex: 1, height: 36, border: '1px solid #BAE6FD', background: '#F0F9FF', color: '#0878D9', borderRadius: 8, fontWeight: 800, fontSize: 11.5, cursor: 'pointer', textTransform: 'uppercase' }}
             >
-              XEM CHI TIẾT
+              CHI TIẾT
             </button>
             <button
               onClick={() => {
@@ -1271,7 +1271,7 @@ export default function WebCatalog() {
                 setShowCartDrawer(true);
               }}
               className="product-card-btn cta-btn"
-              style={{ flex: 1, height: 38, border: 'none', background: '#0878D9', color: '#FFFFFF', borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: 'pointer', textTransform: 'uppercase' }}
+              style={{ flex: 1, height: 36, border: 'none', background: 'linear-gradient(135deg, #1e3a5f 0%, #378ADD 100%)', color: '#FFFFFF', borderRadius: 8, fontWeight: 800, fontSize: 11.5, cursor: 'pointer', textTransform: 'uppercase', boxShadow: '0 2px 8px rgba(55,138,221,0.25)' }}
             >
               BÁO GIÁ
             </button>
@@ -1298,10 +1298,10 @@ export default function WebCatalog() {
 
     const specs = [
       pow && { icon: '⚡', label: 'CS', val: pow },
-      qRange && { icon: '💧', label: 'Q', val: qRange },
       hRange && { icon: '↑', label: 'H', val: hRange },
+      qRange && { icon: '💧', label: 'Q', val: qRange },
       volt && { icon: '◉', label: 'U', val: volt },
-    ].filter(Boolean);
+    ].filter(Boolean).slice(0, 2);
 
     return (
       <div
@@ -1309,7 +1309,7 @@ export default function WebCatalog() {
         style={{
           background: '#FFFFFF',
           border: '1px solid #EEF1F4',
-          borderRadius: 14,
+          borderRadius: 12,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -1319,8 +1319,8 @@ export default function WebCatalog() {
         }}
         onMouseOver={e => {
           e.currentTarget.style.transform = 'translateY(-3px)';
-          e.currentTarget.style.boxShadow = '0 8px 24px rgba(7,26,47,0.09)';
-          e.currentTarget.style.borderColor = '#0878D9';
+          e.currentTarget.style.boxShadow = '0 8px 24px rgba(30,58,95,0.12)';
+          e.currentTarget.style.borderColor = '#378ADD';
         }}
         onMouseOut={e => {
           e.currentTarget.style.transform = 'translateY(0)';
@@ -1332,7 +1332,7 @@ export default function WebCatalog() {
         <div
           onClick={() => navigateToProduct(p.id)}
           style={{
-            height: 180,
+            height: 175,
             background: '#F8FAFC',
             display: 'flex',
             alignItems: 'center',
@@ -1356,7 +1356,7 @@ export default function WebCatalog() {
         {/* Content */}
         <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
           {/* Category / Brand */}
-          <span style={{ fontSize: 10, fontWeight: 800, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: '#378ADD', textTransform: 'uppercase', letterSpacing: '0.8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {p.group || 'MÁY BƠM'} · {p.webBrand || 'T&T'}
           </span>
 
@@ -1367,7 +1367,7 @@ export default function WebCatalog() {
               fontSize: 13.5,
               fontWeight: 800,
               color: '#071A2F',
-              lineHeight: 1.3,
+              lineHeight: 1.35,
               cursor: 'pointer',
               display: '-webkit-box',
               WebkitLineClamp: 2,
@@ -1376,6 +1376,7 @@ export default function WebCatalog() {
               overflow: 'hidden',
               minHeight: 36,
             }}
+            title={p.name}
           >
             {p.name}
           </div>
@@ -1394,20 +1395,20 @@ export default function WebCatalog() {
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
                   <span style={{ fontSize: 11 }}>{s.icon}</span>
                   <span style={{ color: '#94A3B8', fontWeight: 600 }}>{s.label}:</span>
-                  <span style={{ fontWeight: 800, color: '#101828' }}>{s.val}</span>
+                  <span style={{ fontWeight: 800, color: '#101828', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.val}</span>
                 </div>
               ))}
             </div>
           )}
 
           {/* Price */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 6 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' }}>GIÁ</span>
-            <span style={{ fontSize: 12, fontWeight: 900, color: '#0878D9' }}>LIÊN HỆ</span>
+            <span style={{ fontSize: 12.5, fontWeight: 900, color: '#378ADD' }}>LIÊN HỆ</span>
           </div>
 
           {/* CTA Buttons */}
-          <div style={{ display: 'flex', gap: 6, marginTop: 'auto', paddingTop: 6 }}>
+          <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
             <button
               onClick={() => navigateToProduct(p.id)}
               style={{
@@ -1418,7 +1419,7 @@ export default function WebCatalog() {
                 color: '#0878D9',
                 borderRadius: 8,
                 fontWeight: 800,
-                fontSize: 11.5,
+                fontSize: 11,
                 cursor: 'pointer',
                 textTransform: 'uppercase',
                 letterSpacing: '0.2px',
@@ -1427,7 +1428,33 @@ export default function WebCatalog() {
               onMouseOver={e => { e.currentTarget.style.background = '#0878D9'; e.currentTarget.style.color = '#FFFFFF'; }}
               onMouseOut={e => { e.currentTarget.style.background = '#F0F9FF'; e.currentTarget.style.color = '#0878D9'; }}
             >
-              XEM CHI TIẾT →
+              CHI TIẾT
+            </button>
+            <button
+              onClick={() => {
+                const isAlreadyInCart = cart.some(item => item.product.id === p.id);
+                if (!isAlreadyInCart) {
+                  setCart(prev => [...prev, { product: p, quantity: 1 }]);
+                }
+                setShowCartDrawer(true);
+              }}
+              style={{
+                flex: 1,
+                height: 34,
+                border: 'none',
+                background: 'linear-gradient(135deg, #1e3a5f 0%, #378ADD 100%)',
+                color: '#FFFFFF',
+                borderRadius: 8,
+                fontWeight: 800,
+                fontSize: 11,
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                letterSpacing: '0.2px',
+                transition: 'all 0.15s',
+                boxShadow: '0 2px 6px rgba(55,138,221,0.25)',
+              }}
+            >
+              BÁO GIÁ
             </button>
           </div>
         </div>
@@ -3160,11 +3187,11 @@ export default function WebCatalog() {
                 <section
                   className="homepage-hero-cinema desktop-only"
                   style={{
-                    background: 'linear-gradient(180deg, #051323 0%, #0A223B 50%, #071A2F 100%)',
-                    padding: '36px 0 44px',
+                    background: 'linear-gradient(135deg, #0d1f33 0%, #1e3a5f 55%, #0d1f33 100%)',
+                    padding: '40px 0 36px',
                     position: 'relative',
                     overflow: 'hidden',
-                    borderBottom: '1px solid rgba(8, 120, 217, 0.25)',
+                    borderBottom: '1px solid rgba(55, 138, 221, 0.25)',
                   }}
                   onMouseEnter={() => setSliderPaused(true)}
                   onMouseLeave={() => setSliderPaused(false)}
@@ -3175,15 +3202,15 @@ export default function WebCatalog() {
                       key={`ambient-desk-${currentSlide}`}
                       style={{
                         position: 'absolute',
-                        right: '5%',
-                        top: '10%',
-                        width: '50vw',
-                        height: '50vw',
+                        right: '8%',
+                        top: '12%',
+                        width: '45vw',
+                        height: '45vw',
                         backgroundImage: `url(${currentSlideItem.img})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
-                        filter: 'blur(90px) saturate(2)',
-                        opacity: 0.22,
+                        filter: 'blur(100px) saturate(1.8)',
+                        opacity: 0.18,
                         pointerEvents: 'none',
                         zIndex: 1,
                         transition: 'opacity 0.6s ease',
@@ -3195,82 +3222,70 @@ export default function WebCatalog() {
                   <div style={{
                     position: 'absolute',
                     inset: 0,
-                    backgroundImage: 'radial-gradient(rgba(56, 189, 248, 0.12) 1px, transparent 1px)',
-                    backgroundSize: '28px 28px',
-                    opacity: 0.8,
+                    backgroundImage: 'radial-gradient(rgba(55, 138, 221, 0.15) 1px, transparent 1px)',
+                    backgroundSize: '32px 32px',
+                    opacity: 0.7,
                     zIndex: 2,
                     pointerEvents: 'none',
                   }} />
 
                   <div style={{
-                    maxWidth: 1360,
+                    maxWidth: 1320,
                     margin: '0 auto',
                     padding: '0 24px',
                     position: 'relative',
                     zIndex: 3,
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 28,
                     boxSizing: 'border-box',
                   }}>
-                    {/* Split Cinema 2-Column Grid */}
+                    {/* Split 2-Column Grid */}
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1.15fr)',
+                      gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)',
                       alignItems: 'center',
-                      gap: 40,
+                      gap: 48,
                       width: '100%',
                     }}>
-                      {/* Left Column */}
+                      {/* Left Column: Information & CTA */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'flex-start' }}>
+                        {/* 1. Small Brand Badge */}
                         <div style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 8,
-                          background: 'rgba(56, 189, 248, 0.12)',
-                          border: '1px solid rgba(56, 189, 248, 0.35)',
+                          background: 'rgba(55, 138, 221, 0.15)',
+                          border: '1px solid rgba(55, 138, 221, 0.4)',
                           borderRadius: 20,
-                          padding: '6px 14px',
+                          padding: '5px 14px',
                           backdropFilter: 'blur(8px)',
                         }}>
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#38BDF8', boxShadow: '0 0 10px #38BDF8', display: 'inline-block' }} />
-                          <span style={{ fontSize: 11, fontWeight: 800, color: '#38BDF8', letterSpacing: '1px', fontFamily: 'monospace', textTransform: 'uppercase' }}>
-                            {currentSlideItem?.badge || currentSlideItem?.title || 'MÁY BƠM NƯỚC T&T'}
+                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#38BDF8', boxShadow: '0 0 8px #38BDF8', display: 'inline-block' }} />
+                          <span style={{ fontSize: 11, fontWeight: 800, color: '#38BDF8', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+                            {currentSlideItem?.badge || 'UPTI PUMP · SELANNI · MASTRA · BERATI'}
                           </span>
                         </div>
 
+                        {/* 2. Headline */}
                         <h1 style={{
-                          fontSize: 'clamp(26px, 3.2vw, 42px)',
+                          fontSize: 'clamp(28px, 3.4vw, 42px)',
                           fontWeight: 900,
                           color: '#FFFFFF',
                           margin: 0,
                           lineHeight: 1.18,
                           letterSpacing: '-0.5px',
                           textTransform: 'uppercase',
-                          background: 'linear-gradient(135deg, #FFFFFF 40%, #BAE6FD 100%)',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
                         }}>
                           {currentSlideItem?.headline || currentSlideItem?.title}
                         </h1>
 
-                        <p style={{ fontSize: 'clamp(13.5px, 1.1vw, 15px)', color: '#94A3B8', margin: 0, lineHeight: 1.6, maxWidth: 540 }}>
-                          {currentSlideItem?.desc || 'Dòng máy bơm nước công nghiệp & dân dụng tiêu chuẩn Châu Âu, vận hành bền bỉ 24/7 và tối ưu điện năng vượt trội.'}
+                        {/* 3. Short Description */}
+                        <p style={{ fontSize: 'clamp(14px, 1.1vw, 15.5px)', color: '#CBD5E1', margin: '2px 0 0', lineHeight: 1.6, maxWidth: 520, fontWeight: 400 }}>
+                          {currentSlideItem?.desc || 'Giải pháp máy bơm nước công nghiệp & dân dụng tiêu chuẩn chất lượng cao, vận hành bền bỉ 24/7 và tối ưu điện năng vượt trội.'}
                         </p>
 
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(7, 26, 47, 0.8)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 700, color: '#F1F5F9' }}>
-                            ⚡ TIẾT KIỆM 60% ĐIỆN
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(7, 26, 47, 0.8)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 700, color: '#F1F5F9' }}>
-                            ◉ VẬN HÀNH SIÊU ÊM
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(7, 26, 47, 0.8)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 700, color: '#F1F5F9' }}>
-                            ✓ BẢO HÀNH 12 THÁNG
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+                        {/* 4. Single Primary CTA Button */}
+                        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 10 }}>
                           <button
                             onClick={() => {
                               const catName = currentSlideItem?.category || '';
@@ -3280,95 +3295,70 @@ export default function WebCatalog() {
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
                             style={{
-                              background: 'linear-gradient(135deg, #0878D9 0%, #0284C7 100%)',
+                              background: 'linear-gradient(135deg, #378ADD 0%, #0284C7 100%)',
                               color: '#FFFFFF',
                               border: 'none',
                               borderRadius: 10,
-                              padding: '13px 26px',
+                              padding: '13px 28px',
                               fontSize: 14,
                               fontWeight: 800,
                               cursor: 'pointer',
-                              boxShadow: '0 8px 24px rgba(8, 120, 217, 0.45)',
+                              boxShadow: '0 8px 24px rgba(55, 138, 221, 0.45)',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: 8,
                               transition: 'all 0.2s ease',
                             }}
-                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.filter = 'brightness(1.08)'; }}
+                            onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.filter = 'brightness(1)'; }}
                           >
-                            🛒 XEM SẢN PHẨM &amp; BÁO GIÁ →
+                            XEM SẢN PHẨM &amp; BÁO GIÁ →
                           </button>
-
-                          <a
-                            href="tel:0984273806"
-                            style={{
-                              background: 'rgba(7, 26, 47, 0.6)',
-                              color: '#38BDF8',
-                              border: '1px solid rgba(56, 189, 248, 0.4)',
-                              borderRadius: 10,
-                              padding: '12px 20px',
-                              fontSize: 13.5,
-                              fontWeight: 700,
-                              textDecoration: 'none',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              backdropFilter: 'blur(6px)',
-                              transition: 'all 0.2s ease',
-                            }}
-                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.15)'; }}
-                            onMouseOut={e => { e.currentTarget.style.background = 'rgba(7, 26, 47, 0.6)'; }}
-                          >
-                            📞 LIÊN HỆ: 0984.273.806
-                          </a>
                         </div>
 
-                        {/* Minimalist Story Progress Bars */}
-                        <div style={{ display: 'flex', gap: 6, width: '100%', maxWidth: 540, marginTop: 14 }}>
+                        {/* 5. Carousel Progress / Pagination Dots (spaced well below CTA) */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 24, zIndex: 3 }}>
                           {homepageSlides.map((_, idx) => (
                             <div
                               key={idx}
                               onClick={() => { setSliderInteracted(true); setCurrentSlide(idx); }}
                               style={{
-                                flex: 1,
-                                height: 4,
-                                borderRadius: 2,
-                                background: 'rgba(255, 255, 255, 0.15)',
+                                width: idx === currentSlide ? 28 : 8,
+                                height: 7,
+                                borderRadius: 4,
+                                background: idx === currentSlide ? '#38BDF8' : 'rgba(255, 255, 255, 0.25)',
                                 cursor: 'pointer',
-                                overflow: 'hidden',
+                                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                               }}
-                              title={`Chuyển sang Banner ${idx + 1}`}
-                            >
-                              <div style={{
-                                height: '100%',
-                                background: idx === currentSlide ? '#38BDF8' : (idx < currentSlide ? '#0878D9' : 'transparent'),
-                                width: idx === currentSlide ? '100%' : (idx < currentSlide ? '100%' : '0%'),
-                                transition: idx === currentSlide ? 'width 4.5s linear' : 'none',
-                              }} />
-                            </div>
+                              title={`Chuyển tới slide ${idx + 1}`}
+                            />
                           ))}
+                          <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace', fontWeight: 700, marginLeft: 8 }}>
+                            {String(currentSlide + 1).padStart(2, '0')} / {String(homepageSlides.length).padStart(2, '0')}
+                          </span>
                         </div>
                       </div>
 
-                      {/* Right Column: Floating Banner */}
+                      {/* Right Column: Clean Product Showcase Image */}
                       <div style={{
                         position: 'relative',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         width: '100%',
-                        height: 'clamp(360px, 42vw, 520px)',
+                        height: 'clamp(340px, 38vw, 480px)',
                       }}>
+                        {/* Soft blue glow backdrop */}
                         <div style={{
                           position: 'absolute',
-                          width: '90%',
-                          height: '90%',
-                          background: 'radial-gradient(ellipse at center, rgba(14,165,233,0.25) 0%, rgba(7,26,47,0) 70%)',
+                          width: '85%',
+                          height: '85%',
+                          background: 'radial-gradient(ellipse at center, rgba(55,138,221,0.28) 0%, rgba(13,31,51,0) 70%)',
                           borderRadius: '50%',
                           pointerEvents: 'none',
                         }} />
 
+                        {/* Product Image */}
                         <div
                           style={{
                             position: 'relative',
@@ -3378,10 +3368,6 @@ export default function WebCatalog() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            maskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%)',
-                            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%)',
-                            maskComposite: 'intersect',
-                            WebkitMaskComposite: 'destination-in',
                           }}
                           onClick={() => {
                             const catName = currentSlideItem?.category || '';
@@ -3400,17 +3386,19 @@ export default function WebCatalog() {
                               style={{
                                 width: '100%',
                                 height: '100%',
+                                maxHeight: 420,
                                 objectFit: 'contain',
                                 objectPosition: 'center',
                                 position: 'relative',
                                 zIndex: 2,
-                                transition: 'opacity 0.35s ease',
-                                filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.6))',
+                                filter: 'drop-shadow(0 20px 36px rgba(0,0,0,0.55))',
+                                transition: 'transform 0.3s ease',
                               }}
                             />
                           )}
                         </div>
 
+                        {/* Previous Slide Button */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -3419,32 +3407,33 @@ export default function WebCatalog() {
                           }}
                           style={{
                             position: 'absolute',
-                            left: 0,
+                            left: -8,
                             top: '50%',
                             transform: 'translateY(-50%)',
                             zIndex: 10,
-                            width: 44,
-                            height: 44,
+                            width: 40,
+                            height: 40,
                             borderRadius: '50%',
-                            background: 'rgba(7, 26, 47, 0.75)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            background: 'rgba(13, 31, 51, 0.85)',
+                            border: '1px solid rgba(55, 138, 221, 0.4)',
                             color: '#FFFFFF',
-                            fontSize: 22,
+                            fontSize: 20,
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             backdropFilter: 'blur(8px)',
-                            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
                             transition: 'all 0.2s ease',
                           }}
-                          onMouseOver={e => { e.currentTarget.style.background = '#0878D9'; e.currentTarget.style.borderColor = '#38BDF8'; }}
-                          onMouseOut={e => { e.currentTarget.style.background = 'rgba(7, 26, 47, 0.75)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'; }}
+                          onMouseOver={e => { e.currentTarget.style.background = '#378ADD'; e.currentTarget.style.borderColor = '#38BDF8'; }}
+                          onMouseOut={e => { e.currentTarget.style.background = 'rgba(13, 31, 51, 0.85)'; e.currentTarget.style.borderColor = 'rgba(55, 138, 221, 0.4)'; }}
                           aria-label="Slide trước"
                         >
                           ‹
                         </button>
 
+                        {/* Next Slide Button */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -3453,137 +3442,51 @@ export default function WebCatalog() {
                           }}
                           style={{
                             position: 'absolute',
-                            right: 0,
+                            right: -8,
                             top: '50%',
                             transform: 'translateY(-50%)',
                             zIndex: 10,
-                            width: 44,
-                            height: 44,
+                            width: 40,
+                            height: 40,
                             borderRadius: '50%',
-                            background: 'rgba(7, 26, 47, 0.75)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            background: 'rgba(13, 31, 51, 0.85)',
+                            border: '1px solid rgba(55, 138, 221, 0.4)',
                             color: '#FFFFFF',
-                            fontSize: 22,
+                            fontSize: 20,
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             backdropFilter: 'blur(8px)',
-                            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
                             transition: 'all 0.2s ease',
                           }}
-                          onMouseOver={e => { e.currentTarget.style.background = '#0878D9'; e.currentTarget.style.borderColor = '#38BDF8'; }}
-                          onMouseOut={e => { e.currentTarget.style.background = 'rgba(7, 26, 47, 0.75)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'; }}
+                          onMouseOver={e => { e.currentTarget.style.background = '#378ADD'; e.currentTarget.style.borderColor = '#38BDF8'; }}
+                          onMouseOut={e => { e.currentTarget.style.background = 'rgba(13, 31, 51, 0.85)'; e.currentTarget.style.borderColor = 'rgba(55, 138, 221, 0.4)'; }}
                           aria-label="Slide tiếp theo"
                         >
                           ›
                         </button>
-
-                        {nextSlideItem && (
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSliderInteracted(true);
-                              setCurrentSlide(nextSlideIdx);
-                            }}
-                            style={{
-                              position: 'absolute',
-                              bottom: 10,
-                              right: 10,
-                              zIndex: 10,
-                              background: 'rgba(7, 26, 47, 0.88)',
-                              border: '1px solid rgba(56, 189, 248, 0.35)',
-                              borderRadius: 10,
-                              padding: '6px 12px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 10,
-                              backdropFilter: 'blur(8px)',
-                              boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                            }}
-                            onMouseOver={e => e.currentTarget.style.borderColor = '#38BDF8'}
-                            onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.35)'}
-                            title="Bấm để xem banner kế tiếp"
-                          >
-                            <img
-                              src={nextSlideItem.img || nextSlideItem.defaultImg}
-                              alt={nextSlideItem.title}
-                              style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4, background: '#030B14' }}
-                            />
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <span style={{ fontSize: 9, color: '#38BDF8', fontWeight: 800, letterSpacing: '0.8px' }}>KẾ TIẾP ▶</span>
-                              <span style={{ fontSize: 11, color: '#FFFFFF', fontWeight: 700, maxWidth: 120, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {nextSlideItem.title}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Trust Strip */}
-                    <div style={{
-                      background: '#FFFFFF',
-                      borderRadius: 12,
-                      padding: '14px 20px',
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                      gap: 16,
-                      boxShadow: '0 6px 20px rgba(0,0,0,0.06)',
-                      border: '1px solid #EEF1F4',
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      marginTop: 4,
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 22 }}>🛡️</span>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: '#071A2F' }}>100% Chính Hãng</div>
-                          <div style={{ fontSize: 11, color: '#64748B' }}>Đầy đủ chứng từ CO/CQ</div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 22 }}>🚚</span>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: '#071A2F' }}>Giao Hàng Toàn Quốc</div>
-                          <div style={{ fontSize: 11, color: '#64748B' }}>Hỏa tốc trong 24 - 48h</div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 22 }}>🔧</span>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: '#071A2F' }}>Tư Vấn Kỹ Thuật</div>
-                          <div style={{ fontSize: 11, color: '#64748B' }}>Tính chọn lưu lượng &amp; cột áp</div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 22 }}>📞</span>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: '#0878D9' }}>Hotline Liên Hệ 24/7</div>
-                          <a href="tel:0984273806" style={{ fontSize: 12.5, fontWeight: 800, color: '#071A2F', textDecoration: 'none' }}>0984.273.806</a>
-                        </div>
                       </div>
                     </div>
                   </div>
                 </section>
 
-                {/* ── TRUE MOBILE-FIRST HERO (Screens <= 768px) ── */}
+                {/* ── MOBILE-FIRST HERO (Screens <= 768px) ── */}
                 <section
                   className="mobile-only-flex"
                   style={{
                     display: 'none',
-                    background: 'linear-gradient(180deg, #071A2F 0%, #081E34 60%, #071A2F 100%)',
-                    padding: '24px 16px 20px',
+                    background: 'linear-gradient(180deg, #1e3a5f 0%, #0d1f33 100%)',
+                    padding: '24px 16px 22px',
                     position: 'relative',
                     overflow: 'hidden',
-                    borderBottom: '1px solid rgba(8, 120, 217, 0.2)',
+                    borderBottom: '1px solid rgba(55, 138, 221, 0.25)',
                     flexDirection: 'column',
                     alignItems: 'center',
                     textAlign: 'center',
                     boxSizing: 'border-box',
-                    gap: 10,
+                    gap: 12,
                   }}
                   onTouchStart={(e) => { touchStartXRef.current = e.touches[0].clientX; }}
                   onTouchEnd={(e) => {
@@ -3599,42 +3502,42 @@ export default function WebCatalog() {
                     touchStartXRef.current = null;
                   }}
                 >
-                  {/* Subtle Technical Grid Overlay */}
+                  {/* Subtle Blueprint Grid Pattern */}
                   <div style={{
                     position: 'absolute',
                     inset: 0,
-                    backgroundImage: 'radial-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px)',
-                    backgroundSize: '40px 40px',
-                    opacity: 0.7,
+                    backgroundImage: 'radial-gradient(rgba(55, 138, 221, 0.12) 1px, transparent 1px)',
+                    backgroundSize: '32px 32px',
+                    opacity: 0.6,
                     pointerEvents: 'none',
                     zIndex: 1,
                   }} />
 
-                  {/* 1. Small Category Label */}
+                  {/* 1. Small Category / Brand Badge */}
                   <div style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    background: 'rgba(56, 189, 248, 0.1)',
-                    border: '1px solid rgba(56, 189, 248, 0.28)',
+                    background: 'rgba(55, 138, 221, 0.15)',
+                    border: '1px solid rgba(55, 138, 221, 0.4)',
                     borderRadius: 20,
                     padding: '4px 12px',
                     zIndex: 2,
                   }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38BDF8', boxShadow: '0 0 6px #38BDF8' }} />
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: '#38BDF8', letterSpacing: '0.8px', textTransform: 'uppercase', fontFamily: 'monospace' }}>
-                      {currentSlideItem?.badge || currentSlideItem?.title || 'MÁY BƠM NƯỚC T&T'}
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: '#38BDF8', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+                      {currentSlideItem?.badge || 'UPTI PUMP · SELANNI · MASTRA'}
                     </span>
                   </div>
 
-                  {/* 2. Mobile Headline (Max 2 lines, heavy bold, 24-28px) */}
+                  {/* 2. Mobile Headline */}
                   <h1 style={{
-                    fontSize: 'clamp(22px, 6.8vw, 28px)',
+                    fontSize: 'clamp(20px, 6.2vw, 26px)',
                     fontWeight: 900,
                     color: '#FFFFFF',
-                    margin: '2px 0 0',
-                    lineHeight: 1.12,
-                    letterSpacing: '-0.4px',
+                    margin: 0,
+                    lineHeight: 1.2,
+                    letterSpacing: '-0.3px',
                     textTransform: 'uppercase',
                     zIndex: 2,
                     maxWidth: 340,
@@ -3642,51 +3545,37 @@ export default function WebCatalog() {
                     {currentSlideItem?.headline || currentSlideItem?.title}
                   </h1>
 
-                  {/* 3. Short Description (Max 2 lines) */}
+                  {/* 3. Short Description */}
                   <p style={{
-                    fontSize: 13.5,
-                    color: '#94A3B8',
-                    margin: '0',
+                    fontSize: 13,
+                    color: '#CBD5E1',
+                    margin: 0,
                     lineHeight: 1.45,
                     maxWidth: 320,
                     zIndex: 2,
-                    fontWeight: 500,
+                    fontWeight: 400,
                   }}>
                     {currentSlideItem?.desc || 'Giải pháp bơm nước hiệu suất cao cho công trình và dân dụng.'}
                   </p>
 
-                  {/* 4. Single Compact Trust Line */}
-                  <div style={{
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    color: '#38BDF8',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    zIndex: 2,
-                    letterSpacing: '0.2px',
-                  }}>
-                    <span>✓</span> Chính hãng • CO/CQ • Tư vấn kỹ thuật
-                  </div>
-
-                  {/* 5. Product Visual (Dominant 55-65% width, max-height 210px, soft blue radial glow behind it) */}
+                  {/* 4. Product Visual with Nav Arrows */}
                   <div style={{
                     position: 'relative',
                     width: '100%',
                     maxWidth: 320,
-                    height: 200,
+                    height: 195,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    margin: '4px 0 2px',
+                    margin: '2px 0',
                     zIndex: 2,
                   }}>
-                    {/* Soft radial blue lighting behind product */}
+                    {/* Soft radial blue lighting */}
                     <div style={{
                       position: 'absolute',
-                      width: '80%',
-                      height: '80%',
-                      background: 'radial-gradient(circle, rgba(14, 165, 233, 0.22) 0%, rgba(7, 26, 47, 0) 70%)',
+                      width: '75%',
+                      height: '75%',
+                      background: 'radial-gradient(circle, rgba(55, 138, 221, 0.25) 0%, rgba(13, 31, 51, 0) 70%)',
                       borderRadius: '50%',
                       pointerEvents: 'none',
                     }} />
@@ -3702,11 +3591,11 @@ export default function WebCatalog() {
                         style={{
                           width: '100%',
                           height: '100%',
-                          maxHeight: 190,
+                          maxHeight: 185,
                           objectFit: 'contain',
                           position: 'relative',
                           zIndex: 3,
-                          filter: 'drop-shadow(0 14px 28px rgba(0,0,0,0.55))',
+                          filter: 'drop-shadow(0 12px 24px rgba(0,0,0,0.5))',
                         }}
                         onClick={() => {
                           const catName = currentSlideItem?.category || '';
@@ -3733,8 +3622,8 @@ export default function WebCatalog() {
                         width: 32,
                         height: 32,
                         borderRadius: '50%',
-                        background: 'rgba(7, 26, 47, 0.85)',
-                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        background: 'rgba(13, 31, 51, 0.85)',
+                        border: '1px solid rgba(55, 138, 221, 0.4)',
                         color: '#FFFFFF',
                         fontSize: 16,
                         display: 'flex',
@@ -3761,8 +3650,8 @@ export default function WebCatalog() {
                         width: 32,
                         height: 32,
                         borderRadius: '50%',
-                        background: 'rgba(7, 26, 47, 0.85)',
-                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        background: 'rgba(13, 31, 51, 0.85)',
+                        border: '1px solid rgba(55, 138, 221, 0.4)',
                         color: '#FFFFFF',
                         fontSize: 16,
                         display: 'flex',
@@ -3777,7 +3666,7 @@ export default function WebCatalog() {
                     </button>
                   </div>
 
-                  {/* 6. Primary CTA [ XEM DÒNG BƠM → ] */}
+                  {/* 5. Primary CTA Button */}
                   <button
                     onClick={() => {
                       const catName = currentSlideItem?.category || '';
@@ -3787,16 +3676,16 @@ export default function WebCatalog() {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     style={{
-                      background: 'linear-gradient(135deg, #0878D9 0%, #0284C7 100%)',
+                      background: 'linear-gradient(135deg, #378ADD 0%, #0284C7 100%)',
                       color: '#FFFFFF',
                       border: 'none',
                       borderRadius: 10,
-                      height: 46,
+                      height: 44,
                       padding: '0 24px',
-                      fontSize: 13.5,
+                      fontSize: 13,
                       fontWeight: 800,
                       cursor: 'pointer',
-                      boxShadow: '0 6px 18px rgba(8, 120, 217, 0.4)',
+                      boxShadow: '0 6px 18px rgba(55, 138, 221, 0.4)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
@@ -3804,16 +3693,16 @@ export default function WebCatalog() {
                       marginTop: 2,
                     }}
                   >
-                    XEM DÒNG BƠM →
+                    XEM SẢN PHẨM &amp; BÁO GIÁ →
                   </button>
 
-                  {/* 7. Compact Slider Dots Control + Counter */}
+                  {/* 6. Slider Dots Control (spaced well below CTA) */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 6,
-                    marginTop: 8,
+                    marginTop: 18,
                     zIndex: 2,
                   }}>
                     {homepageSlides.map((_, idx) => (
@@ -3830,9 +3719,70 @@ export default function WebCatalog() {
                         }}
                       />
                     ))}
-                    <span style={{ fontSize: 11, color: '#64748B', fontFamily: 'monospace', fontWeight: 700, marginLeft: 6 }}>
+                    <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace', fontWeight: 700, marginLeft: 6 }}>
                       {String(currentSlide + 1).padStart(2, '0')} / {String(homepageSlides.length).padStart(2, '0')}
                     </span>
+                  </div>
+                </section>
+
+                {/* ── 2. TRUST BAR / DẢI ICON TIN CẬY (Placed immediately below Hero) ── */}
+                <section style={{
+                  maxWidth: 1320,
+                  margin: '18px auto 0',
+                  padding: '0 20px',
+                  boxSizing: 'border-box',
+                }}>
+                  <div style={{
+                    background: '#FFFFFF',
+                    borderRadius: 14,
+                    padding: '16px 20px',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: 16,
+                    boxShadow: '0 4px 20px rgba(30, 58, 95, 0.06)',
+                    border: '1px solid #E2E8F0',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
+                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, color: '#378ADD' }}>
+                        🛡️
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>100% Chính Hãng</div>
+                        <div style={{ fontSize: 11.5, color: '#64748B' }}>Đầy đủ chứng từ CO/CQ</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
+                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, color: '#378ADD' }}>
+                        ⚡
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>Bảo Hành 12 - 24 Tháng</div>
+                        <div style={{ fontSize: 11.5, color: '#64748B' }}>Cam kết đổi mới uy tín</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
+                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, color: '#378ADD' }}>
+                        🚚
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>Giao Hàng Siêu Tốc</div>
+                        <div style={{ fontSize: 11.5, color: '#64748B' }}>Toàn quốc trong 24 - 48h</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
+                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, color: '#378ADD' }}>
+                        🔧
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>Tư Vấn Kỹ Thuật 24/7</div>
+                        <div style={{ fontSize: 11.5, color: '#64748B' }}>Tính chọn lưu lượng &amp; cột áp</div>
+                      </div>
+                    </div>
                   </div>
                 </section>
               </>
@@ -7318,55 +7268,111 @@ export default function WebCatalog() {
         .custom-thin-scrollbar::-webkit-scrollbar-thumb:hover {
           background-color: #94A3B8;
         }
-        .desktop-floating-actions {
+        .speed-dial-container {
           position: fixed;
-          bottom: 80px;
-          right: 20px;
+          bottom: 28px;
+          right: 28px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
-          z-index: 9999;
-          align-items: center;
+          align-items: flex-end;
+          z-index: 9998;
+          pointer-events: auto;
         }
-        .desktop-floating-btn {
-          width: 46px;
-          height: 46px;
+        .master-speed-dial-btn {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #1e3a5f 0%, #378ADD 100%);
+          color: #FFFFFF;
+          cursor: pointer;
+          box-shadow: 0 6px 20px rgba(30, 58, 95, 0.35);
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          position: relative;
+          border: 1.5px solid rgba(255, 255, 255, 0.4);
+        }
+        .master-speed-dial-btn:hover {
+          transform: scale(1.08) translateY(-2px);
+          box-shadow: 0 10px 28px rgba(30, 58, 95, 0.45);
+        }
+        .master-speed-dial-btn.speed-dial-active {
+          background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
+          box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+        @keyframes speedDialPulseGlow {
+          0% {
+            box-shadow: 0 0 0 0 rgba(55, 138, 221, 0.65), 0 6px 20px rgba(30, 58, 95, 0.35);
+          }
+          70% {
+            box-shadow: 0 0 0 14px rgba(55, 138, 221, 0), 0 6px 20px rgba(30, 58, 95, 0.35);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(55, 138, 221, 0), 0 6px 20px rgba(30, 58, 95, 0.35);
+          }
+        }
+        .speed-dial-pulse {
+          animation: speedDialPulseGlow 2.4s infinite;
+        }
+        .speed-dial-menu {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-bottom: 14px;
+          align-items: flex-end;
+          animation: speedDialExpand 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes speedDialExpand {
+          from {
+            opacity: 0;
+            transform: translateY(16px) scale(0.92);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        .speed-dial-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .speed-dial-item:hover {
+          transform: translateX(-4px);
+        }
+        .speed-dial-label {
+          background: #071A2F;
+          color: #FFFFFF;
+          padding: 6px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .speed-dial-btn {
+          width: 44px;
+          height: 44px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           color: #FFFFFF;
-          cursor: pointer;
-          box-shadow: 0 4px 14px rgba(0,0,0,0.18);
-          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-          position: relative;
-          text-decoration: none;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          flex-shrink: 0;
+          transition: transform 0.2s ease;
         }
-        .desktop-floating-btn:hover {
-          transform: scale(1.1) translateY(-2px);
-          box-shadow: 0 8px 22px rgba(0,0,0,0.28);
+        .speed-dial-item:hover .speed-dial-btn {
+          transform: scale(1.1);
         }
-        .desktop-floating-btn.ai-floating-btn {
-          width: 50px;
-          height: 50px;
-        }
-        @keyframes aiPulseGlow {
-          0% {
-            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.65), 0 4px 16px rgba(37, 99, 235, 0.4);
-          }
-          70% {
-            box-shadow: 0 0 0 13px rgba(37, 99, 235, 0), 0 4px 16px rgba(37, 99, 235, 0.4);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0), 0 4px 16px rgba(37, 99, 235, 0.4);
-          }
-        }
-        .ai-pulse-btn {
-          animation: aiPulseGlow 2.4s infinite;
-        }
-        .desktop-floating-btn .floating-tooltip {
+        .master-speed-dial-btn .floating-tooltip {
           position: absolute;
-          right: 58px;
+          right: 68px;
           top: 50%;
           transform: translateY(-50%) translateX(6px);
           background: #071A2F;
@@ -7383,7 +7389,7 @@ export default function WebCatalog() {
           box-shadow: 0 4px 14px rgba(0,0,0,0.2);
           border: 1px solid rgba(255,255,255,0.1);
         }
-        .desktop-floating-btn .floating-tooltip::after {
+        .master-speed-dial-btn .floating-tooltip::after {
           content: '';
           position: absolute;
           right: -5px;
@@ -7393,7 +7399,7 @@ export default function WebCatalog() {
           border-style: solid;
           border-color: transparent transparent transparent #071A2F;
         }
-        .desktop-floating-btn:hover .floating-tooltip {
+        .master-speed-dial-btn:hover .floating-tooltip {
           opacity: 1;
           visibility: visible;
           transform: translateY(-50%) translateX(0);
@@ -8184,20 +8190,18 @@ export default function WebCatalog() {
             display: none !important;
           }
           
-          /* Floating actions position adjustment near bottom on mobile (no bottom bar) */
-          .desktop-floating-actions {
-            bottom: 24px !important;
+          /* Speed dial position adjustment on mobile */
+          .speed-dial-container {
+            bottom: 20px !important;
             right: 16px !important;
-            gap: 8px !important;
-            display: flex !important;
           }
-          .desktop-floating-btn {
-            width: 44px !important;
-            height: 44px !important;
+          .master-speed-dial-btn {
+            width: 52px !important;
+            height: 52px !important;
           }
           .ai-invite-bubble {
             right: 16px !important;
-            bottom: 230px !important;
+            bottom: 90px !important;
             max-width: calc(100vw - 32px) !important;
           }
           
@@ -8514,129 +8518,179 @@ export default function WebCatalog() {
         </div>
       )}
 
-      {/* Fixed Floating Circular Actions (AI TƯ VẤN, ZALO, FACEBOOK, TIKTOK, HOTLINE, GIỎ HÀNG) */}
-      <div className="desktop-floating-actions">
+      {/* ── FLOATING SPEED DIAL (UNIFIED CONTACT / AI / ZALO / CART) ── */}
+      {/* Backdrop overlay when speed dial is open */}
+      {showContactMenu && (
+        <div
+          onClick={() => setShowContactMenu(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(13, 31, 51, 0.45)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9990,
+            transition: 'opacity 0.25s ease',
+          }}
+        />
+      )}
+
+      {/* Speed Dial Container */}
+      <div className="speed-dial-container">
         
-        {/* 1. TRỢ LÝ TƯ VẤN AI (Ô TRÒN NỔI BẬT NHẤT) */}
-        <div 
-          onClick={() => {
-            setShowFloatingChat(prev => !prev);
-            setShowAiInvite(false);
-          }}
-          className={`desktop-floating-btn ai-floating-btn ${!showFloatingChat ? 'ai-pulse-btn' : ''}`}
-          style={{ 
-            background: showFloatingChat ? '#EF4444' : 'linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)', 
-            border: '1.5px solid rgba(255,255,255,0.4)',
-            position: 'relative'
-          }}
-          title="Trợ lý tư vấn AI 24/7"
-          aria-label="Trợ lý tư vấn AI"
+        {/* Expanded Menu Actions */}
+        {showContactMenu && (
+          <div className="speed-dial-menu">
+            {/* 1. Trợ Lý AI */}
+            <div
+              className="speed-dial-item"
+              onClick={() => {
+                setShowFloatingChat(true);
+                setShowAiInvite(false);
+                setShowContactMenu(false);
+              }}
+            >
+              <span className="speed-dial-label">🤖 Trợ lý tư vấn AI 24/7</span>
+              <div className="speed-dial-btn" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="6" width="18" height="14" rx="5" fill="#FFFFFF" fillOpacity="0.95" />
+                  <circle cx="8.5" cy="12" r="1.8" fill="#2563EB" />
+                  <circle cx="15.5" cy="12" r="1.8" fill="#2563EB" />
+                  <path d="M9.5 16C10.2 16.8 11.1 17.2 12 17.2C12.9 17.2 13.8 16.8 14.5 16" stroke="#2563EB" strokeWidth="1.6" strokeLinecap="round" />
+                  <line x1="12" y1="2" x2="12" y2="6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="12" cy="2" r="1.5" fill="#38BDF8" />
+                </svg>
+              </div>
+            </div>
+
+            {/* 2. Zalo */}
+            <div
+              className="speed-dial-item"
+              onClick={() => {
+                window.open('https://zalo.me/0984273806', '_blank');
+                setShowContactMenu(false);
+              }}
+            >
+              <span className="speed-dial-label">💬 Nhắn tin Zalo (0984 273 806)</span>
+              <div className="speed-dial-btn" style={{ background: '#0068FF' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2C6.48 2 2 5.58 2 10C2 12.3 3.16 14.36 5 15.78V19.5C5 19.78 5.22 20 5.5 20C5.62 20 5.74 19.96 5.84 19.88L9.2 17.64C10.1 17.88 11.04 18 12 18C17.52 18 22 14.42 22 10C22 5.58 17.52 2 12 2Z" fill="#FFFFFF"/>
+                  <text x="12" y="13.5" fontSize="8" fontWeight="900" fill="#0068FF" textAnchor="middle" fontFamily="'Inter', sans-serif">Zalo</text>
+                </svg>
+              </div>
+            </div>
+
+            {/* 3. Hotline */}
+            <div
+              className="speed-dial-item"
+              onClick={() => {
+                window.open('tel:0984273806');
+                setShowContactMenu(false);
+              }}
+            >
+              <span className="speed-dial-label">📞 Gọi Hotline 0984 273 806</span>
+              <div className="speed-dial-btn" style={{ background: '#071A2F' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+              </div>
+            </div>
+
+            {/* 4. Giỏ Hàng / Báo Giá */}
+            <div
+              className="speed-dial-item"
+              onClick={() => {
+                setShowCartDrawer(true);
+                setShowContactMenu(false);
+              }}
+            >
+              <span className="speed-dial-label">🛒 Giỏ hàng / Báo giá ({cart.length})</span>
+              <div className="speed-dial-btn" style={{ background: '#0878D9', position: 'relative' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="9" cy="21" r="1"></circle>
+                  <circle cx="20" cy="21" r="1"></circle>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                {cart && cart.length > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -3, right: -3, background: '#E11D48', color: '#FFF',
+                    borderRadius: '50%', width: 16, height: 16, fontSize: 9.5, fontWeight: 900,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {cart.length}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* 5. Fanpage Facebook */}
+            <div
+              className="speed-dial-item"
+              onClick={() => {
+                window.open('https://www.facebook.com/profile.php?id=61578469481516', '_blank');
+                setShowContactMenu(false);
+              }}
+            >
+              <span className="speed-dial-label">🌐 Fanpage Facebook</span>
+              <div className="speed-dial-btn" style={{ background: '#1877F2' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </div>
+            </div>
+
+            {/* 6. TikTok */}
+            <div
+              className="speed-dial-item"
+              onClick={() => {
+                window.open('https://www.tiktok.com/@maybomnuocnhapkhautt', '_blank');
+                setShowContactMenu(false);
+              }}
+            >
+              <span className="speed-dial-label">🎵 Kênh TikTok T&T</span>
+              <div className="speed-dial-btn" style={{ background: '#000000' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF">
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.85.12V9.32a6.34 6.34 0 0 0-.85-.06A6.33 6.33 0 0 0 3.1 15.6a6.34 6.34 0 0 0 10.84 4.47 6.28 6.28 0 0 0 1.95-4.52V8.04a8.17 8.17 0 0 0 4.7 1.48V6.69h-1z"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Master Floating Trigger Button */}
+        <div
+          onClick={() => setShowContactMenu(prev => !prev)}
+          className={`master-speed-dial-btn ${!showContactMenu ? 'speed-dial-pulse' : 'speed-dial-active'}`}
+          title={showContactMenu ? 'Đóng liên hệ' : 'Liên hệ & Tư vấn nhanh'}
+          aria-label="Liên hệ & Tư vấn"
         >
-          {showFloatingChat ? (
-            <span style={{ fontSize: 20, fontWeight: 900, color: '#FFF' }}>✕</span>
+          {showContactMenu ? (
+            <span style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', transform: 'rotate(90deg)', transition: 'transform 0.25s ease' }}>✕</span>
           ) : (
             <>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="6" width="18" height="14" rx="5" fill="#FFFFFF" fillOpacity="0.95" />
-                <circle cx="8.5" cy="12" r="1.8" fill="#2563EB" />
-                <circle cx="15.5" cy="12" r="1.8" fill="#2563EB" />
-                <path d="M9.5 16C10.2 16.8 11.1 17.2 12 17.2C12.9 17.2 13.8 16.8 14.5 16" stroke="#2563EB" strokeWidth="1.6" strokeLinecap="round" />
-                <line x1="12" y1="2" x2="12" y2="6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="12" cy="2" r="1.5" fill="#38BDF8" />
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
               </svg>
-              {/* Online Green Pulsing Dot */}
+              {/* Online Green Pulsing Beacon */}
               <span style={{
-                position: 'absolute', top: -2, right: -2, width: 12, height: 12,
+                position: 'absolute', top: 2, right: 2, width: 12, height: 12,
                 background: '#10B981', border: '2px solid #FFFFFF', borderRadius: '50%',
                 boxShadow: '0 0 8px #10B981'
               }} />
+              {/* Cart Count Badge on master FAB when closed */}
+              {cart && cart.length > 0 && (
+                <span style={{
+                  position: 'absolute', bottom: -2, right: -2, background: '#E11D48', color: '#FFF',
+                  borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 900,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                }}>
+                  {cart.length}
+                </span>
+              )}
             </>
           )}
           <span className="floating-tooltip">
-            {showFloatingChat ? 'Đóng trợ lý AI' : '🤖 Trợ lý tư vấn AI (24/7)'}
+            {showContactMenu ? 'Đóng menu' : '💬 Liên hệ & Tư vấn'}
           </span>
-        </div>
-
-        {/* 2. ZALO */}
-        <div 
-          onClick={() => window.open('https://zalo.me/0984273806', '_blank')}
-          className="desktop-floating-btn"
-          style={{ background: '#0068FF', border: '1px solid rgba(255,255,255,0.15)' }}
-          title="Nhắn Zalo Báo Giá (0984 273 806)"
-          aria-label="Nhắn Zalo"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2C6.48 2 2 5.58 2 10C2 12.3 3.16 14.36 5 15.78V19.5C5 19.78 5.22 20 5.5 20C5.62 20 5.74 19.96 5.84 19.88L9.2 17.64C10.1 17.88 11.04 18 12 18C17.52 18 22 14.42 22 10C22 5.58 17.52 2 12 2Z" fill="#FFFFFF"/>
-            <text x="12" y="13.5" fontSize="8" fontWeight="900" fill="#0068FF" textAnchor="middle" fontFamily="'Inter', sans-serif">Zalo</text>
-          </svg>
-          <span className="floating-tooltip">💬 Nhắn tin Zalo</span>
-        </div>
-
-        {/* 3. FACEBOOK FANPAGE */}
-        <div 
-          onClick={() => window.open('https://www.facebook.com/profile.php?id=61578469481516', '_blank')}
-          className="desktop-floating-btn"
-          style={{ background: '#1877F2', border: '1px solid rgba(255,255,255,0.15)' }}
-          title="Facebook Fanpage T&T Pump"
-          aria-label="Facebook Fanpage"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF">
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-          </svg>
-          <span className="floating-tooltip">🌐 Fanpage Facebook</span>
-        </div>
-
-        {/* 4. TIKTOK */}
-        <div 
-          onClick={() => window.open('https://www.tiktok.com/@maybomnuocnhapkhautt', '_blank')}
-          className="desktop-floating-btn"
-          style={{ background: '#000000', border: '1px solid rgba(255,255,255,0.2)' }}
-          title="Kênh TikTok Máy Bơm T&T"
-          aria-label="Kênh TikTok"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF">
-            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.85.12V9.32a6.34 6.34 0 0 0-.85-.06A6.33 6.33 0 0 0 3.1 15.6a6.34 6.34 0 0 0 10.84 4.47 6.28 6.28 0 0 0 1.95-4.52V8.04a8.17 8.17 0 0 0 4.7 1.48V6.69h-1z"/>
-          </svg>
-          <span className="floating-tooltip">🎵 Kênh TikTok T&T</span>
-        </div>
-
-        {/* 5. GỌI HOTLINE */}
-        <div 
-          onClick={() => window.open('tel:0984273806')}
-          className="desktop-floating-btn"
-          style={{ background: '#071A2F', border: '1px solid rgba(255,255,255,0.15)' }}
-          title="Gọi Hotline 0984 273 806"
-          aria-label="Gọi Hotline"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-          </svg>
-          <span className="floating-tooltip">📞 Hotline: 0984 273 806</span>
-        </div>
-
-        {/* 6. GIỎ HÀNG / BÁO GIÁ */}
-        <div 
-          onClick={() => setShowCartDrawer(true)}
-          className="desktop-floating-btn"
-          style={{ background: '#0878D9', border: '1px solid rgba(255,255,255,0.15)', position: 'relative' }}
-          title="Giỏ hàng / Yêu cầu báo giá"
-          aria-label="Giỏ hàng"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="9" cy="21" r="1"></circle>
-            <circle cx="20" cy="21" r="1"></circle>
-            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-          </svg>
-          {cart && cart.length > 0 && (
-            <span style={{
-              position: 'absolute', top: -4, right: -4, background: '#E11D48', color: '#FFF',
-              borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 900,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
-            }}>
-              {cart.length}
-            </span>
-          )}
-          <span className="floating-tooltip">🛒 Giỏ hàng ({cart.length})</span>
         </div>
 
       </div>

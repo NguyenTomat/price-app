@@ -605,6 +605,9 @@ export default function WebCatalog() {
   const heroTouchEndX = useRef(0)
   const detailTouchStartX = useRef(0)
   const detailTouchStartY = useRef(0)
+  const detailIsHorizontalDrag = useRef(false)
+  const [detailTranslateX, setDetailTranslateX] = useState(0)
+  const [isDraggingDetail, setIsDraggingDetail] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1616,20 +1619,18 @@ export default function WebCatalog() {
       const prevMode = currentViewModeRef.current
 
       if (!isExplicitHome && queryProductId) {
-        currentViewModeRef.current = 'product-detail'
         setDetailProductId(queryProductId)
-        setViewMode('product-detail')
+        setDetailTranslateX(0)
         setActiveImageIndex(0)
-        window.scrollTo({ top: 0, behavior: 'instant' })
       } else if (!isExplicitHome && hash.startsWith('#web/product/')) {
-        currentViewModeRef.current = 'product-detail'
         const id = hash.replace('#web/product/', '').split('?')[0]
         setDetailProductId(id)
-        setViewMode('product-detail')
+        setDetailTranslateX(0)
         setActiveImageIndex(0)
-        window.scrollTo({ top: 0, behavior: 'instant' })
       } else {
-        const wasInDetail = prevMode === 'product-detail' || isReturningFromDetail.current
+        const wasInDetail = !!detailProductId || isReturningFromDetail.current
+        setDetailProductId('')
+        setDetailTranslateX(0)
         let newMode = 'home'
 
         if (!isExplicitHome && (h === '#web/catalog' || h === '#products' || h === '#web/products' || h.startsWith('#category/') || h.startsWith('#cat/') || queryCat || querySearch || queryBrand)) {
@@ -1670,7 +1671,7 @@ export default function WebCatalog() {
           newMode = 'calculator'
           setViewMode('calculator')
           setActiveTab('calculator')
-        } else if (wasInDetail && lastViewModeRef.current === 'catalog') {
+        } else if (lastViewModeRef.current === 'catalog') {
           newMode = 'catalog'
           setViewMode('catalog')
           setActiveTab('products')
@@ -1683,17 +1684,12 @@ export default function WebCatalog() {
           setActiveTab('home')
         }
         currentViewModeRef.current = newMode
-        setDetailProductId('')
 
         if (wasInDetail) {
           isReturningFromDetail.current = false
           if (lastCategoryRef.current && newMode === 'catalog' && !queryCat) {
             setSelectedCategory(lastCategoryRef.current)
           }
-          const targetScroll = lastScrollPos.current || 0
-          window.scrollTo({ top: targetScroll, behavior: 'instant' })
-        } else {
-          window.scrollTo({ top: 0, behavior: 'instant' })
         }
       }
     }
@@ -2398,10 +2394,8 @@ export default function WebCatalog() {
       lastScrollPos.current = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0
     }
     setDetailProductId(id)
-    setViewMode('product-detail')
-    currentViewModeRef.current = 'product-detail'
+    setDetailTranslateX(0)
     setActiveImageIndex(0)
-    window.scrollTo({ top: 0, behavior: 'instant' })
     if (window.location.hash !== `#web/product/${id}`) {
       window.location.hash = `#web/product/${id}`
     }
@@ -2410,13 +2404,16 @@ export default function WebCatalog() {
   const goBackToCatalog = () => {
     isReturningFromDetail.current = true
     setDetailProductId('')
+    setDetailTranslateX(0)
     const prevMode = lastViewModeRef.current || 'catalog'
     const targetHash = lastNonDetailPageHash.current || (prevMode === 'home' ? '#web' : '#web/catalog')
 
-    // Instant memory switch - zero delay and zero white screen flash
-    setViewMode(prevMode)
-    setActiveTab(prevMode === 'home' ? 'home' : 'products')
-    currentViewModeRef.current = prevMode
+    // Instant memory switch - background view is already rendered
+    if (viewMode !== prevMode) {
+      setViewMode(prevMode)
+      setActiveTab(prevMode === 'home' ? 'home' : 'products')
+      currentViewModeRef.current = prevMode
+    }
     if (lastCategoryRef.current && prevMode === 'catalog') {
       setSelectedCategory(lastCategoryRef.current)
     }
@@ -2424,11 +2421,7 @@ export default function WebCatalog() {
     if (window.location.hash !== targetHash) {
       window.location.hash = targetHash
     }
-
-    setTimeout(() => {
-      window.scrollTo({ top: lastScrollPos.current || 0, behavior: 'instant' })
-      isReturningFromDetail.current = false
-    }, 15)
+    isReturningFromDetail.current = false
   }
 
   const handleNavHome = () => {
@@ -7047,92 +7040,131 @@ export default function WebCatalog() {
         </div>
       )}
 
-      {/* TRANG CHI TIẾT SẢN PHẨM */}
-      {viewMode === 'product-detail' && (
-        loading && !currentProduct ? (
-          <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-            <span className="spinner" style={{ width: 40, height: 40, borderWidth: 3, borderColor: '#0878D9' }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#64748B' }}>Đang tải thông tin sản phẩm...</span>
-          </div>
-        ) : !currentProduct ? (
-          <div style={{ maxWidth: 640, margin: '60px auto 100px', textAlign: 'center', padding: '48px 24px', background: '#FFFFFF', borderRadius: 16, border: '1px solid #E2E8F0', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Package size={48} color="#94A3B8" /></div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#071A2F', marginBottom: 10 }}>Không tìm thấy sản phẩm</h2>
-            <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, marginBottom: 28, maxWidth: 460, margin: '0 auto 28px' }}>
-              Mã sản phẩm này có thể không tồn tại hoặc đã được cập nhật. Bạn vui lòng quay lại trang chủ hoặc duyệt danh mục sản phẩm.
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={goBackToCatalog}
-                style={{
-                  background: '#0878D9', color: '#FFFFFF', border: 'none', padding: '12px 24px',
-                  borderRadius: 8, fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(8,120,217,0.25)'
-                }}
-              >
-                ← VỀ TRANG CHỦ &amp; BẢNG GIÁ
-              </button>
-              <button
-                onClick={handleNavProducts}
-                style={{
-                  background: '#F0F9FF', color: '#0878D9', border: '1px solid #BAE6FD', padding: '12px 24px',
-                  borderRadius: 8, fontSize: 13.5, fontWeight: 700, cursor: 'pointer'
-                }}
-              >
-                XEM DANH MỤC SẢN PHẨM →
-              </button>
-            </div>
-          </div>
-        ) : (() => {
-          const brandInfo = (currentProduct.webBrand && BRAND_METADATA[currentProduct.webBrand]) || BRAND_METADATA['UPTI PUMP'] || {};
-          const specInfo = getProductSpecInfo(currentProduct);
-          const pow = specInfo.pow;
-          const volt = specInfo.volt;
-          const hRange = specInfo.hRange;
-          const qRange = specInfo.qRange;
+      {/* TRANG CHI TIẾT SẢN PHẨM (NATIVE SLIDE-IN OVERLAY LAYER) */}
+      {!!detailProductId && (
+        <div
+          className="product-detail-overlay-layer"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 12000,
+            background: '#F5F7FA',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorY: 'contain',
+            transition: isDraggingDetail ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+            transform: detailTranslateX > 0 ? `translateX(${detailTranslateX}px)` : 'translateX(0)',
+            boxShadow: detailTranslateX > 0 ? '-10px 0 30px rgba(0,0,0,0.3)' : 'none'
+          }}
+          onTouchStart={(e) => {
+            if (!e.targetTouches || !e.targetTouches[0]) return;
+            detailTouchStartX.current = e.targetTouches[0].clientX;
+            detailTouchStartY.current = e.targetTouches[0].clientY;
+            detailIsHorizontalDrag.current = false;
+            setIsDraggingDetail(true);
+          }}
+          onTouchMove={(e) => {
+            if (!detailTouchStartX.current || !e.targetTouches || !e.targetTouches[0]) return;
+            const currentX = e.targetTouches[0].clientX;
+            const currentY = e.targetTouches[0].clientY;
+            const diffX = currentX - detailTouchStartX.current;
+            const diffY = Math.abs(currentY - detailTouchStartY.current);
 
-          return (
-            <div
-              className="product-detail-page"
-              onTouchStart={(e) => {
-                detailTouchStartX.current = e.targetTouches[0].clientX;
-                detailTouchStartY.current = e.targetTouches[0].clientY;
-              }}
-              onTouchEnd={(e) => {
-                if (!detailTouchStartX.current || !e.changedTouches[0]) return;
-                const endX = e.changedTouches[0].clientX;
-                const endY = e.changedTouches[0].clientY;
-                const diffX = endX - detailTouchStartX.current;
-                const diffY = Math.abs(endY - detailTouchStartY.current);
+            // Check if user is swiping horizontally from the left side
+            if (!detailIsHorizontalDrag.current && diffX > 10 && diffX > diffY * 1.3) {
+              if (detailTouchStartX.current < (window.innerWidth ? window.innerWidth * 0.55 : 200)) {
+                detailIsHorizontalDrag.current = true;
+              }
+            }
 
-                // Swipe right: touch starts in the left half of the screen, swipes right by > 45px, predominantly horizontal
-                const isLeftHalf = detailTouchStartX.current < (window.innerWidth ? window.innerWidth * 0.55 : 200);
-                if (isLeftHalf && diffX > 45 && diffY < Math.max(diffX * 0.85, 60)) {
+            if (detailIsHorizontalDrag.current && diffX > 0) {
+              setDetailTranslateX(diffX);
+            }
+          }}
+          onTouchEnd={() => {
+            setIsDraggingDetail(false);
+            if (detailIsHorizontalDrag.current) {
+              if (detailTranslateX > 55) {
+                // Animate dismiss
+                setDetailTranslateX(window.innerWidth || 400);
+                setTimeout(() => {
                   goBackToCatalog();
-                }
-                detailTouchStartX.current = 0;
-                detailTouchStartY.current = 0;
-              }}
-            >
-              <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                  setDetailTranslateX(0);
+                }, 140);
+              } else {
+                setDetailTranslateX(0);
+              }
+            } else {
+              setDetailTranslateX(0);
+            }
+            detailTouchStartX.current = 0;
+            detailTouchStartY.current = 0;
+            detailIsHorizontalDrag.current = false;
+          }}
+        >
+          {loading && !currentProduct ? (
+            <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+              <span className="spinner" style={{ width: 40, height: 40, borderWidth: 3, borderColor: '#0878D9' }} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#64748B' }}>Đang tải thông tin sản phẩm...</span>
+            </div>
+          ) : !currentProduct ? (
+            <div style={{ maxWidth: 640, margin: '60px auto 100px', textAlign: 'center', padding: '48px 24px', background: '#FFFFFF', borderRadius: 16, border: '1px solid #E2E8F0', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Package size={48} color="#94A3B8" /></div>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#071A2F', marginBottom: 10 }}>Không tìm thấy sản phẩm</h2>
+              <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, marginBottom: 28, maxWidth: 460, margin: '0 auto 28px' }}>
+                Mã sản phẩm này có thể không tồn tại hoặc đã được cập nhật. Bạn vui lòng quay lại trang chủ hoặc duyệt danh mục sản phẩm.
+              </p>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <button
                   onClick={goBackToCatalog}
-                  className="product-detail-back-btn"
                   style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#0878D9',
-                    fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '6px 14px',
-                    borderRadius: 8, transition: 'all 0.2s ease'
+                    background: '#0878D9', color: '#FFFFFF', border: 'none', padding: '12px 24px',
+                    borderRadius: 8, fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(8,120,217,0.25)'
                   }}
-                  onMouseOver={e => { e.currentTarget.style.background = '#DBEAFE'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = '#EFF6FF'; }}
                 >
-                  <ChevronLeft size={16} color="#0878D9" strokeWidth={2.5} /> Quay lại
+                  ← VỀ TRANG CHỦ &amp; BẢNG GIÁ
                 </button>
-                <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }} className="desktop-only">
-                  <span style={{ cursor: 'pointer' }} onClick={() => handleNavHome()}>Trang chủ</span> / <span style={{ cursor: 'pointer' }} onClick={goBackToCatalog}>Sản phẩm</span> / <span style={{ fontWeight: 700, color: '#082B4C' }}>{currentProduct.name}</span>
-                </div>
+                <button
+                  onClick={handleNavProducts}
+                  style={{
+                    background: '#F0F9FF', color: '#0878D9', border: '1px solid #BAE6FD', padding: '12px 24px',
+                    borderRadius: 8, fontSize: 13.5, fontWeight: 700, cursor: 'pointer'
+                  }}
+                >
+                  XEM DANH MỤC SẢN PHẨM →
+                </button>
               </div>
+            </div>
+          ) : (() => {
+            const brandInfo = (currentProduct.webBrand && BRAND_METADATA[currentProduct.webBrand]) || BRAND_METADATA['UPTI PUMP'] || {};
+            const specInfo = getProductSpecInfo(currentProduct);
+            const pow = specInfo.pow;
+            const volt = specInfo.volt;
+            const hRange = specInfo.hRange;
+            const qRange = specInfo.qRange;
+
+            return (
+              <div className="product-detail-page">
+                <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                  <button
+                    onClick={goBackToCatalog}
+                    className="product-detail-back-btn"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#0878D9',
+                      fontWeight: 700, fontSize: 13.5, cursor: 'pointer', padding: '7px 16px',
+                      borderRadius: 8, transition: 'all 0.2s ease', boxShadow: '0 2px 6px rgba(8,120,217,0.1)'
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.background = '#DBEAFE'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = '#EFF6FF'; }}
+                  >
+                    <ChevronLeft size={18} color="#0878D9" strokeWidth={2.5} /> Quay lại
+                  </button>
+                  <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }} className="desktop-only">
+                    <span style={{ cursor: 'pointer' }} onClick={() => handleNavHome()}>Trang chủ</span> / <span style={{ cursor: 'pointer' }} onClick={goBackToCatalog}>Sản phẩm</span> / <span style={{ fontWeight: 700, color: '#082B4C' }}>{currentProduct.name}</span>
+                  </div>
+                </div>
 
               {/* PRODUCT HERO (Two Columns: 420px / 1fr on Desktop) */}
               <div className="product-hero-container" style={{ marginBottom: 36 }}>
@@ -7503,7 +7535,9 @@ export default function WebCatalog() {
             })()}
           </div>
         );
-      })())}
+      })()}
+        </div>
+      )}
 
 {/* TRANG CHÌNH SÁCH ĐỔI TRẢ BẢO HÀNH */}
       {viewMode === 'policy' && (

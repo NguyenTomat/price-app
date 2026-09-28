@@ -1568,13 +1568,16 @@ export default function WebCatalog() {
       }
       const hashParams = new URLSearchParams(hashQuery)
 
-      const queryProductId = searchParams.get('product') || hashParams.get('product')
-      let queryCat = searchParams.get('cat') || searchParams.get('category') || hashParams.get('cat') || hashParams.get('category')
-      const querySearch = searchParams.get('q') || searchParams.get('search') || hashParams.get('q') || hashParams.get('search')
-      const queryBrand = searchParams.get('brand') || hashParams.get('brand')
+      const h = hash.split('?')[0]
+      const isExplicitHome = h === '#web' || h === '#home' || h === '' || h === '#'
+
+      const queryProductId = !isExplicitHome ? (hashParams.get('product') || (!hash.startsWith('#web') ? searchParams.get('product') : null)) : null
+      let queryCat = !isExplicitHome ? (hashParams.get('cat') || hashParams.get('category') || (h.startsWith('#web/catalog') ? (searchParams.get('cat') || searchParams.get('category')) : null)) : null
+      const querySearch = !isExplicitHome ? (hashParams.get('q') || hashParams.get('search') || (h.startsWith('#web/catalog') ? (searchParams.get('q') || searchParams.get('search')) : null)) : null
+      const queryBrand = !isExplicitHome ? (hashParams.get('brand') || (h.startsWith('#web/catalog') ? searchParams.get('brand') : null)) : null
 
       // Check direct hash category e.g. #category/hoa-tien or #cat/bien-tan
-      if (!queryCat) {
+      if (!queryCat && !isExplicitHome) {
         if (hash.startsWith('#category/') || hash.startsWith('#cat/')) {
           queryCat = hash.replace(/^#(category|cat)\//, '').split('?')[0]
         }
@@ -1606,13 +1609,13 @@ export default function WebCatalog() {
 
       const prevMode = currentViewModeRef.current
 
-      if (queryProductId) {
+      if (!isExplicitHome && queryProductId) {
         currentViewModeRef.current = 'product-detail'
         setDetailProductId(queryProductId)
         setViewMode('product-detail')
         setActiveImageIndex(0)
         window.scrollTo({ top: 0, behavior: 'instant' })
-      } else if (hash.startsWith('#web/product/')) {
+      } else if (!isExplicitHome && hash.startsWith('#web/product/')) {
         currentViewModeRef.current = 'product-detail'
         const id = hash.replace('#web/product/', '').split('?')[0]
         setDetailProductId(id)
@@ -1621,10 +1624,9 @@ export default function WebCatalog() {
         window.scrollTo({ top: 0, behavior: 'instant' })
       } else {
         const wasInDetail = prevMode === 'product-detail' || isReturningFromDetail.current
-        const h = hash.split('?')[0]
         let newMode = 'home'
 
-        if (h === '#web/catalog' || h === '#products' || h === '#web/products' || h.startsWith('#category/') || h.startsWith('#cat/') || queryCat || querySearch || queryBrand) {
+        if (!isExplicitHome && (h === '#web/catalog' || h === '#products' || h === '#web/products' || h.startsWith('#category/') || h.startsWith('#cat/') || queryCat || querySearch || queryBrand)) {
           newMode = 'catalog'
           setViewMode('catalog')
           setActiveTab('products')
@@ -1638,27 +1640,27 @@ export default function WebCatalog() {
           if (queryBrand) {
             setActiveBrand(queryBrand.toUpperCase())
           }
-        } else if (h === '#web/applications' || h === '#applications') {
+        } else if (!isExplicitHome && (h === '#web/applications' || h === '#applications')) {
           newMode = 'applications'
           setViewMode('applications')
           setActiveTab('applications')
-        } else if (h === '#web/brands' || h === '#brands') {
+        } else if (!isExplicitHome && (h === '#web/brands' || h === '#brands')) {
           newMode = 'brands'
           setViewMode('brands')
           setActiveTab('brands')
-        } else if (h === '#web/intro' || h === '#about' || h === '#web/about') {
+        } else if (!isExplicitHome && (h === '#web/intro' || h === '#about' || h === '#web/about')) {
           newMode = 'intro'
           setViewMode('intro')
           setActiveTab('intro')
-        } else if (h === '#web/contact' || h === '#contact') {
+        } else if (!isExplicitHome && (h === '#web/contact' || h === '#contact')) {
           newMode = 'contact'
           setViewMode('contact')
           setActiveTab('contact')
-        } else if (h === '#web/policy' || h === '#policy') {
+        } else if (!isExplicitHome && (h === '#web/policy' || h === '#policy')) {
           newMode = 'policy'
           setViewMode('policy')
           setActiveTab('policy')
-        } else if (h === '#web/calculator') {
+        } else if (!isExplicitHome && (h === '#web/calculator')) {
           newMode = 'calculator'
           setViewMode('calculator')
           setActiveTab('calculator')
@@ -2337,14 +2339,50 @@ export default function WebCatalog() {
     }
   }
 
+  const navigateToCategory = (catName) => {
+    setSelectedCategory(catName || 'TẤT CẢ')
+    setFilterProductType('ALL')
+    setSearchTerm('')
+    setDebouncedSearchTerm('')
+    setDetailProductId('')
+    setViewMode('catalog')
+    setActiveTab('products')
+    currentViewModeRef.current = 'catalog'
+    lastNonDetailPageHash.current = '#web/catalog'
+    if (window.location.hash !== '#web/catalog') {
+      window.location.hash = '#web/catalog'
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
+
+  const navigateToBrand = (brandName) => {
+    setActiveBrand(brandName || 'ALL')
+    setFilterProductType('ALL')
+    setDetailProductId('')
+    setViewMode('catalog')
+    setActiveTab('products')
+    currentViewModeRef.current = 'catalog'
+    lastNonDetailPageHash.current = '#web/catalog'
+    if (window.location.hash !== '#web/catalog') {
+      window.location.hash = '#web/catalog'
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
+
   const navigateToProduct = (id) => {
     const currentHash = window.location.hash || '#web'
     if (!currentHash.startsWith('#web/product/')) {
       lastNonDetailPageHash.current = currentHash
       lastScrollPos.current = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0
     }
+    setDetailProductId(id)
+    setViewMode('product-detail')
+    currentViewModeRef.current = 'product-detail'
+    setActiveImageIndex(0)
     window.scrollTo({ top: 0, behavior: 'instant' })
-    window.location.hash = `#web/product/${id}`
+    if (window.location.hash !== `#web/product/${id}`) {
+      window.location.hash = `#web/product/${id}`
+    }
   }
 
   const goBackToCatalog = () => {
@@ -2357,39 +2395,90 @@ export default function WebCatalog() {
   }
 
   const handleNavHome = () => {
-    window.location.hash = '#web'
+    setDetailProductId('')
+    setViewMode('home')
+    setActiveTab('home')
     setSelectedCategory('TẤT CẢ')
     setActiveBrand('ALL')
+    setSearchTerm('')
+    setDebouncedSearchTerm('')
+    currentViewModeRef.current = 'home'
+    lastNonDetailPageHash.current = '#web'
+    if (window.location.hash !== '#web') {
+      window.location.hash = '#web'
+    }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavProducts = () => {
-    window.location.hash = '#web/catalog'
+    setDetailProductId('')
+    setViewMode('catalog')
+    setActiveTab('products')
+    currentViewModeRef.current = 'catalog'
+    lastNonDetailPageHash.current = '#web/catalog'
+    if (window.location.hash !== '#web/catalog') {
+      window.location.hash = '#web/catalog'
+    }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavApplications = () => {
-    window.location.hash = '#web/applications'
+    setDetailProductId('')
+    setViewMode('applications')
+    setActiveTab('applications')
+    currentViewModeRef.current = 'applications'
+    lastNonDetailPageHash.current = '#web/applications'
+    if (window.location.hash !== '#web/applications') {
+      window.location.hash = '#web/applications'
+    }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavBrands = () => {
-    window.location.hash = '#web/brands'
+    setDetailProductId('')
+    setViewMode('brands')
+    setActiveTab('brands')
+    currentViewModeRef.current = 'brands'
+    lastNonDetailPageHash.current = '#web/brands'
+    if (window.location.hash !== '#web/brands') {
+      window.location.hash = '#web/brands'
+    }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavIntro = () => {
-    window.location.hash = '#web/intro'
+    setDetailProductId('')
+    setViewMode('intro')
+    setActiveTab('intro')
+    currentViewModeRef.current = 'intro'
+    lastNonDetailPageHash.current = '#web/intro'
+    if (window.location.hash !== '#web/intro') {
+      window.location.hash = '#web/intro'
+    }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavContact = () => {
-    window.location.hash = '#web/contact'
+    setDetailProductId('')
+    setViewMode('contact')
+    setActiveTab('contact')
+    currentViewModeRef.current = 'contact'
+    lastNonDetailPageHash.current = '#web/contact'
+    if (window.location.hash !== '#web/contact') {
+      window.location.hash = '#web/contact'
+    }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavPolicy = () => {
-    window.location.hash = '#web/policy'
+    setDetailProductId('')
+    setViewMode('policy')
+    setActiveTab('policy')
+    currentViewModeRef.current = 'policy'
+    lastNonDetailPageHash.current = '#web/policy'
+    if (window.location.hash !== '#web/policy') {
+      window.location.hash = '#web/policy'
+    }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
@@ -3504,13 +3593,7 @@ export default function WebCatalog() {
                         {/* Thành phần 4: Một nút CTA duy nhất */}
                         <div style={{ marginTop: 6 }}>
                           <button
-                            onClick={() => {
-                              setSelectedCategory(slide.category || 'TẤT CẢ');
-                              setViewMode('catalog');
-                              setActiveTab('products');
-                              window.location.hash = '#web/catalog';
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
+                            onClick={() => navigateToCategory(slide.category || 'TẤT CẢ')}
                             style={{
                               background: 'linear-gradient(135deg, #378ADD 0%, #0284C7 100%)',
                               color: '#FFFFFF',
@@ -3590,13 +3673,7 @@ export default function WebCatalog() {
 
                         {/* 2. Thẻ đóng khung (Card Container) */}
                         <div
-                          onClick={() => {
-                            setSelectedCategory(slide.category || 'TẤT CẢ');
-                            setViewMode('catalog');
-                            setActiveTab('products');
-                            window.location.hash = '#web/catalog';
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
+                          onClick={() => navigateToCategory(slide.category || 'TẤT CẢ')}
                           style={{
                             position: 'relative',
                             zIndex: 2,
@@ -3943,12 +4020,7 @@ export default function WebCatalog() {
                 return (
                   <div
                     key={idx}
-                    onClick={() => {
-                      setSelectedCategory(name);
-                      setViewMode('catalog');
-                      setActiveTab('products');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
+                    onClick={() => navigateToCategory(name)}
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
@@ -4074,13 +4146,7 @@ export default function WebCatalog() {
                 return (
                   <div
                     key={idx}
-                    onClick={() => {
-                      setSelectedCategory(name);
-                      setViewMode('catalog');
-                      setActiveTab('products');
-                      window.location.hash = '#web/catalog';
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
+                    onClick={() => navigateToCategory(name)}
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
@@ -4209,7 +4275,7 @@ export default function WebCatalog() {
             
             <div style={{ textAlign: 'center', marginTop: 24 }}>
               <button
-                onClick={() => { setViewMode('catalog'); setActiveTab('products'); setSelectedCategory('TẤT CẢ'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                onClick={handleNavProducts}
                 style={{
                   background: '#FFFFFF', border: '1px solid #0878D9', color: '#0878D9',
                   padding: '10px 24px', fontSize: 12.5, fontWeight: 800, borderRadius: 6, cursor: 'pointer',
@@ -4252,8 +4318,7 @@ export default function WebCatalog() {
                     </div>
                     <span onClick={() => {
                       const matchedCat = dbCategories.find(c => (typeof c === 'string' ? c : c?.name || '').toLowerCase().includes('tăng áp'));
-                      setSelectedCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
-                      setViewMode('catalog'); setActiveTab('products'); window.scrollTo({ top: 0, behavior: 'smooth' });
+                      navigateToCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
                     }} style={{ fontSize: 12, fontWeight: 800, color: '#0878D9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                       KHÁM PHÁ →
                     </span>
@@ -4274,8 +4339,7 @@ export default function WebCatalog() {
                     </div>
                     <span onClick={() => {
                       const matchedCat = dbCategories.find(c => (typeof c === 'string' ? c : c?.name || '').toLowerCase().includes('trục đứng'));
-                      setSelectedCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
-                      setViewMode('catalog'); setActiveTab('products'); window.scrollTo({ top: 0, behavior: 'smooth' });
+                      navigateToCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
                     }} style={{ fontSize: 12, fontWeight: 800, color: '#0878D9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                       KHÁM PHÁ →
                     </span>
@@ -4296,8 +4360,7 @@ export default function WebCatalog() {
                     </div>
                     <span onClick={() => {
                       const matchedCat = dbCategories.find(c => (typeof c === 'string' ? c : c?.name || '').toLowerCase().includes('công nghiệp'));
-                      setSelectedCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
-                      setViewMode('catalog'); setActiveTab('products'); window.scrollTo({ top: 0, behavior: 'smooth' });
+                      navigateToCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
                     }} style={{ fontSize: 12, fontWeight: 800, color: '#0878D9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                       KHÁM PHÁ →
                     </span>
@@ -4318,8 +4381,7 @@ export default function WebCatalog() {
                     </div>
                     <span onClick={() => {
                       const matchedCat = dbCategories.find(c => (typeof c === 'string' ? c : c?.name || '').toLowerCase().includes('ly tâm'));
-                      setSelectedCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
-                      setViewMode('catalog'); setActiveTab('products'); window.scrollTo({ top: 0, behavior: 'smooth' });
+                      navigateToCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
                     }} style={{ fontSize: 12, fontWeight: 800, color: '#0878D9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                       KHÁM PHÁ →
                     </span>
@@ -4340,8 +4402,7 @@ export default function WebCatalog() {
                     </div>
                     <span onClick={() => {
                       const matchedCat = dbCategories.find(c => (typeof c === 'string' ? c : c?.name || '').toLowerCase().includes('ly tâm'));
-                      setSelectedCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
-                      setViewMode('catalog'); setActiveTab('products'); window.scrollTo({ top: 0, behavior: 'smooth' });
+                      navigateToCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
                     }} style={{ fontSize: 12, fontWeight: 800, color: '#0878D9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                       KHÁM PHÁ →
                     </span>
@@ -4362,8 +4423,7 @@ export default function WebCatalog() {
                     </div>
                     <span onClick={() => {
                       const matchedCat = dbCategories.find(c => (typeof c === 'string' ? c : c?.name || '').toLowerCase().includes('giếng khoan'));
-                      setSelectedCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
-                      setViewMode('catalog'); setActiveTab('products'); window.scrollTo({ top: 0, behavior: 'smooth' });
+                      navigateToCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
                     }} style={{ fontSize: 12, fontWeight: 800, color: '#0878D9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                       KHÁM PHÁ →
                     </span>
@@ -4403,8 +4463,7 @@ export default function WebCatalog() {
                       <span
                         onClick={() => {
                           const matchedCat = dbCategories.find(c => (typeof c === 'string' ? c : c?.name || '').toLowerCase().includes(app.searchKey));
-                          setSelectedCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
-                          setViewMode('catalog'); setActiveTab('products'); window.scrollTo({ top: 0, behavior: 'smooth' });
+                          navigateToCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
                         }}
                         style={{ fontSize: 12, fontWeight: 800, color: '#0878D9', cursor: 'pointer', marginTop: 10, display: 'inline-block' }}
                       >
@@ -4456,12 +4515,7 @@ export default function WebCatalog() {
                   {['SELANNI', 'UPTI PUMP', 'BERATI', 'MASTRA'].map((brandName, idx) => (
                     <div
                       key={idx}
-                      onClick={() => {
-                        setActiveBrand(brandName);
-                        setViewMode('catalog');
-                        setActiveTab('products');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
+                      onClick={() => navigateToBrand(brandName)}
                       className="brand-logo-card"
                       style={{
                         background: '#F8FAFC',
@@ -5377,10 +5431,7 @@ export default function WebCatalog() {
                           catName={catName}
                           catProducts={catProducts}
                           renderProductCard={renderProductCard}
-                          onSelectCategory={(name) => {
-                            setSelectedCategory(name)
-                            window.scrollTo({ top: 0, behavior: 'smooth' })
-                          }}
+                          onSelectCategory={(name) => navigateToCategory(name)}
                         />
                       );
                     })}
@@ -5778,10 +5829,7 @@ export default function WebCatalog() {
                     <button
                       onClick={() => {
                         const matchedCat = dbCategories.find(c => (typeof c === 'string' ? c : c?.name || '').toLowerCase().includes(app.searchKey.toLowerCase()));
-                        setSelectedCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
-                        setViewMode('catalog'); setActiveTab('products');
-                        window.location.hash = '#web/catalog';
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        navigateToCategory(matchedCat ? (typeof matchedCat === 'string' ? matchedCat : matchedCat.name) : 'TẤT CẢ');
                       }}
                       style={{
                         background: '#0878D9', color: '#FFFFFF', border: 'none',
@@ -5913,12 +5961,7 @@ export default function WebCatalog() {
 
                   <div>
                     <button
-                      onClick={() => {
-                        setActiveBrand(brand.name);
-                        setViewMode('catalog'); setActiveTab('products');
-                        window.location.hash = '#web/catalog';
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
+                      onClick={() => navigateToBrand(brand.name)}
                       style={{
                         background: '#0878D9', color: '#FFFFFF', border: 'none',
                         padding: '10px 22px', borderRadius: 6, fontSize: 12.5, fontWeight: 800,
@@ -7283,7 +7326,7 @@ export default function WebCatalog() {
         <div style={{ maxWidth: 1200, margin: '40px auto 80px', padding: '0 24px' }}>
           {/* Breadcrumb */}
           <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: 12, marginBottom: 30, fontSize: 13, fontWeight: 600 }}>
-            <span style={{ color: '#64748b', cursor: 'pointer' }} onClick={() => window.location.hash = '#web'}>TRANG CHỦ</span>
+            <span style={{ color: '#64748b', cursor: 'pointer' }} onClick={handleNavHome}>TRANG CHỦ</span>
             <span style={{ color: '#cbd5e1', margin: '0 8px' }}>/</span>
             <span style={{ color: '#1e293b' }}>CHÍNH SÁCH ĐỔI TRẢ & BẢO HÀNH</span>
           </div>
@@ -7451,10 +7494,7 @@ export default function WebCatalog() {
                   <span
                     onClick={() => {
                       const matched = dbCategories.find(c => (typeof c === 'string' ? c : c?.name || '').toLowerCase().includes(item.toLowerCase()));
-                      setSelectedCategory(matched ? (typeof matched === 'string' ? matched : matched.name) : 'TẤT CẢ');
-                      setViewMode('catalog');
-                      setActiveTab('products');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                      navigateToCategory(matched ? (typeof matched === 'string' ? matched : matched.name) : 'TẤT CẢ');
                     }}
                     style={{ fontSize: 12.5, cursor: 'pointer', color: '#94A3B8', transition: 'all 0.2s' }}
                     onMouseOver={e => { e.currentTarget.style.color = '#38BDF8'; e.currentTarget.style.paddingLeft = '4px'; }}
@@ -7476,8 +7516,8 @@ export default function WebCatalog() {
               {[
                 { label: 'Tư vấn chọn bơm AI', action: () => setShowFloatingChat(true) },
                 { label: 'Báo giá nhanh Zalo', action: () => window.open('https://zalo.me/0984273806?text=Chào%20bạn,%20tôi%20cần%20báo%20giá%20máy%20bơm', '_blank') },
-                { label: 'Chính sách bảo hành', action: () => { setViewMode('policy'); setActiveTab('policy'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
-                { label: 'Chính sách đổi trả', action: () => { setViewMode('policy'); setActiveTab('policy'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+                { label: 'Chính sách bảo hành', action: handleNavPolicy },
+                { label: 'Chính sách đổi trả', action: handleNavPolicy },
                 { label: 'Về Máy Bơm T&T', action: handleNavIntro }
               ].map((item, idx) => (
                 <li key={idx}>

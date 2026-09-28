@@ -1670,6 +1670,13 @@ export default function WebCatalog() {
           newMode = 'calculator'
           setViewMode('calculator')
           setActiveTab('calculator')
+        } else if (wasInDetail && lastViewModeRef.current === 'catalog') {
+          newMode = 'catalog'
+          setViewMode('catalog')
+          setActiveTab('products')
+          if (lastCategoryRef.current) {
+            setSelectedCategory(lastCategoryRef.current)
+          }
         } else {
           newMode = 'home'
           setViewMode('home')
@@ -2935,54 +2942,90 @@ export default function WebCatalog() {
           }
           
           /* Modern Proportional Mobile Hero */
+          .hero-banner-container {
+            margin: 8px auto 0 !important;
+            padding: 0 10px !important;
+          }
           .hero-banner-section {
-            min-height: auto !important;
+            min-height: 0 !important;
+            height: auto !important;
+            max-height: none !important;
             padding: 12px 12px 14px !important;
             border-radius: 14px !important;
-            margin-top: 8px !important;
+            margin-top: 4px !important;
+            display: block !important;
+          }
+          .hero-ambient-light {
+            display: none !important;
           }
           .hero-nav-arrow {
             display: none !important;
           }
           .hero-split-grid {
-            flex-direction: column-reverse !important;
+            display: flex !important;
+            flex-direction: column !important;
             text-align: center !important;
             align-items: center !important;
             justify-content: flex-start !important;
             gap: 8px !important;
+            height: auto !important;
+            width: 100% !important;
           }
-          .hero-split-grid > div {
+          .hero-split-grid > div,
+          .hero-text-col,
+          .hero-stage-col {
+            flex: none !important;
+            width: 100% !important;
             max-width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            align-items: center !important;
+          }
+          .hero-stage-col {
+            order: 1 !important;
+          }
+          .hero-text-col {
+            order: 2 !important;
+            gap: 6px !important;
             align-items: center !important;
           }
           .hero-stage-card {
             max-width: 100% !important;
+            width: 100% !important;
             padding: 0 !important;
             border-radius: 10px !important;
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
+            height: auto !important;
           }
           .hero-stage-img-box {
-            height: 155px !important;
+            height: 140px !important;
+            max-height: 140px !important;
             border-radius: 10px !important;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.35) !important;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3) !important;
+            background: #FFFFFF !important;
+          }
+          .hero-stage-img-box img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
+            padding: 6px !important;
+            box-sizing: border-box !important;
           }
           .hero-tech-ribbon {
             display: none !important;
-          }
-          .hero-text-col {
-            gap: 6px !important;
-            align-items: center !important;
           }
           .hero-eyebrow-row {
             display: none !important;
           }
           .hero-h1-title {
-            font-size: 16px !important;
-            line-height: 1.25 !important;
+            font-size: 15px !important;
+            line-height: 1.3 !important;
             margin: 0 !important;
             text-shadow: 0 2px 8px rgba(0,0,0,0.6) !important;
+            text-align: center !important;
+            font-weight: 800 !important;
           }
           .hero-desc-p {
             display: none !important;
@@ -2991,12 +3034,16 @@ export default function WebCatalog() {
             display: none !important;
           }
           .hero-cta-btn {
-            padding: 7px 16px !important;
+            padding: 7px 18px !important;
             font-size: 12px !important;
+            font-weight: 800 !important;
+            border-radius: 6px !important;
             box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4) !important;
+            margin-top: 2px !important;
           }
           .hero-pagination-dots {
-            margin-top: 2px !important;
+            margin-top: 4px !important;
+            justify-content: center !important;
           }
         }
 
@@ -3549,13 +3596,16 @@ export default function WebCatalog() {
             const chips = getSlideChips(slide);
 
             return (
-              <div style={{
-                maxWidth: 1240,
-                margin: '20px auto 0',
-                padding: '0 20px',
-                boxSizing: 'border-box',
-                width: '100%'
-              }}>
+              <div
+                className="hero-banner-container"
+                style={{
+                  maxWidth: 1240,
+                  margin: '20px auto 0',
+                  padding: '0 20px',
+                  boxSizing: 'border-box',
+                  width: '100%'
+                }}
+              >
                 <section
                   className="hero-banner-section"
                   style={{
@@ -3607,6 +3657,7 @@ export default function WebCatalog() {
 
                   {/* Dramatic Ambient Light behind Showcase */}
                   <div
+                    className="hero-ambient-light"
                     style={{
                       position: 'absolute',
                       right: '8%',
@@ -3772,6 +3823,7 @@ export default function WebCatalog() {
 
                       {/* ── CỘT PHẢI: SÂN KHẤU SHOWCASE THÍCH ỨNG (ADAPTIVE STAGE) ── */}
                       <div
+                        className="hero-stage-col"
                         style={{
                           flex: '0 1 480px',
                           maxWidth: 480,
@@ -7053,8 +7105,9 @@ export default function WebCatalog() {
                 const diffX = endX - detailTouchStartX.current;
                 const diffY = Math.abs(endY - detailTouchStartY.current);
 
-                // Swipe right from left edge (start within 75px of screen edge, swipe > 50px horizontally)
-                if (detailTouchStartX.current < 75 && diffX > 50 && diffY < 80) {
+                // Swipe right: touch starts in the left half of the screen, swipes right by > 45px, predominantly horizontal
+                const isLeftHalf = detailTouchStartX.current < (window.innerWidth ? window.innerWidth * 0.55 : 200);
+                if (isLeftHalf && diffX > 45 && diffY < Math.max(diffX * 0.85, 60)) {
                   goBackToCatalog();
                 }
                 detailTouchStartX.current = 0;

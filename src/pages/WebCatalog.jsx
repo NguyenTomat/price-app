@@ -2914,6 +2914,35 @@ export default function WebCatalog() {
             align-items: center !important;
           }
         }
+
+        /* Hero Banner Navigation Arrows (Show only on hover, smooth glide) */
+        .hero-nav-arrow {
+          opacity: 0 !important;
+          pointer-events: none !important;
+          transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        .hero-nav-arrow.hero-prev {
+          transform: translateY(-50%) translateX(-10px) !important;
+        }
+        .hero-nav-arrow.hero-next {
+          transform: translateY(-50%) translateX(10px) !important;
+        }
+        .hero-banner-section:hover .hero-nav-arrow {
+          opacity: 1 !important;
+          pointer-events: auto !important;
+        }
+        .hero-banner-section:hover .hero-nav-arrow.hero-prev,
+        .hero-banner-section:hover .hero-nav-arrow.hero-next {
+          transform: translateY(-50%) translateX(0) !important;
+        }
+        @media (hover: none), (max-width: 768px) {
+          .hero-nav-arrow {
+            opacity: 0.85 !important;
+            pointer-events: auto !important;
+            transform: translateY(-50%) translateX(0) !important;
+          }
+        }
+
         @keyframes beaconRipple {
           0% { transform: scale(0.8); opacity: 1; }
           100% { transform: scale(2.8); opacity: 0; }
@@ -3445,6 +3474,7 @@ export default function WebCatalog() {
                 width: '100%'
               }}>
                 <section
+                  className="hero-banner-section"
                   style={{
                     position: 'relative',
                     overflow: 'hidden',
@@ -3455,7 +3485,7 @@ export default function WebCatalog() {
                     boxShadow: '0 20px 50px -10px rgba(7, 26, 47, 0.45), 0 0 0 1px rgba(56, 189, 248, 0.25)',
                     boxSizing: 'border-box',
                     background: 'radial-gradient(ellipse at 85% 50%, #0d3460 0%, #081a2f 60%, #05101d 100%)',
-                    padding: '36px clamp(20px, 4vw, 48px)'
+                    padding: '36px clamp(32px, 6.5vw, 84px)'
                   }}
                   onMouseEnter={() => setSliderPaused(true)}
                   onMouseLeave={() => setSliderPaused(false)}
@@ -3491,7 +3521,7 @@ export default function WebCatalog() {
                   {/* Main 2-Column Responsive Layout */}
                   <div
                     style={{
-                      maxWidth: 1120,
+                      maxWidth: 1060,
                       margin: '0 auto',
                       width: '100%',
                       position: 'relative',
@@ -3755,84 +3785,80 @@ export default function WebCatalog() {
                     </div>
                   </div>
 
-                  {/* Left / Right Glassmorphic Nav Arrows */}
+                  {/* Left / Right Glassmorphic Nav Arrows (Visible on Hover) */}
                   <button
+                    className="hero-nav-arrow hero-prev"
                     onClick={() => {
                       setSliderInteracted(true);
                       setCurrentSlide(prev => (prev - 1 + activeSlides.length) % activeSlides.length);
                     }}
                     style={{
                       position: 'absolute',
-                      left: 14,
+                      left: 18,
                       top: '50%',
-                      transform: 'translateY(-50%)',
-                      width: 40,
-                      height: 40,
+                      width: 42,
+                      height: 42,
                       borderRadius: '50%',
-                      background: 'rgba(7, 26, 47, 0.65)',
+                      background: 'rgba(7, 26, 47, 0.75)',
                       backdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(56, 189, 248, 0.35)',
+                      WebkitBackdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(56, 189, 248, 0.4)',
                       color: '#FFFFFF',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
                       zIndex: 5,
-                      transition: 'all 0.25s ease',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                      boxShadow: '0 6px 16px rgba(0,0,0,0.35)'
                     }}
                     onMouseOver={e => {
                       e.currentTarget.style.background = '#0878D9';
                       e.currentTarget.style.borderColor = '#38BDF8';
-                      e.currentTarget.style.transform = 'translateY(-50%) scale(1.08)';
                     }}
                     onMouseOut={e => {
-                      e.currentTarget.style.background = 'rgba(7, 26, 47, 0.65)';
-                      e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.35)';
-                      e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                      e.currentTarget.style.background = 'rgba(7, 26, 47, 0.75)';
+                      e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.4)';
                     }}
                     aria-label="Slide trước"
                   >
-                    <ChevronLeft size={20} strokeWidth={2.5} color="#FFFFFF" />
+                    <ChevronLeft size={22} strokeWidth={2.5} color="#FFFFFF" />
                   </button>
                   <button
+                    className="hero-nav-arrow hero-next"
                     onClick={() => {
                       setSliderInteracted(true);
                       setCurrentSlide(prev => (prev + 1) % activeSlides.length);
                     }}
                     style={{
                       position: 'absolute',
-                      right: 14,
+                      right: 18,
                       top: '50%',
-                      transform: 'translateY(-50%)',
-                      width: 40,
-                      height: 40,
+                      width: 42,
+                      height: 42,
                       borderRadius: '50%',
-                      background: 'rgba(7, 26, 47, 0.65)',
+                      background: 'rgba(7, 26, 47, 0.75)',
                       backdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(56, 189, 248, 0.35)',
+                      WebkitBackdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(56, 189, 248, 0.4)',
                       color: '#FFFFFF',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
                       zIndex: 5,
-                      transition: 'all 0.25s ease',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                      boxShadow: '0 6px 16px rgba(0,0,0,0.35)'
                     }}
                     onMouseOver={e => {
                       e.currentTarget.style.background = '#0878D9';
                       e.currentTarget.style.borderColor = '#38BDF8';
-                      e.currentTarget.style.transform = 'translateY(-50%) scale(1.08)';
                     }}
                     onMouseOut={e => {
-                      e.currentTarget.style.background = 'rgba(7, 26, 47, 0.65)';
-                      e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.35)';
-                      e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                      e.currentTarget.style.background = 'rgba(7, 26, 47, 0.75)';
+                      e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.4)';
                     }}
                     aria-label="Slide tiếp theo"
                   >
-                    <ChevronRight size={20} strokeWidth={2.5} color="#FFFFFF" />
+                    <ChevronRight size={22} strokeWidth={2.5} color="#FFFFFF" />
                   </button>
                 </section>
               </div>

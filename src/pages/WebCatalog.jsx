@@ -1634,6 +1634,30 @@ export default function WebCatalog() {
       } else {
         const wasInDetail = currentViewModeRef.current === 'product-detail' || isReturningFromDetail.current || !!detailProductId
         setDetailProductId('')
+
+        if (wasInDetail) {
+          isReturningFromDetail.current = false
+          const savedScroll = lastScrollPos.current || 0
+          const prevMode = lastViewModeRef.current || 'catalog'
+          const savedCategory = lastCategoryRef.current || 'TẤT CẢ'
+
+          setViewMode(prevMode)
+          setActiveTab(prevMode === 'home' ? 'home' : 'products')
+          currentViewModeRef.current = prevMode
+          if (prevMode === 'catalog') {
+            setSelectedCategory(savedCategory)
+          }
+
+          window.scrollTo({ top: savedScroll, behavior: 'instant' })
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: savedScroll, behavior: 'instant' })
+            setTimeout(() => {
+              window.scrollTo({ top: savedScroll, behavior: 'instant' })
+            }, 60)
+          })
+          return
+        }
+
         let newMode = 'home'
 
         if (!isExplicitHome && (h === '#web/catalog' || h === '#products' || h === '#web/products' || h.startsWith('#category/') || h.startsWith('#cat/') || queryCat || querySearch || queryBrand)) {
@@ -1687,20 +1711,7 @@ export default function WebCatalog() {
           setActiveTab('home')
         }
         currentViewModeRef.current = newMode
-
-        if (wasInDetail) {
-          isReturningFromDetail.current = false
-          if (lastCategoryRef.current && newMode === 'catalog' && !queryCat) {
-            setSelectedCategory(lastCategoryRef.current)
-          }
-          const targetScroll = lastScrollPos.current || 0
-          window.scrollTo({ top: targetScroll, behavior: 'instant' })
-          requestAnimationFrame(() => {
-            window.scrollTo({ top: targetScroll, behavior: 'instant' })
-          })
-        } else {
-          window.scrollTo({ top: 0, behavior: 'instant' })
-        }
+        window.scrollTo({ top: 0, behavior: 'instant' })
       }
     }
 

@@ -594,6 +594,12 @@ export default function WebCatalog() {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
 
+  // Navigation memory & scroll restoration
+  const lastNonDetailPageHash = useRef('#web')
+  const lastScrollPos = useRef(0)
+  const isReturningFromDetail = useRef(false)
+  const currentViewModeRef = useRef('home')
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm)
@@ -1598,20 +1604,28 @@ export default function WebCatalog() {
         }
       }
 
+      const prevMode = currentViewModeRef.current
+
       if (queryProductId) {
+        currentViewModeRef.current = 'product-detail'
         setDetailProductId(queryProductId)
         setViewMode('product-detail')
         setActiveImageIndex(0)
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } else if (hash.startsWith('#web/product/')) {
+        currentViewModeRef.current = 'product-detail'
         const id = hash.replace('#web/product/', '').split('?')[0]
         setDetailProductId(id)
         setViewMode('product-detail')
         setActiveImageIndex(0)
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } else {
+        const wasInDetail = prevMode === 'product-detail' || isReturningFromDetail.current
         const h = hash.split('?')[0]
+        let newMode = 'home'
+
         if (h === '#web/catalog' || h === '#products' || h === '#web/products' || h.startsWith('#category/') || h.startsWith('#cat/') || queryCat || querySearch || queryBrand) {
+          newMode = 'catalog'
           setViewMode('catalog')
           setActiveTab('products')
           if (queryCat) {
@@ -1624,30 +1638,47 @@ export default function WebCatalog() {
           if (queryBrand) {
             setActiveBrand(queryBrand.toUpperCase())
           }
-          window.scrollTo({ top: 0, behavior: 'smooth' })
         } else if (h === '#web/applications' || h === '#applications') {
+          newMode = 'applications'
           setViewMode('applications')
           setActiveTab('applications')
         } else if (h === '#web/brands' || h === '#brands') {
+          newMode = 'brands'
           setViewMode('brands')
           setActiveTab('brands')
         } else if (h === '#web/intro' || h === '#about' || h === '#web/about') {
+          newMode = 'intro'
           setViewMode('intro')
           setActiveTab('intro')
         } else if (h === '#web/contact' || h === '#contact') {
+          newMode = 'contact'
           setViewMode('contact')
           setActiveTab('contact')
         } else if (h === '#web/policy' || h === '#policy') {
+          newMode = 'policy'
           setViewMode('policy')
           setActiveTab('policy')
         } else if (h === '#web/calculator') {
+          newMode = 'calculator'
           setViewMode('calculator')
           setActiveTab('calculator')
         } else {
+          newMode = 'home'
           setViewMode('home')
           setActiveTab('home')
         }
+        currentViewModeRef.current = newMode
         setDetailProductId('')
+
+        if (wasInDetail) {
+          isReturningFromDetail.current = false
+          const targetScroll = lastScrollPos.current || 0
+          setTimeout(() => {
+            window.scrollTo({ top: targetScroll, behavior: 'auto' })
+          }, 30)
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
       }
     }
 
@@ -2309,14 +2340,20 @@ export default function WebCatalog() {
   }
 
   const navigateToProduct = (id) => {
+    const currentHash = window.location.hash || '#web'
+    if (!currentHash.startsWith('#web/product/')) {
+      lastNonDetailPageHash.current = currentHash
+      lastScrollPos.current = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0
+    }
     window.location.hash = `#web/product/${id}`
   }
 
   const goBackToCatalog = () => {
+    isReturningFromDetail.current = true
     if (window.history.length > 1) {
       window.history.back()
     } else {
-      window.location.hash = '#web/catalog'
+      window.location.hash = lastNonDetailPageHash.current || '#web/catalog'
     }
   }
 
@@ -6850,11 +6887,14 @@ export default function WebCatalog() {
                   className="product-detail-back-btn"
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
-                    background: 'transparent', border: 'none', color: '#0878D9',
-                    fontWeight: 700, fontSize: 13.5, cursor: 'pointer', padding: 0
+                    background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#0878D9',
+                    fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '6px 14px',
+                    borderRadius: 8, transition: 'all 0.2s ease'
                   }}
+                  onMouseOver={e => { e.currentTarget.style.background = '#DBEAFE'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = '#EFF6FF'; }}
                 >
-                  ← Quay lại
+                  <ChevronLeft size={16} color="#0878D9" strokeWidth={2.5} /> Quay lại
                 </button>
                 <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }} className="desktop-only">
                   <span style={{ cursor: 'pointer' }} onClick={() => handleNavHome()}>Trang chủ</span> / <span style={{ cursor: 'pointer' }} onClick={goBackToCatalog}>Sản phẩm</span> / <span style={{ fontWeight: 700, color: '#082B4C' }}>{currentProduct.name}</span>
@@ -6863,7 +6903,9 @@ export default function WebCatalog() {
 
               {/* Breadcrumb for Mobile */}
               <div style={{ display: 'none', borderBottom: '1px solid #F1F5F9', paddingBottom: 10, marginBottom: 16, alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }} className="mobile-only-flex">
-                <span style={{ color: '#0878D9', cursor: 'pointer' }} onClick={goBackToCatalog}>← Quay lại</span>
+                <span style={{ color: '#0878D9', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={goBackToCatalog}>
+                  <ChevronLeft size={15} color="#0878D9" strokeWidth={2.5} /> Quay lại
+                </span>
               </div>
 
               {/* PRODUCT HERO (Two Columns: 420px / 1fr on Desktop) */}
@@ -7637,6 +7679,74 @@ export default function WebCatalog() {
           align-items: flex-end;
           z-index: 9998;
           pointer-events: auto;
+          gap: 12px;
+        }
+        .ai-floating-btn {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+          color: #FFFFFF;
+          cursor: pointer;
+          box-shadow: 0 6px 22px rgba(2, 132, 199, 0.45);
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          position: relative;
+          border: 1.5px solid rgba(255, 255, 255, 0.45);
+        }
+        .ai-floating-btn:hover {
+          transform: scale(1.08) translateY(-2px);
+          box-shadow: 0 10px 28px rgba(2, 132, 199, 0.6);
+        }
+        @keyframes aiPulseGlow {
+          0% {
+            box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7), 0 6px 22px rgba(2, 132, 199, 0.45);
+          }
+          70% {
+            box-shadow: 0 0 0 14px rgba(56, 189, 248, 0), 0 6px 22px rgba(2, 132, 199, 0.45);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(56, 189, 248, 0), 0 6px 22px rgba(2, 132, 199, 0.45);
+          }
+        }
+        .ai-floating-pulse {
+          animation: aiPulseGlow 2.5s infinite;
+        }
+        .ai-floating-btn .floating-tooltip {
+          position: absolute;
+          right: 68px;
+          top: 50%;
+          transform: translateY(-50%) translateX(6px);
+          background: #071A2F;
+          color: #FFFFFF;
+          padding: 6px 12px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
+          pointer-events: none;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+          border: 1px solid rgba(255,255,255,0.1);
+        }
+        .ai-floating-btn .floating-tooltip::after {
+          content: '';
+          position: absolute;
+          right: -5px;
+          top: 50%;
+          transform: translateY(-50%);
+          border-width: 5px 0 5px 5px;
+          border-style: solid;
+          border-color: transparent transparent transparent #071A2F;
+        }
+        .ai-floating-btn:hover .floating-tooltip {
+          opacity: 1;
+          visibility: visible;
+          transform: translateY(-50%) translateX(0);
         }
         .master-speed-dial-btn {
           width: 56px;
@@ -8922,7 +9032,7 @@ export default function WebCatalog() {
         </div>
       )}
 
-      {/* ── FLOATING SPEED DIAL (UNIFIED CONTACT / AI / ZALO / CART) ── */}
+      {/* ── FLOATING ACTION BUTTONS: SEPARATE AI ASSISTANT + CONTACT SPEED DIAL ── */}
       {/* Backdrop overlay when speed dial is open */}
       {showContactMenu && (
         <div
@@ -8938,28 +9048,13 @@ export default function WebCatalog() {
         />
       )}
 
-      {/* Speed Dial Container */}
+      {/* Speed Dial & Floating AI Buttons Container */}
       <div className="speed-dial-container">
         
-        {/* Expanded Menu Actions (Only 5 Contact Actions: AI, Zalo, Hotline, FB, TikTok) */}
+        {/* Expanded Contact Menu Actions (Zalo, Hotline, FB, TikTok) */}
         {showContactMenu && (
           <div className="speed-dial-menu">
-            {/* 1. Trợ Lý AI */}
-            <div
-              className="speed-dial-item"
-              onClick={() => {
-                setShowFloatingChat(true);
-                setShowAiInvite(false);
-                setShowContactMenu(false);
-              }}
-            >
-              <span className="speed-dial-label">Trợ lý tư vấn AI 24/7</span>
-              <div className="speed-dial-btn" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)' }}>
-                <Bot size={20} color="#FFFFFF" strokeWidth={2} />
-              </div>
-            </div>
-
-            {/* 2. Zalo */}
+            {/* 1. Zalo */}
             <div
               className="speed-dial-item"
               onClick={() => {
@@ -8973,7 +9068,7 @@ export default function WebCatalog() {
               </div>
             </div>
 
-            {/* 3. Hotline */}
+            {/* 2. Hotline */}
             <div
               className="speed-dial-item"
               onClick={() => {
@@ -8987,7 +9082,7 @@ export default function WebCatalog() {
               </div>
             </div>
 
-            {/* 4. Fanpage Facebook */}
+            {/* 3. Fanpage Facebook */}
             <div
               className="speed-dial-item"
               onClick={() => {
@@ -8997,13 +9092,11 @@ export default function WebCatalog() {
             >
               <span className="speed-dial-label">Fanpage Facebook</span>
               <div className="speed-dial-btn" style={{ background: '#1877F2' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
+                <Facebook size={18} color="#FFFFFF" strokeWidth={2} />
               </div>
             </div>
 
-            {/* 5. TikTok */}
+            {/* 4. TikTok */}
             <div
               className="speed-dial-item"
               onClick={() => {
@@ -9021,20 +9114,43 @@ export default function WebCatalog() {
           </div>
         )}
 
-        {/* Master Floating Trigger Button */}
+        {/* 1. NÚT TRỢ LÝ AI ĐỘC LẬP (ĐỨNG NGOÀI, BẤM 1 CHẠM MỞ NGAY) */}
+        <div
+          onClick={() => {
+            setShowFloatingChat(true);
+            setShowAiInvite(false);
+            setShowContactMenu(false);
+          }}
+          className="ai-floating-btn ai-floating-pulse"
+          title="Trợ lý tư vấn AI 24/7"
+          aria-label="Trợ lý tư vấn AI 24/7"
+        >
+          <Bot size={24} color="#FFFFFF" strokeWidth={2.2} />
+          {/* Badge phát sáng AI */}
+          <span style={{
+            position: 'absolute', top: -3, right: -3, background: '#38BDF8',
+            color: '#071A2F', fontSize: '9px', fontWeight: 900, padding: '1px 5px',
+            borderRadius: 10, boxShadow: '0 0 8px rgba(56,189,248,0.8)', border: '1.5px solid #FFFFFF'
+          }}>
+            AI
+          </span>
+          <span className="floating-tooltip">
+            Trợ lý tư vấn AI 24/7
+          </span>
+        </div>
+
+        {/* 2. NÚT LIÊN HỆ TỔNG ĐÀI / ZALO / HOTLINE (MASTER SPEED DIAL TRIGGER) */}
         <div
           onClick={() => setShowContactMenu(prev => !prev)}
           className={`master-speed-dial-btn ${!showContactMenu ? 'speed-dial-pulse' : 'speed-dial-active'}`}
-          title={showContactMenu ? 'Đóng liên hệ' : 'Liên hệ & Tư vấn nhanh'}
-          aria-label="Liên hệ & Tư vấn"
+          title={showContactMenu ? 'Đóng menu liên hệ' : 'Liên hệ Hotline & Zalo'}
+          aria-label="Liên hệ Hotline & Zalo"
         >
           {showContactMenu ? (
             <X size={22} color="#FFFFFF" strokeWidth={2.5} />
           ) : (
             <>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-              </svg>
+              <Phone size={22} color="#FFFFFF" strokeWidth={2.2} />
               {/* Online Green Pulsing Beacon */}
               <span style={{
                 position: 'absolute', top: 2, right: 2, width: 12, height: 12,
@@ -9044,7 +9160,7 @@ export default function WebCatalog() {
             </>
           )}
           <span className="floating-tooltip">
-            {showContactMenu ? 'Đóng menu' : 'Liên hệ & Tư vấn'}
+            {showContactMenu ? 'Đóng menu' : 'Hotline & Zalo'}
           </span>
         </div>
 

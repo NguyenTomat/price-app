@@ -1897,10 +1897,96 @@ export default function WebCatalog() {
     return () => { isCancelled = true }
   }, [detailProductId])
 
+  // Helper to check if a product belongs to a category
+  const isProductInCategory = useCallback((p, cat) => {
+    if (!cat || cat === 'TẤT CẢ') return true;
+    const normSelected = normalizeSearchStr(cat);
+    const groupNorm = normalizeSearchStr(p.group || '');
+    const nameNorm = normalizeSearchStr(p.name || '');
+    const codeNorm = normalizeSearchStr(p.code || '');
+    const catNorm = normalizeSearchStr(p.category || '');
+
+    // 1. EXACT GROUP / CATEGORY MATCH
+    if (groupNorm === normSelected || catNorm === normSelected || (p.group || '').trim().toLowerCase() === cat.trim().toLowerCase()) {
+      return true;
+    }
+
+    // 2. UMBRELLA CATEGORY MATCH
+    if (normSelected === 'bom truc dung' || normSelected === 'truc dung' || normSelected === 'cdlf') {
+      return (groupNorm.includes('truc dung') || groupNorm.includes('cdlf') || nameNorm.includes('cdlf')) &&
+             !groupNorm.includes('gieng khoan') && !groupNorm.includes('tha chim') && !codeNorm.startsWith('4sl');
+    }
+    if (normSelected === 'bom bien tan' || normSelected === 'bien tan' || normSelected === 'inverter') {
+      return groupNorm.includes('bien tan') || nameNorm.includes('bien tan') || codeNorm.includes('inverter');
+    }
+    if (normSelected === 'bom tang ap' || normSelected === 'tang ap' || normSelected === 'booster') {
+      return (groupNorm.includes('tang ap') || groupNorm.includes('chan khong') || nameNorm.includes('tang ap')) &&
+             !groupNorm.includes('bien tan') && !nameNorm.includes('bien tan');
+    }
+    if (normSelected === 'bom chim nuoc thai' || normSelected === 'bom nuoc thai' || normSelected === 'nuoc thai' || normSelected === 'hut bun') {
+      return (groupNorm.includes('nuoc thai') || groupNorm.includes('ho mong') || groupNorm.includes('krs') || groupNorm.includes('ktz') || groupNorm.includes('bun') || groupNorm.includes('canh cat') || groupNorm.includes('inox co mat bich')) &&
+             !groupNorm.includes('gieng khoan') && !codeNorm.startsWith('4sl');
+    }
+    if (normSelected.includes('thai toan bo inox') || normSelected.includes('thai inox') || normSelected === 'dwmt') {
+      return groupNorm.includes('inox co mat bich') || groupNorm.includes('thai toan bo inox') || codeNorm.startsWith('dwmt') || nameNorm.includes('dwmt');
+    }
+    if (normSelected === 'bom hoa tien' || normSelected === 'hoa tien' || normSelected === 'gieng khoan' || normSelected === 'bom gieng khoan') {
+      return (groupNorm.includes('gieng khoan') || groupNorm.includes('tha chim') || groupNorm.includes('gieng khoi') || groupNorm.includes('hoa tien') || codeNorm.startsWith('4sl') || codeNorm.startsWith('3sl') || codeNorm.startsWith('6sl')) &&
+             !groupNorm.includes('nuoc thai') && !groupNorm.includes('truc dung') && !groupNorm.includes('cdlf');
+    }
+    if (normSelected === 'bom ly tam' || normSelected === 'ly tam' || normSelected === 'truc ngang') {
+      return (groupNorm.includes('ly tam') || groupNorm.includes('dau jet') || groupNorm.includes('bom lon') || groupNorm.includes('bom dia')) &&
+             !groupNorm.includes('truc dung') && !groupNorm.includes('cdlf');
+    }
+    if (normSelected === 'bom cong nghiep' || normSelected === 'cong nghiep') {
+      return groupNorm.includes('cong nghiep') || groupNorm.includes('mat bich');
+    }
+    if (normSelected === 'dan bom' || normSelected === 'cum bom') {
+      return groupNorm.includes('dan bom') || groupNorm.includes('cum bom');
+    }
+
+    // Fallback substring in group or category
+    return groupNorm.includes(normSelected) || catNorm.includes(normSelected);
+  }, []);
+
   // Get categories (custom settings list entered by the user)
   const categories = useMemo(() => {
     return ['TẤT CẢ', ...dbCategories.map(c => typeof c === 'string' ? c : c?.name || '')]
   }, [dbCategories])
+
+  // Category Tree Data with product and sub-brand counts
+  const categoryTreeData = useMemo(() => {
+    const activeProds = products.filter(p => p && p.showOnWeb !== false);
+    const totalCount = activeProds.length;
+
+    const items = dbCategories.map(rawCat => {
+      const catName = typeof rawCat === 'string' ? rawCat : rawCat?.name || '';
+      if (!catName || catName === 'TẤT CẢ') return null;
+
+      const matched = activeProds.filter(p => isProductInCategory(p, catName));
+      const count = matched.length;
+
+      const brandCounts = {};
+      matched.forEach(p => {
+        const b = (p.webBrand || p.brand || '').trim();
+        if (b) {
+          brandCounts[b] = (brandCounts[b] || 0) + 1;
+        }
+      });
+
+      const subBrands = Object.entries(brandCounts)
+        .map(([brand, bCount]) => ({ brand, count: bCount }))
+        .sort((a, b) => b.count - a.count);
+
+      return {
+        name: catName,
+        count,
+        subBrands
+      };
+    }).filter(Boolean);
+
+    return { totalCount, items };
+  }, [dbCategories, products, isProductInCategory]);
 
   // Brand, Category, Search Filtering & Sorting
   const processedProducts = useMemo(() => {
@@ -1975,55 +2061,7 @@ export default function WebCatalog() {
       }
 
       if (selectedCategory && selectedCategory !== 'TẤT CẢ') {
-        const normSelected = normalizeSearchStr(selectedCategory);
-        result = result.filter(p => {
-          const groupNorm = normalizeSearchStr(p.group || '');
-          const nameNorm = normalizeSearchStr(p.name || '');
-          const codeNorm = normalizeSearchStr(p.code || '');
-          const catNorm = normalizeSearchStr(p.category || '');
-
-          // 1. EXACT GROUP / CATEGORY MATCH (Directly respect App Management assignment)
-          if (groupNorm === normSelected || catNorm === normSelected || (p.group || '').trim().toLowerCase() === selectedCategory.trim().toLowerCase()) {
-            return true;
-          }
-
-          // 2. UMBRELLA CATEGORY MATCH (for Google Ads Sitelinks / General Navigation)
-          if (normSelected === 'bom truc dung' || normSelected === 'truc dung' || normSelected === 'cdlf') {
-            return (groupNorm.includes('truc dung') || groupNorm.includes('cdlf') || nameNorm.includes('cdlf')) &&
-                   !groupNorm.includes('gieng khoan') && !groupNorm.includes('tha chim') && !codeNorm.startsWith('4sl');
-          }
-          if (normSelected === 'bom bien tan' || normSelected === 'bien tan' || normSelected === 'inverter') {
-            return groupNorm.includes('bien tan') || nameNorm.includes('bien tan') || codeNorm.includes('inverter');
-          }
-          if (normSelected === 'bom tang ap' || normSelected === 'tang ap' || normSelected === 'booster') {
-            return (groupNorm.includes('tang ap') || groupNorm.includes('chan khong') || nameNorm.includes('tang ap')) &&
-                   !groupNorm.includes('bien tan') && !nameNorm.includes('bien tan');
-          }
-          if (normSelected === 'bom chim nuoc thai' || normSelected === 'bom nuoc thai' || normSelected === 'nuoc thai' || normSelected === 'hut bun') {
-            return (groupNorm.includes('nuoc thai') || groupNorm.includes('ho mong') || groupNorm.includes('krs') || groupNorm.includes('ktz') || groupNorm.includes('bun') || groupNorm.includes('canh cat') || groupNorm.includes('inox co mat bich')) &&
-                   !groupNorm.includes('gieng khoan') && !codeNorm.startsWith('4sl');
-          }
-          if (normSelected.includes('thai toan bo inox') || normSelected.includes('thai inox') || normSelected === 'dwmt') {
-            return groupNorm.includes('inox co mat bich') || groupNorm.includes('thai toan bo inox') || codeNorm.startsWith('dwmt') || nameNorm.includes('dwmt');
-          }
-          if (normSelected === 'bom hoa tien' || normSelected === 'hoa tien' || normSelected === 'gieng khoan' || normSelected === 'bom gieng khoan') {
-            return (groupNorm.includes('gieng khoan') || groupNorm.includes('tha chim') || groupNorm.includes('gieng khoi') || groupNorm.includes('hoa tien') || codeNorm.startsWith('4sl') || codeNorm.startsWith('3sl') || codeNorm.startsWith('6sl')) &&
-                   !groupNorm.includes('nuoc thai') && !groupNorm.includes('truc dung') && !groupNorm.includes('cdlf');
-          }
-          if (normSelected === 'bom ly tam' || normSelected === 'ly tam' || normSelected === 'truc ngang') {
-            return (groupNorm.includes('ly tam') || groupNorm.includes('dau jet') || groupNorm.includes('bom lon') || groupNorm.includes('bom dia')) &&
-                   !groupNorm.includes('truc dung') && !groupNorm.includes('cdlf');
-          }
-          if (normSelected === 'bom cong nghiep' || normSelected === 'cong nghiep') {
-            return groupNorm.includes('cong nghiep') || groupNorm.includes('mat bich');
-          }
-          if (normSelected === 'dan bom' || normSelected === 'cum bom') {
-            return groupNorm.includes('dan bom') || groupNorm.includes('cum bom');
-          }
-
-          // Fallback substring in group or category
-          return groupNorm.includes(normSelected) || catNorm.includes(normSelected);
-        });
+        result = result.filter(p => isProductInCategory(p, selectedCategory));
       }
 
       // Multi-select group filter (sidebar)
@@ -5189,23 +5227,27 @@ export default function WebCatalog() {
 
                   {/* 4. MAIN LAYOUT (Sidebar + Main panel) */}
                   <div style={{ display: 'flex', gap: 28 }} className="catalog-layout-container">
-                    <aside style={{ width: 260, minWidth: 260, flexShrink: 0, position: 'sticky', top: 96, height: 'calc(100vh - 120px)' }} className="desktop-filters filter-panel">
+                    <aside style={{ width: 270, minWidth: 270, flexShrink: 0, position: 'sticky', top: 96, height: 'calc(100vh - 120px)' }} className="desktop-filters filter-panel">
                 <div style={{
-                  background: '#FFFFFF', border: '1px solid #EEF1F4', borderRadius: 6,
+                  background: '#FFFFFF', border: '1px solid #EEF1F4', borderRadius: 8,
                   display: 'flex',
                   flexDirection: 'column',
                   height: '100%',
                   boxSizing: 'border-box',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
                 }}>
                   
-                  {/* BỘ LỌC HEADER */}
-                  <div className="filter-panel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid #EEF1F4', flexShrink: 0 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: '#071A2F', letterSpacing: '0.5px' }}>BỘ LỌC SẢN PHẨM</span>
-                    {searchTerm || selectedCategory !== 'TẤT CẢ' || filterProductType !== 'ALL' ? (
+                  {/* DANH MỤC SẢN PHẨM HEADER */}
+                  <div className="filter-panel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 16px', borderBottom: '1px solid #EEF1F4', flexShrink: 0, background: '#FFFFFF' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 900, color: '#071A2F', letterSpacing: '0.4px', textTransform: 'uppercase' }}>DANH MỤC SẢN PHẨM</span>
+                    </div>
+                    {searchTerm || selectedCategory !== 'TẤT CẢ' || activeBrand !== 'ALL' || filterProductType !== 'ALL' ? (
                       <button
                         onClick={() => {
                           setSelectedCategory('TẤT CẢ');
+                          setActiveBrand('ALL');
                           setFilterProductType('ALL');
                           setSearchTerm('');
                         }}
@@ -5216,151 +5258,237 @@ export default function WebCatalog() {
                     ) : null}
                   </div>
                   
-                  {/* BỘ LỌC CONTENT (SCROLLABLE) */}
+                  {/* DANH MỤC CONTENT (SCROLLABLE) */}
                   <div className="filter-panel-content custom-thin-scrollbar" style={{
-                    padding: '16px 18px',
+                    padding: '12px 12px',
                     overflowY: 'auto',
                     flexGrow: 1,
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 20
+                    gap: 6
                   }}>
-                    {/* SEARCH INPUT */}
-                    <div>
-                      <h3 style={{ fontSize: 11, fontWeight: 850, color: '#071A2F', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Tìm kiếm
-                      </h3>
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          type="text"
-                          value={searchTerm}
-                          onChange={e => setSearchTerm(e.target.value)}
-                          placeholder="Nhập tên sản phẩm, mã..."
+                    
+                    {/* TẤT CẢ SẢN PHẨM ROW */}
+                    {(() => {
+                      const isAllActive = selectedCategory === 'TẤT CẢ' && activeBrand === 'ALL';
+                      return (
+                        <button
+                          onClick={() => {
+                            setSelectedCategory('TẤT CẢ');
+                            setActiveBrand('ALL');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
                           style={{
                             width: '100%',
-                            padding: '10px 12px',
-                            background: '#F5F7FA',
-                            border: '1px solid #EEF1F4',
+                            padding: '9px 10px',
+                            background: isAllActive ? '#EAF3FF' : 'transparent',
+                            color: isAllActive ? '#0878D9' : '#0F2744',
+                            border: 'none',
                             borderRadius: 6,
+                            textAlign: 'left',
+                            fontWeight: isAllActive ? 800 : 700,
                             fontSize: 12.5,
-                            color: '#101828',
-                            outline: 'none',
-                            boxSizing: 'border-box',
-                            fontWeight: 600
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
                           }}
-                        />
-                      </div>
-                    </div>
+                          onMouseOver={e => {
+                            if (!isAllActive) e.currentTarget.style.background = '#F8FAFC';
+                          }}
+                          onMouseOut={e => {
+                            if (!isAllActive) e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          <span style={{ textTransform: 'uppercase' }}>Tất cả sản phẩm</span>
+                          <span style={{
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            color: isAllActive ? '#0878D9' : '#64748B',
+                            background: isAllActive ? 'rgba(8,120,217,0.1)' : '#F1F5F9',
+                            padding: '2px 7px',
+                            borderRadius: 10
+                          }}>
+                            {categoryTreeData.totalCount}
+                          </span>
+                        </button>
+                      );
+                    })()}
 
-                    {/* PHÂN LOẠI DÒNG SẢN PHẨM */}
-                    <div>
-                      <h3 style={{ fontSize: 11, fontWeight: 850, color: '#071A2F', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Phân loại
-                      </h3>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, background: '#F5F7FA', padding: 3, borderRadius: 6, border: '1px solid #EEF1F4' }}>
-                        {[
-                          { id: 'ALL', label: 'Tất cả' },
-                          { id: 'pump', label: 'Máy bơm' },
-                          { id: 'accessory', label: 'Phụ kiện' }
-                        ].map((t) => (
+                    <div style={{ height: 1, background: '#EEF1F4', margin: '4px 0' }} />
+
+                    {/* CATEGORY & SUB-BRAND LIST */}
+                    {categoryTreeData.items.map((cat, idx) => {
+                      const isCatActive = selectedCategory === cat.name && activeBrand === 'ALL';
+                      const isCatExpanded = selectedCategory === cat.name;
+
+                      return (
+                        <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
+                          {/* CATEGORY HEADER */}
                           <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => setFilterProductType(t.id)}
+                            onClick={() => {
+                              setSelectedCategory(cat.name);
+                              setActiveBrand('ALL');
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
                             style={{
-                              padding: '6px 2px',
-                              borderRadius: 4,
+                              width: '100%',
+                              padding: '8px 10px',
+                              background: isCatActive ? '#EAF3FF' : 'transparent',
+                              color: isCatActive ? '#0878D9' : '#0F2744',
                               border: 'none',
-                              fontSize: 11,
-                              fontWeight: filterProductType === t.id ? 800 : 600,
-                              background: filterProductType === t.id ? '#0878D9' : 'transparent',
-                              color: filterProductType === t.id ? '#FFFFFF' : '#64748B',
+                              borderRadius: 6,
+                              textAlign: 'left',
+                              fontWeight: isCatActive ? 850 : 750,
+                              fontSize: 12.5,
                               cursor: 'pointer',
                               transition: 'all 0.15s ease',
-                              textAlign: 'center'
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'flex-start',
+                              gap: 6
+                            }}
+                            onMouseOver={e => {
+                              if (!isCatActive) e.currentTarget.style.background = '#F8FAFC';
+                            }}
+                            onMouseOut={e => {
+                              if (!isCatActive) e.currentTarget.style.background = 'transparent';
                             }}
                           >
-                            {t.label}
+                            <span style={{
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
+                              lineHeight: 1.35,
+                              flex: 1,
+                              textTransform: 'uppercase'
+                            }}>
+                              {cat.name}
+                            </span>
+                            <span style={{
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              color: isCatActive ? '#0878D9' : '#64748B',
+                              background: isCatActive ? 'rgba(8,120,217,0.1)' : '#F1F5F9',
+                              padding: '1px 6px',
+                              borderRadius: 10,
+                              flexShrink: 0,
+                              marginTop: 1
+                            }}>
+                              {cat.count}
+                            </span>
                           </button>
-                        ))}
-                      </div>
-                    </div>
 
-                    {/* LOẠI BƠM (DANH MỤC) */}
-                    <div>
-                      <h3 style={{ fontSize: 11, fontWeight: 850, color: '#071A2F', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Loại máy bơm
-                      </h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {categories.map((cat, idx) => {
-                          const isActive = selectedCategory === cat;
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => {
-                                setSelectedCategory(cat);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                              }}
-                              style={{
-                                width: '100%', padding: '8px 10px',
-                                background: isActive ? '#EAF3FF' : 'transparent',
-                                color: isActive ? '#0878D9' : '#667085',
-                                border: 'none', borderRadius: 6, textAlign: 'left',
-                                fontWeight: isActive ? 800 : 600, fontSize: 12,
-                                cursor: 'pointer', transition: 'all 0.2s',
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                              }}
-                            >
-                              <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '180px' }}>{cat}</span>
-                              <span style={{ fontSize: 10, opacity: isActive ? 1 : 0.5 }}>{isActive ? '●' : '›'}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+                          {/* SUB-BRANDS (IF PRESENT) */}
+                          {cat.subBrands && cat.subBrands.length > 0 && (
+                            <div style={{
+                              paddingLeft: 12,
+                              marginTop: 2,
+                              marginBottom: 4,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 1
+                            }}>
+                              {cat.subBrands.map((sub, subIdx) => {
+                                const isSubActive = selectedCategory === cat.name && activeBrand.toUpperCase() === sub.brand.toUpperCase();
+                                return (
+                                  <button
+                                    key={subIdx}
+                                    onClick={() => {
+                                      setSelectedCategory(cat.name);
+                                      setActiveBrand(sub.brand);
+                                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '4px 8px',
+                                      background: isSubActive ? '#EAF3FF' : 'transparent',
+                                      color: isSubActive ? '#0878D9' : '#475569',
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      textAlign: 'left',
+                                      fontWeight: isSubActive ? 750 : 500,
+                                      fontSize: 12,
+                                      cursor: 'pointer',
+                                      transition: 'all 0.12s ease',
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center'
+                                    }}
+                                    onMouseOver={e => {
+                                      if (!isSubActive) e.currentTarget.style.background = '#F8FAFC';
+                                    }}
+                                    onMouseOut={e => {
+                                      if (!isSubActive) e.currentTarget.style.background = 'transparent';
+                                    }}
+                                  >
+                                    <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
+                                      {sub.brand}
+                                    </span>
+                                    <span style={{
+                                      fontSize: 10.5,
+                                      fontWeight: 600,
+                                      color: isSubActive ? '#0878D9' : '#94A3B8',
+                                      flexShrink: 0,
+                                      marginLeft: 6
+                                    }}>
+                                      ({sub.count})
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
                   </div>
                   
-                  {/* BỘ LỌC FOOTER (PINNED) */}
-                  <div className="filter-panel-footer" style={{
-                    padding: '16px 18px',
-                    borderTop: '1px solid #EEF1F4',
-                    background: '#FFFFFF',
-                    flexShrink: 0
-                  }}>
-                    <button
-                      onClick={() => {
-                        setSelectedCategory('TẤT CẢ');
-                        setFilterProductType('ALL');
-                        setSearchTerm('');
-                      }}
-                      style={{
-                        width: '100%',
-                        background: 'transparent',
-                        border: '1px solid #EEF1F4',
-                        color: '#667085',
-                        borderRadius: 6,
-                        padding: '10px 0',
-                        fontWeight: 800,
-                        fontSize: 11.5,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        letterSpacing: '0.5px',
-                        textTransform: 'uppercase'
-                      }}
-                      onMouseOver={e => {
-                        e.currentTarget.style.borderColor = '#EF4444';
-                        e.currentTarget.style.color = '#EF4444';
-                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.03)';
-                      }}
-                      onMouseOut={e => {
-                        e.currentTarget.style.borderColor = '#EEF1F4';
-                        e.currentTarget.style.color = '#667085';
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      XÓA BỘ LỌC
-                    </button>
-                  </div>
+                  {/* DANH MỤC FOOTER (PINNED) */}
+                  {(selectedCategory !== 'TẤT CẢ' || activeBrand !== 'ALL' || filterProductType !== 'ALL' || searchTerm) && (
+                    <div className="filter-panel-footer" style={{
+                      padding: '12px 14px',
+                      borderTop: '1px solid #EEF1F4',
+                      background: '#FFFFFF',
+                      flexShrink: 0
+                    }}>
+                      <button
+                        onClick={() => {
+                          setSelectedCategory('TẤT CẢ');
+                          setActiveBrand('ALL');
+                          setFilterProductType('ALL');
+                          setSearchTerm('');
+                        }}
+                        style={{
+                          width: '100%',
+                          background: 'transparent',
+                          border: '1px solid #EEF1F4',
+                          color: '#667085',
+                          borderRadius: 6,
+                          padding: '8px 0',
+                          fontWeight: 800,
+                          fontSize: 11.5,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          letterSpacing: '0.5px',
+                          textTransform: 'uppercase'
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.borderColor = '#EF4444';
+                          e.currentTarget.style.color = '#EF4444';
+                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.03)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.borderColor = '#EEF1F4';
+                          e.currentTarget.style.color = '#667085';
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        XÓA BỘ LỌC
+                      </button>
+                    </div>
+                  )}
 
                 </div>
               </aside>
@@ -5752,7 +5880,10 @@ export default function WebCatalog() {
                       onChange={e => setSelectedCategory(e.target.value)}
                       style={{ width: '100%', height: 44, padding: '0 12px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', background: '#FFFFFF', fontSize: 13.5, fontWeight: 600, color: '#102A43' }}
                     >
-                      {categories.map((c, i) => <option key={i} value={c}>{c}</option>)}
+                      <option value="TẤT CẢ">Tất cả sản phẩm ({categoryTreeData.totalCount})</option>
+                      {categoryTreeData.items.map((cat, i) => (
+                        <option key={i} value={cat.name}>{cat.name} ({cat.count})</option>
+                      ))}
                     </select>
                   </div>
 

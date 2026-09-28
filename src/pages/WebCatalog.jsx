@@ -1611,14 +1611,14 @@ export default function WebCatalog() {
         setDetailProductId(queryProductId)
         setViewMode('product-detail')
         setActiveImageIndex(0)
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+        window.scrollTo({ top: 0, behavior: 'instant' })
       } else if (hash.startsWith('#web/product/')) {
         currentViewModeRef.current = 'product-detail'
         const id = hash.replace('#web/product/', '').split('?')[0]
         setDetailProductId(id)
         setViewMode('product-detail')
         setActiveImageIndex(0)
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+        window.scrollTo({ top: 0, behavior: 'instant' })
       } else {
         const wasInDetail = prevMode === 'product-detail' || isReturningFromDetail.current
         const h = hash.split('?')[0]
@@ -1673,11 +1673,9 @@ export default function WebCatalog() {
         if (wasInDetail) {
           isReturningFromDetail.current = false
           const targetScroll = lastScrollPos.current || 0
-          setTimeout(() => {
-            window.scrollTo({ top: targetScroll, behavior: 'auto' })
-          }, 30)
+          window.scrollTo({ top: targetScroll, behavior: 'instant' })
         } else {
-          window.scrollTo({ top: 0, behavior: 'smooth' })
+          window.scrollTo({ top: 0, behavior: 'instant' })
         }
       }
     }
@@ -2345,6 +2343,7 @@ export default function WebCatalog() {
       lastNonDetailPageHash.current = currentHash
       lastScrollPos.current = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0
     }
+    window.scrollTo({ top: 0, behavior: 'instant' })
     window.location.hash = `#web/product/${id}`
   }
 
@@ -2361,37 +2360,37 @@ export default function WebCatalog() {
     window.location.hash = '#web'
     setSelectedCategory('TẤT CẢ')
     setActiveBrand('ALL')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavProducts = () => {
     window.location.hash = '#web/catalog'
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavApplications = () => {
     window.location.hash = '#web/applications'
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavBrands = () => {
     window.location.hash = '#web/brands'
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavIntro = () => {
     window.location.hash = '#web/intro'
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavContact = () => {
     window.location.hash = '#web/contact'
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const handleNavPolicy = () => {
     window.location.hash = '#web/policy'
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
   const getCategoryBannerImage = (catName) => {

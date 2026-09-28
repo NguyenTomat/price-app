@@ -3448,65 +3448,50 @@ export default function WebCatalog() {
                   style={{
                     position: 'relative',
                     overflow: 'hidden',
-                    minHeight: 'clamp(360px, 36vw, 430px)',
+                    minHeight: 'clamp(380px, 38vw, 440px)',
                     display: 'flex',
                     alignItems: 'center',
-                    borderRadius: 18,
-                    boxShadow: '0 16px 40px -8px rgba(12, 30, 51, 0.35), 0 4px 12px rgba(0,0,0,0.15)',
-                    border: '1px solid rgba(56, 189, 248, 0.28)',
+                    borderRadius: 20,
+                    boxShadow: '0 20px 50px -10px rgba(7, 26, 47, 0.45), 0 0 0 1px rgba(56, 189, 248, 0.25)',
                     boxSizing: 'border-box',
-                    background: 'linear-gradient(135deg, #091a2f 0%, #112e52 50%, #0c2038 100%)',
-                    padding: '36px clamp(20px, 4vw, 44px)'
+                    background: 'radial-gradient(ellipse at 85% 50%, #0d3460 0%, #081a2f 60%, #05101d 100%)',
+                    padding: '36px clamp(20px, 4vw, 48px)'
                   }}
                   onMouseEnter={() => setSliderPaused(true)}
                   onMouseLeave={() => setSliderPaused(false)}
                 >
-                  {/* Blueprint Grid Pattern */}
+                  {/* High-tech Subtle Grid Overlay */}
                   <div
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      backgroundImage: 'radial-gradient(rgba(56, 189, 248, 0.16) 1px, transparent 1px)',
-                      backgroundSize: '28px 28px',
-                      opacity: 0.7,
+                      backgroundImage: 'linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px)',
+                      backgroundSize: '36px 36px',
+                      opacity: 0.8,
                       zIndex: 1,
                       pointerEvents: 'none'
                     }}
                   />
 
-                  {/* Soft Blue Ambient Glow behind the Card */}
+                  {/* Dramatic Ambient Light behind Showcase */}
                   <div
                     style={{
                       position: 'absolute',
-                      right: '12%',
+                      right: '8%',
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      width: '420px',
-                      height: '420px',
-                      background: 'radial-gradient(circle, rgba(56, 189, 248, 0.32) 0%, rgba(2, 132, 199, 0.12) 50%, transparent 70%)',
+                      width: '460px',
+                      height: '460px',
+                      background: 'radial-gradient(circle, rgba(56, 189, 248, 0.35) 0%, rgba(2, 132, 199, 0.12) 50%, transparent 70%)',
                       zIndex: 2,
                       pointerEvents: 'none'
                     }}
                   />
 
-                  {/* Bottom-Left Ambient Glow */}
+                  {/* Main 2-Column Responsive Layout */}
                   <div
                     style={{
-                      position: 'absolute',
-                      left: '-5%',
-                      bottom: '-20%',
-                      width: '320px',
-                      height: '320px',
-                      background: 'radial-gradient(circle, rgba(24, 95, 165, 0.22) 0%, transparent 65%)',
-                      zIndex: 2,
-                      pointerEvents: 'none'
-                    }}
-                  />
-
-                  {/* Main 2-Column Container */}
-                  <div
-                    style={{
-                      maxWidth: 960,
+                      maxWidth: 1120,
                       margin: '0 auto',
                       width: '100%',
                       position: 'relative',
@@ -3518,43 +3503,45 @@ export default function WebCatalog() {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 'clamp(28px, 4vw, 56px)',
+                        justifyContent: 'space-between',
+                        gap: 'clamp(24px, 3.5vw, 48px)',
                         width: '100%'
                       }}
                       className="hero-split-grid"
                     >
-                      {/* ── CỘT TRÁI: TEXT & NÚT CTA (NAVY DARK TECH) ── */}
-                      <div style={{ flex: '1 1 520px', maxWidth: 520, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
-                        {/* Vạch ngang ngắn tạo phân cấp thị giác */}
-                        <div style={{ width: 30, height: 2.5, background: 'linear-gradient(90deg, #38BDF8 0%, #378ADD 100%)', borderRadius: 2, marginBottom: 2 }} />
+                      {/* ── CỘT TRÁI: TEXT & CTA ── */}
+                      <div style={{ flex: '1 1 500px', maxWidth: 540, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
+                        {/* Eyebrow / Category Tag */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              background: 'rgba(56, 189, 248, 0.12)',
+                              border: '1px solid rgba(56, 189, 248, 0.4)',
+                              borderRadius: 20,
+                              padding: '5px 14px',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color: '#38BDF8',
+                              letterSpacing: '0.4px',
+                              lineHeight: '1.4',
+                              textTransform: 'lowercase',
+                              whiteSpace: 'nowrap',
+                              backdropFilter: 'blur(8px)',
+                              boxShadow: '0 2px 8px rgba(56, 189, 248, 0.15)'
+                            }}
+                          >
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38BDF8', boxShadow: '0 0 8px #38BDF8', display: 'inline-block' }} />
+                            {slide.pill}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            T&amp;T Pumps Solution
+                          </span>
+                        </div>
 
-                        {/* Thành phần 1: Nhãn nhỏ dạng pill kèm chấm phát sáng */}
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            background: 'rgba(56, 189, 248, 0.14)',
-                            border: '1px solid rgba(56, 189, 248, 0.45)',
-                            borderRadius: 20,
-                            padding: '5px 14px',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            color: '#38BDF8',
-                            letterSpacing: '0.4px',
-                            lineHeight: '1.4',
-                            textTransform: 'lowercase',
-                            whiteSpace: 'nowrap',
-                            backdropFilter: 'blur(8px)',
-                            boxShadow: '0 2px 8px rgba(56, 189, 248, 0.15)'
-                          }}
-                        >
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38BDF8', boxShadow: '0 0 8px #38BDF8', display: 'inline-block' }} />
-                          {slide.pill}
-                        </span>
-
-                        {/* Thành phần 2: Tiêu đề H1 trắng sáng */}
+                        {/* Heading H1 */}
                         <h1
                           style={{
                             fontSize: 'clamp(26px, 3.4vw, 38px)',
@@ -3563,44 +3550,44 @@ export default function WebCatalog() {
                             margin: 0,
                             lineHeight: 1.18,
                             letterSpacing: '-0.3px',
-                            textShadow: '0 2px 10px rgba(0,0,0,0.45)'
+                            textShadow: '0 2px 12px rgba(0,0,0,0.5)'
                           }}
                         >
                           {slide.headline}
                         </h1>
 
-                        {/* Thành phần 3: Mô tả ngắn */}
+                        {/* Description */}
                         <p
                           style={{
-                            fontSize: 'clamp(14px, 1.15vw, 15.5px)',
+                            fontSize: 'clamp(14px, 1.15vw, 15px)',
                             color: '#CBD5E1',
                             margin: 0,
                             lineHeight: 1.6,
-                            maxWidth: 520,
+                            maxWidth: 500,
                             fontWeight: 400
                           }}
                         >
                           {slide.desc}
                         </p>
 
-                        {/* Dải cam kết nổi bật */}
+                        {/* Trust Badges Bar */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, fontWeight: 700, color: '#38BDF8', marginTop: 2 }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> 100% Chính Hãng</span>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> Đầy Đủ CO/CQ</span>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> Đổi Mới Uy Tín</span>
                         </div>
 
-                        {/* Thành phần 4: Một nút CTA duy nhất */}
-                        <div style={{ marginTop: 6 }}>
+                        {/* CTA Button */}
+                        <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                           <button
                             onClick={() => navigateToCategory(slide.category || 'TẤT CẢ')}
                             style={{
-                              background: 'linear-gradient(135deg, #378ADD 0%, #0284C7 100%)',
+                              background: 'linear-gradient(135deg, #0284C7 0%, #0878D9 50%, #0369A1 100%)',
                               color: '#FFFFFF',
-                              border: 'none',
+                              border: '1px solid rgba(255, 255, 255, 0.25)',
                               borderRadius: 8,
-                              padding: '12px 28px',
-                              fontSize: 14,
+                              padding: '12px 26px',
+                              fontSize: 13.5,
                               fontWeight: 800,
                               cursor: 'pointer',
                               boxShadow: '0 6px 20px rgba(2, 132, 199, 0.45)',
@@ -3610,9 +3597,9 @@ export default function WebCatalog() {
                               gap: 8
                             }}
                             onMouseOver={e => {
-                              e.currentTarget.style.filter = 'brightness(1.12)';
+                              e.currentTarget.style.filter = 'brightness(1.15)';
                               e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = '0 8px 24px rgba(2, 132, 199, 0.6)';
+                              e.currentTarget.style.boxShadow = '0 8px 26px rgba(2, 132, 199, 0.65)';
                             }}
                             onMouseOut={e => {
                               e.currentTarget.style.filter = 'brightness(1)';
@@ -3624,14 +3611,14 @@ export default function WebCatalog() {
                           </button>
                         </div>
 
-                        {/* Pagination Dots (Điều hướng slide) */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 }}>
+                        {/* Slide Pagination Indicator */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
                           {activeSlides.map((_, idx) => (
                             <div
                               key={idx}
                               onClick={() => { setSliderInteracted(true); setCurrentSlide(idx); }}
                               style={{
-                                width: idx === currentIdx ? 26 : 7,
+                                width: idx === currentIdx ? 24 : 6,
                                 height: 6,
                                 borderRadius: 3,
                                 background: idx === currentIdx ? '#38BDF8' : 'rgba(255, 255, 255, 0.25)',
@@ -3642,131 +3629,127 @@ export default function WebCatalog() {
                               title={`Chuyển tới slide ${idx + 1}`}
                             />
                           ))}
-                          <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace', fontWeight: 700, marginLeft: 6 }}>
+                          <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace', fontWeight: 700, marginLeft: 8 }}>
                             {String(currentIdx + 1).padStart(2, '0')} / {String(activeSlides.length).padStart(2, '0')}
                           </span>
                         </div>
                       </div>
 
-                      {/* ── CỘT PHẢI: KHUNG ẢNH SPOTLIGHT SẢN PHẨM HIỆN ĐẠI ── */}
+                      {/* ── CỘT PHẢI: SÂN KHẤU SHOWCASE THÍCH ỨNG (ADAPTIVE STAGE) ── */}
                       <div
                         style={{
-                          flex: '0 0 auto',
+                          flex: '0 1 480px',
+                          maxWidth: 480,
+                          width: '100%',
                           display: 'flex',
                           justifyContent: 'center',
                           alignItems: 'center',
                           position: 'relative'
                         }}
                       >
-                        {/* 1. Subtle Glow phía sau thẻ ảnh */}
-                        <div
-                          style={{
-                            position: 'absolute',
-                            inset: -14,
-                            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(2, 132, 199, 0.08) 60%, transparent 80%)',
-                            filter: 'blur(12px)',
-                            zIndex: 1,
-                            pointerEvents: 'none',
-                            borderRadius: 20
-                          }}
-                        />
-
-                        {/* 2. Thẻ đóng khung (Card Container) */}
+                        {/* Frosted Glass Stage Frame */}
                         <div
                           onClick={() => navigateToCategory(slide.category || 'TẤT CẢ')}
                           style={{
                             position: 'relative',
                             zIndex: 2,
-                            background: '#FFFFFF',
-                            padding: 10,
-                            borderRadius: 14,
-                            boxShadow: '0 20px 45px -10px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.2)',
+                            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%)',
+                            backdropFilter: 'blur(16px)',
+                            WebkitBackdropFilter: 'blur(16px)',
+                            border: '1px solid rgba(255, 255, 255, 0.18)',
+                            borderRadius: 16,
+                            padding: 12,
+                            boxShadow: '0 20px 45px -10px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.25)',
                             transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                             cursor: 'pointer',
-                            maxWidth: 'clamp(240px, 25vw, 310px)',
                             width: '100%',
-                            boxSizing: 'border-box'
+                            boxSizing: 'border-box',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                           }}
                           onMouseOver={e => {
                             e.currentTarget.style.transform = 'translateY(-4px)';
-                            e.currentTarget.style.boxShadow = '0 26px 52px -10px rgba(0, 0, 0, 0.65), 0 0 20px rgba(56, 189, 248, 0.3)';
+                            e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.6)';
+                            e.currentTarget.style.boxShadow = '0 24px 50px -10px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.25)';
                           }}
                           onMouseOut={e => {
                             e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 20px 45px -10px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.2)';
+                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+                            e.currentTarget.style.boxShadow = '0 20px 45px -10px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.25)';
                           }}
                           title={`Bấm xem danh mục: ${slide.headline}`}
                         >
-                          {/* 3. Huy hiệu nhỏ ở góc trên bên phải */}
-                          {chips[0] && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                top: -10,
-                                right: -10,
-                                background: '#FFFFFF',
-                                borderRadius: 8,
-                                padding: '5px 11px',
-                                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
-                                border: '1px solid #E2E8F0',
-                                fontSize: '11.5px',
-                                fontWeight: 800,
-                                color: '#0369A1',
-                                whiteSpace: 'nowrap',
-                                zIndex: 4,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5
-                              }}
-                            >
-                              <span>{chips[0]?.icon}</span>
-                              <span>{chips[0]?.label}</span>
-                            </div>
-                          )}
-
-                          {/* 4. Huy hiệu nhỏ góc dưới bên trái */}
-                          {chips[1] && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                bottom: -10,
-                                left: -10,
-                                background: '#FFFFFF',
-                                borderRadius: 8,
-                                padding: '5px 11px',
-                                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
-                                border: '1px solid #E2E8F0',
-                                fontSize: '11px',
-                                fontWeight: 800,
-                                color: '#071A2F',
-                                whiteSpace: 'nowrap',
-                                zIndex: 4,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5
-                              }}
-                            >
-                              <span>{chips[1]?.icon}</span>
-                              <span>{chips[1]?.label}</span>
-                            </div>
-                          )}
-
-                          {/* Ảnh Poster sắc nét 100% */}
-                          <img
-                            key={`card-poster-${slide.id}-${slide.poster}`}
-                            src={slide.poster}
-                            alt={slide.headline}
-                            loading="eager"
+                          {/* Inner Display Area (Aspect-ratio locked for clean presentation) */}
+                          <div
                             style={{
                               width: '100%',
-                              height: 'auto',
-                              maxHeight: 290,
-                              objectFit: 'contain',
-                              borderRadius: 8,
-                              display: 'block',
-                              backgroundColor: '#F8FAFC'
+                              height: 250,
+                              borderRadius: 10,
+                              overflow: 'hidden',
+                              background: '#FFFFFF',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              position: 'relative'
                             }}
-                          />
+                          >
+                            <img
+                              key={`card-poster-${slide.id}-${slide.poster}`}
+                              src={slide.poster}
+                              alt={slide.headline}
+                              loading="eager"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain',
+                                display: 'block',
+                                transition: 'transform 0.35s ease'
+                              }}
+                            />
+
+                            {/* Top-Right Badge Pill */}
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                background: 'rgba(7, 26, 47, 0.88)',
+                                backdropFilter: 'blur(8px)',
+                                color: '#38BDF8',
+                                border: '1px solid rgba(56, 189, 248, 0.35)',
+                                borderRadius: 14,
+                                padding: '3px 9px',
+                                fontSize: '10.5px',
+                                fontWeight: 800,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.25)'
+                              }}
+                            >
+                              <Zap size={11} color="#38BDF8" />
+                              <span>{chips[0]?.label || 'Chính Hãng T&T'}</span>
+                            </div>
+                          </div>
+
+                          {/* Bottom Tech Ribbon under image */}
+                          <div style={{
+                            width: '100%',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '8px 6px 2px',
+                            fontSize: '11px',
+                            color: '#94A3B8',
+                            fontWeight: 600
+                          }}>
+                            <span style={{ color: '#38BDF8', fontWeight: 750, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <CheckCircle size={11} color="#38BDF8" /> {chips[1]?.label || 'Đầy đủ CO/CQ'}
+                            </span>
+                            <span>Bấm để xem danh mục →</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -3783,28 +3766,29 @@ export default function WebCatalog() {
                       left: 14,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      width: 38,
-                      height: 38,
+                      width: 40,
+                      height: 40,
                       borderRadius: '50%',
-                      background: 'rgba(255, 255, 255, 0.12)',
-                      backdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255, 255, 255, 0.22)',
+                      background: 'rgba(7, 26, 47, 0.65)',
+                      backdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(56, 189, 248, 0.35)',
                       color: '#FFFFFF',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
                       zIndex: 5,
-                      transition: 'all 0.25s ease'
+                      transition: 'all 0.25s ease',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
                     }}
                     onMouseOver={e => {
-                      e.currentTarget.style.background = 'rgba(56, 189, 248, 0.35)';
+                      e.currentTarget.style.background = '#0878D9';
                       e.currentTarget.style.borderColor = '#38BDF8';
                       e.currentTarget.style.transform = 'translateY(-50%) scale(1.08)';
                     }}
                     onMouseOut={e => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.22)';
+                      e.currentTarget.style.background = 'rgba(7, 26, 47, 0.65)';
+                      e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.35)';
                       e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
                     }}
                     aria-label="Slide trước"
@@ -3821,28 +3805,29 @@ export default function WebCatalog() {
                       right: 14,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      width: 38,
-                      height: 38,
+                      width: 40,
+                      height: 40,
                       borderRadius: '50%',
-                      background: 'rgba(255, 255, 255, 0.12)',
-                      backdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255, 255, 255, 0.22)',
+                      background: 'rgba(7, 26, 47, 0.65)',
+                      backdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(56, 189, 248, 0.35)',
                       color: '#FFFFFF',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
                       zIndex: 5,
-                      transition: 'all 0.25s ease'
+                      transition: 'all 0.25s ease',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
                     }}
                     onMouseOver={e => {
-                      e.currentTarget.style.background = 'rgba(56, 189, 248, 0.35)';
+                      e.currentTarget.style.background = '#0878D9';
                       e.currentTarget.style.borderColor = '#38BDF8';
                       e.currentTarget.style.transform = 'translateY(-50%) scale(1.08)';
                     }}
                     onMouseOut={e => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.22)';
+                      e.currentTarget.style.background = 'rgba(7, 26, 47, 0.65)';
+                      e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.35)';
                       e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
                     }}
                     aria-label="Slide tiếp theo"

@@ -599,6 +599,10 @@ export default function WebCatalog() {
   const lastScrollPos = useRef(0)
   const isReturningFromDetail = useRef(false)
   const currentViewModeRef = useRef('home')
+  const lastViewModeRef = useRef('home')
+  const lastCategoryRef = useRef('TẤT CẢ')
+  const heroTouchStartX = useRef(0)
+  const heroTouchEndX = useRef(0)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1674,6 +1678,9 @@ export default function WebCatalog() {
 
         if (wasInDetail) {
           isReturningFromDetail.current = false
+          if (lastCategoryRef.current && newMode === 'catalog' && !queryCat) {
+            setSelectedCategory(lastCategoryRef.current)
+          }
           const targetScroll = lastScrollPos.current || 0
           window.scrollTo({ top: targetScroll, behavior: 'instant' })
         } else {
@@ -2373,6 +2380,8 @@ export default function WebCatalog() {
     const currentHash = window.location.hash || '#web'
     if (!currentHash.startsWith('#web/product/')) {
       lastNonDetailPageHash.current = currentHash
+      lastViewModeRef.current = viewMode || 'catalog'
+      lastCategoryRef.current = selectedCategory || 'TẤT CẢ'
       lastScrollPos.current = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0
     }
     setDetailProductId(id)
@@ -2387,11 +2396,26 @@ export default function WebCatalog() {
 
   const goBackToCatalog = () => {
     isReturningFromDetail.current = true
-    if (window.history.length > 1) {
-      window.history.back()
-    } else {
-      window.location.hash = lastNonDetailPageHash.current || '#web/catalog'
+    setDetailProductId('')
+    const prevMode = lastViewModeRef.current || 'catalog'
+    const targetHash = lastNonDetailPageHash.current || (prevMode === 'home' ? '#web' : '#web/catalog')
+
+    // Instant memory switch - zero delay and zero white screen flash
+    setViewMode(prevMode)
+    setActiveTab(prevMode === 'home' ? 'home' : 'products')
+    currentViewModeRef.current = prevMode
+    if (lastCategoryRef.current && prevMode === 'catalog') {
+      setSelectedCategory(lastCategoryRef.current)
     }
+
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash
+    }
+
+    setTimeout(() => {
+      window.scrollTo({ top: lastScrollPos.current || 0, behavior: 'instant' })
+      isReturningFromDetail.current = false
+    }, 15)
   }
 
   const handleNavHome = () => {
@@ -2903,19 +2927,65 @@ export default function WebCatalog() {
             gap: 12px !important;
             padding: 12px !important;
           }
+          
+          /* Modern Proportional Mobile Hero */
+          .hero-banner-section {
+            min-height: auto !important;
+            padding: 16px 14px 18px !important;
+            border-radius: 16px !important;
+          }
+          .hero-nav-arrow {
+            display: none !important;
+          }
           .hero-split-grid {
             flex-direction: column-reverse !important;
             text-align: center !important;
             align-items: center !important;
-            gap: 24px !important;
+            gap: 12px !important;
           }
           .hero-split-grid > div {
             max-width: 100% !important;
             align-items: center !important;
           }
+          .hero-stage-card {
+            max-width: 100% !important;
+            padding: 8px !important;
+            border-radius: 12px !important;
+          }
+          .hero-stage-img-box {
+            height: 180px !important;
+            border-radius: 8px !important;
+          }
+          .hero-text-col {
+            gap: 8px !important;
+            align-items: center !important;
+          }
+          .hero-h1-title {
+            font-size: 20px !important;
+            line-height: 1.22 !important;
+          }
+          .hero-desc-p {
+            font-size: 13px !important;
+            line-height: 1.45 !important;
+            max-width: 95% !important;
+            display: -webkit-box !important;
+            -webkit-line-clamp: 2 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+          }
+          .hero-trust-row {
+            justify-content: center !important;
+            gap: 6px 10px !important;
+            font-size: 11px !important;
+            margin-top: 0 !important;
+          }
+          .hero-cta-btn {
+            padding: 9px 20px !important;
+            font-size: 13px !important;
+          }
         }
 
-        /* Hero Banner Navigation Arrows (Show only on hover, smooth glide) */
+        /* Hero Banner Navigation Arrows (Show only on desktop hover, smooth glide) */
         .hero-nav-arrow {
           opacity: 0 !important;
           pointer-events: none !important;
@@ -2935,11 +3005,9 @@ export default function WebCatalog() {
         .hero-banner-section:hover .hero-nav-arrow.hero-next {
           transform: translateY(-50%) translateX(0) !important;
         }
-        @media (hover: none), (max-width: 768px) {
+        @media (hover: none), (max-width: 900px) {
           .hero-nav-arrow {
-            opacity: 0.85 !important;
-            pointer-events: auto !important;
-            transform: translateY(-50%) translateX(0) !important;
+            display: none !important;
           }
         }
 
@@ -3489,6 +3557,25 @@ export default function WebCatalog() {
                   }}
                   onMouseEnter={() => setSliderPaused(true)}
                   onMouseLeave={() => setSliderPaused(false)}
+                  onTouchStart={(e) => {
+                    heroTouchStartX.current = e.targetTouches[0].clientX;
+                  }}
+                  onTouchMove={(e) => {
+                    heroTouchEndX.current = e.targetTouches[0].clientX;
+                  }}
+                  onTouchEnd={() => {
+                    if (!heroTouchStartX.current || !heroTouchEndX.current) return;
+                    const diff = heroTouchStartX.current - heroTouchEndX.current;
+                    if (diff > 45) {
+                      setSliderInteracted(true);
+                      setCurrentSlide(prev => (prev + 1) % activeSlides.length);
+                    } else if (diff < -45) {
+                      setSliderInteracted(true);
+                      setCurrentSlide(prev => (prev - 1 + activeSlides.length) % activeSlides.length);
+                    }
+                    heroTouchStartX.current = 0;
+                    heroTouchEndX.current = 0;
+                  }}
                 >
                   {/* High-tech Subtle Grid Overlay */}
                   <div
@@ -3540,7 +3627,7 @@ export default function WebCatalog() {
                       className="hero-split-grid"
                     >
                       {/* ── CỘT TRÁI: TEXT & CTA ── */}
-                      <div style={{ flex: '1 1 500px', maxWidth: 540, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
+                      <div className="hero-text-col" style={{ flex: '1 1 500px', maxWidth: 540, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
                         {/* Eyebrow / Category Tag */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span
@@ -3573,6 +3660,7 @@ export default function WebCatalog() {
 
                         {/* Heading H1 */}
                         <h1
+                          className="hero-h1-title"
                           style={{
                             fontSize: 'clamp(26px, 3.4vw, 38px)',
                             fontWeight: 900,
@@ -3588,6 +3676,7 @@ export default function WebCatalog() {
 
                         {/* Description */}
                         <p
+                          className="hero-desc-p"
                           style={{
                             fontSize: 'clamp(14px, 1.15vw, 15px)',
                             color: '#CBD5E1',
@@ -3601,7 +3690,7 @@ export default function WebCatalog() {
                         </p>
 
                         {/* Trust Badges Bar */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, fontWeight: 700, color: '#38BDF8', marginTop: 2 }}>
+                        <div className="hero-trust-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, fontWeight: 700, color: '#38BDF8', marginTop: 2 }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> 100% Chính Hãng</span>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> Đầy Đủ CO/CQ</span>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> Đổi Mới Uy Tín</span>
@@ -3610,6 +3699,7 @@ export default function WebCatalog() {
                         {/* CTA Button */}
                         <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                           <button
+                            className="hero-cta-btn"
                             onClick={() => navigateToCategory(slide.category || 'TẤT CẢ')}
                             style={{
                               background: 'linear-gradient(135deg, #0284C7 0%, #0878D9 50%, #0369A1 100%)',
@@ -3679,6 +3769,7 @@ export default function WebCatalog() {
                       >
                         {/* Frosted Glass Stage Frame */}
                         <div
+                          className="hero-stage-card"
                           onClick={() => navigateToCategory(slide.category || 'TẤT CẢ')}
                           style={{
                             position: 'relative',
@@ -3713,6 +3804,7 @@ export default function WebCatalog() {
                         >
                           {/* Inner Display Area (Aspect-ratio locked for clean presentation) */}
                           <div
+                            className="hero-stage-img-box"
                             style={{
                               width: '100%',
                               height: 250,
@@ -6952,13 +7044,6 @@ export default function WebCatalog() {
                 <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }} className="desktop-only">
                   <span style={{ cursor: 'pointer' }} onClick={() => handleNavHome()}>Trang chủ</span> / <span style={{ cursor: 'pointer' }} onClick={goBackToCatalog}>Sản phẩm</span> / <span style={{ fontWeight: 700, color: '#082B4C' }}>{currentProduct.name}</span>
                 </div>
-              </div>
-
-              {/* Breadcrumb for Mobile */}
-              <div style={{ display: 'none', borderBottom: '1px solid #F1F5F9', paddingBottom: 10, marginBottom: 16, alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }} className="mobile-only-flex">
-                <span style={{ color: '#0878D9', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={goBackToCatalog}>
-                  <ChevronLeft size={15} color="#0878D9" strokeWidth={2.5} /> Quay lại
-                </span>
               </div>
 
               {/* PRODUCT HERO (Two Columns: 420px / 1fr on Desktop) */}

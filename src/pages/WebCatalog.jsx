@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { getWebCatalogProducts, subscribeWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder, getProductDetail, logWebAnalyticsEvent } from '../firebase/firebase'
 import { DEFAULT_HERO_SLIDES, normalizeHeroSlides } from './WebManagePage'
 import {

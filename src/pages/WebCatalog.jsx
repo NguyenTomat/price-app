@@ -1619,18 +1619,21 @@ export default function WebCatalog() {
       const prevMode = currentViewModeRef.current
 
       if (!isExplicitHome && queryProductId) {
+        currentViewModeRef.current = 'product-detail'
         setDetailProductId(queryProductId)
-        setDetailTranslateX(0)
+        setViewMode('product-detail')
         setActiveImageIndex(0)
+        window.scrollTo({ top: 0, behavior: 'instant' })
       } else if (!isExplicitHome && hash.startsWith('#web/product/')) {
+        currentViewModeRef.current = 'product-detail'
         const id = hash.replace('#web/product/', '').split('?')[0]
         setDetailProductId(id)
-        setDetailTranslateX(0)
+        setViewMode('product-detail')
         setActiveImageIndex(0)
+        window.scrollTo({ top: 0, behavior: 'instant' })
       } else {
-        const wasInDetail = !!detailProductId || isReturningFromDetail.current
+        const wasInDetail = currentViewModeRef.current === 'product-detail' || isReturningFromDetail.current || !!detailProductId
         setDetailProductId('')
-        setDetailTranslateX(0)
         let newMode = 'home'
 
         if (!isExplicitHome && (h === '#web/catalog' || h === '#products' || h === '#web/products' || h.startsWith('#category/') || h.startsWith('#cat/') || queryCat || querySearch || queryBrand)) {
@@ -1690,6 +1693,13 @@ export default function WebCatalog() {
           if (lastCategoryRef.current && newMode === 'catalog' && !queryCat) {
             setSelectedCategory(lastCategoryRef.current)
           }
+          const targetScroll = lastScrollPos.current || 0
+          window.scrollTo({ top: targetScroll, behavior: 'instant' })
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: targetScroll, behavior: 'instant' })
+          })
+        } else {
+          window.scrollTo({ top: 0, behavior: 'instant' })
         }
       }
     }
@@ -2394,8 +2404,10 @@ export default function WebCatalog() {
       lastScrollPos.current = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0
     }
     setDetailProductId(id)
-    setDetailTranslateX(0)
+    setViewMode('product-detail')
+    currentViewModeRef.current = 'product-detail'
     setActiveImageIndex(0)
+    window.scrollTo({ top: 0, behavior: 'instant' })
     if (window.location.hash !== `#web/product/${id}`) {
       window.location.hash = `#web/product/${id}`
     }
@@ -2404,16 +2416,12 @@ export default function WebCatalog() {
   const goBackToCatalog = () => {
     isReturningFromDetail.current = true
     setDetailProductId('')
-    setDetailTranslateX(0)
     const prevMode = lastViewModeRef.current || 'catalog'
     const targetHash = lastNonDetailPageHash.current || (prevMode === 'home' ? '#web' : '#web/catalog')
 
-    // Instant memory switch - background view is already rendered
-    if (viewMode !== prevMode) {
-      setViewMode(prevMode)
-      setActiveTab(prevMode === 'home' ? 'home' : 'products')
-      currentViewModeRef.current = prevMode
-    }
+    setViewMode(prevMode)
+    setActiveTab(prevMode === 'home' ? 'home' : 'products')
+    currentViewModeRef.current = prevMode
     if (lastCategoryRef.current && prevMode === 'catalog') {
       setSelectedCategory(lastCategoryRef.current)
     }
@@ -2421,7 +2429,12 @@ export default function WebCatalog() {
     if (window.location.hash !== targetHash) {
       window.location.hash = targetHash
     }
-    isReturningFromDetail.current = false
+
+    window.scrollTo({ top: lastScrollPos.current || 0, behavior: 'instant' })
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: lastScrollPos.current || 0, behavior: 'instant' })
+      isReturningFromDetail.current = false
+    })
   }
 
   const handleNavHome = () => {
@@ -4925,8 +4938,8 @@ export default function WebCatalog() {
         </div>
       )}
 
-      {viewMode === 'catalog' && (
-        <div style={{ background: '#F6F8FB', minHeight: '100vh', color: '#102A43' }}>
+      {(viewMode === 'catalog' || (viewMode === 'product-detail' && lastViewModeRef.current === 'catalog')) && (
+        <div style={{ background: '#F6F8FB', minHeight: '100vh', color: '#102A43', display: viewMode === 'catalog' ? 'block' : 'none' }}>
           
           {/* 1. HERO BANNER (Height 150px, background Deep Navy) */}
           <section style={{
@@ -7040,66 +7053,34 @@ export default function WebCatalog() {
         </div>
       )}
 
-      {/* TRANG CHI TIẾT SẢN PHẨM (NATIVE SLIDE-IN OVERLAY LAYER) */}
-      {!!detailProductId && (
+      {/* TRANG CHI TIẾT SẢN PHẨM */}
+      {viewMode === 'product-detail' && (
         <div
-          className="product-detail-overlay-layer"
+          className="product-detail-wrapper"
           style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 12000,
             background: '#F5F7FA',
-            overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            overscrollBehaviorY: 'contain',
-            transition: isDraggingDetail ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-            transform: detailTranslateX > 0 ? `translateX(${detailTranslateX}px)` : 'translateX(0)',
-            boxShadow: detailTranslateX > 0 ? '-10px 0 30px rgba(0,0,0,0.3)' : 'none'
+            minHeight: '80vh',
+            paddingTop: '16px',
+            paddingBottom: '60px'
           }}
           onTouchStart={(e) => {
             if (!e.targetTouches || !e.targetTouches[0]) return;
             detailTouchStartX.current = e.targetTouches[0].clientX;
             detailTouchStartY.current = e.targetTouches[0].clientY;
-            detailIsHorizontalDrag.current = false;
-            setIsDraggingDetail(true);
           }}
-          onTouchMove={(e) => {
-            if (!detailTouchStartX.current || !e.targetTouches || !e.targetTouches[0]) return;
-            const currentX = e.targetTouches[0].clientX;
-            const currentY = e.targetTouches[0].clientY;
+          onTouchEnd={(e) => {
+            if (!detailTouchStartX.current || !e.changedTouches || !e.changedTouches[0]) return;
+            const currentX = e.changedTouches[0].clientX;
+            const currentY = e.changedTouches[0].clientY;
             const diffX = currentX - detailTouchStartX.current;
             const diffY = Math.abs(currentY - detailTouchStartY.current);
 
-            // Check if user is swiping horizontally from the left side
-            if (!detailIsHorizontalDrag.current && diffX > 10 && diffX > diffY * 1.3) {
-              if (detailTouchStartX.current < (window.innerWidth ? window.innerWidth * 0.55 : 200)) {
-                detailIsHorizontalDrag.current = true;
-              }
-            }
-
-            if (detailIsHorizontalDrag.current && diffX > 0) {
-              setDetailTranslateX(diffX);
-            }
-          }}
-          onTouchEnd={() => {
-            setIsDraggingDetail(false);
-            if (detailIsHorizontalDrag.current) {
-              if (detailTranslateX > 55) {
-                // Animate dismiss
-                setDetailTranslateX(window.innerWidth || 400);
-                setTimeout(() => {
-                  goBackToCatalog();
-                  setDetailTranslateX(0);
-                }, 140);
-              } else {
-                setDetailTranslateX(0);
-              }
-            } else {
-              setDetailTranslateX(0);
+            // Swipe right: touch starts in left half of screen, swipes horizontally right > 45px
+            if (detailTouchStartX.current < (window.innerWidth ? window.innerWidth * 0.55 : 200) && diffX > 45 && diffY < Math.max(diffX * 0.85, 60)) {
+              goBackToCatalog();
             }
             detailTouchStartX.current = 0;
             detailTouchStartY.current = 0;
-            detailIsHorizontalDrag.current = false;
           }}
         >
           {loading && !currentProduct ? (

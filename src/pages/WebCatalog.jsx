@@ -603,6 +603,8 @@ export default function WebCatalog() {
   const lastCategoryRef = useRef('TẤT CẢ')
   const heroTouchStartX = useRef(0)
   const heroTouchEndX = useRef(0)
+  const detailTouchStartX = useRef(0)
+  const detailTouchStartY = useRef(0)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1690,9 +1692,13 @@ export default function WebCatalog() {
     }
 
     window.addEventListener('hashchange', handleHashChange)
+    window.addEventListener('popstate', handleHashChange)
     handleHashChange()
 
-    return () => window.removeEventListener('hashchange', handleHashChange)
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+      window.removeEventListener('popstate', handleHashChange)
+    }
   }, [])
 
   // Auto-slide effect for homepage hero carousel (rotate slides every 6 seconds)
@@ -2931,8 +2937,9 @@ export default function WebCatalog() {
           /* Modern Proportional Mobile Hero */
           .hero-banner-section {
             min-height: auto !important;
-            padding: 16px 14px 18px !important;
-            border-radius: 16px !important;
+            padding: 12px 12px 14px !important;
+            border-radius: 14px !important;
+            margin-top: 8px !important;
           }
           .hero-nav-arrow {
             display: none !important;
@@ -2941,7 +2948,8 @@ export default function WebCatalog() {
             flex-direction: column-reverse !important;
             text-align: center !important;
             align-items: center !important;
-            gap: 12px !important;
+            justify-content: flex-start !important;
+            gap: 8px !important;
           }
           .hero-split-grid > div {
             max-width: 100% !important;
@@ -2949,39 +2957,46 @@ export default function WebCatalog() {
           }
           .hero-stage-card {
             max-width: 100% !important;
-            padding: 8px !important;
-            border-radius: 12px !important;
+            padding: 0 !important;
+            border-radius: 10px !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
           }
           .hero-stage-img-box {
-            height: 180px !important;
-            border-radius: 8px !important;
+            height: 155px !important;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.35) !important;
+          }
+          .hero-tech-ribbon {
+            display: none !important;
           }
           .hero-text-col {
-            gap: 8px !important;
+            gap: 6px !important;
             align-items: center !important;
           }
+          .hero-eyebrow-row {
+            display: none !important;
+          }
           .hero-h1-title {
-            font-size: 20px !important;
-            line-height: 1.22 !important;
+            font-size: 16px !important;
+            line-height: 1.25 !important;
+            margin: 0 !important;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.6) !important;
           }
           .hero-desc-p {
-            font-size: 13px !important;
-            line-height: 1.45 !important;
-            max-width: 95% !important;
-            display: -webkit-box !important;
-            -webkit-line-clamp: 2 !important;
-            -webkit-box-orient: vertical !important;
-            overflow: hidden !important;
+            display: none !important;
           }
           .hero-trust-row {
-            justify-content: center !important;
-            gap: 6px 10px !important;
-            font-size: 11px !important;
-            margin-top: 0 !important;
+            display: none !important;
           }
           .hero-cta-btn {
-            padding: 9px 20px !important;
-            font-size: 13px !important;
+            padding: 7px 16px !important;
+            font-size: 12px !important;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4) !important;
+          }
+          .hero-pagination-dots {
+            margin-top: 2px !important;
           }
         }
 
@@ -3629,7 +3644,7 @@ export default function WebCatalog() {
                       {/* ── CỘT TRÁI: TEXT & CTA ── */}
                       <div className="hero-text-col" style={{ flex: '1 1 500px', maxWidth: 540, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
                         {/* Eyebrow / Category Tag */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className="hero-eyebrow-row" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span
                             style={{
                               display: 'inline-flex',
@@ -3732,7 +3747,7 @@ export default function WebCatalog() {
                         </div>
 
                         {/* Slide Pagination Indicator */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                        <div className="hero-pagination-dots" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
                           {activeSlides.map((_, idx) => (
                             <div
                               key={idx}
@@ -3857,7 +3872,7 @@ export default function WebCatalog() {
                           </div>
 
                           {/* Bottom Tech Ribbon under image */}
-                          <div style={{
+                          <div className="hero-tech-ribbon" style={{
                             width: '100%',
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -7025,7 +7040,27 @@ export default function WebCatalog() {
           const qRange = specInfo.qRange;
 
           return (
-            <div className="product-detail-page">
+            <div
+              className="product-detail-page"
+              onTouchStart={(e) => {
+                detailTouchStartX.current = e.targetTouches[0].clientX;
+                detailTouchStartY.current = e.targetTouches[0].clientY;
+              }}
+              onTouchEnd={(e) => {
+                if (!detailTouchStartX.current || !e.changedTouches[0]) return;
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const diffX = endX - detailTouchStartX.current;
+                const diffY = Math.abs(endY - detailTouchStartY.current);
+
+                // Swipe right from left edge (start within 75px of screen edge, swipe > 50px horizontally)
+                if (detailTouchStartX.current < 75 && diffX > 50 && diffY < 80) {
+                  goBackToCatalog();
+                }
+                detailTouchStartX.current = 0;
+                detailTouchStartY.current = 0;
+              }}
+            >
               <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
                 <button
                   onClick={goBackToCatalog}

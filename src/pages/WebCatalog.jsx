@@ -4,7 +4,11 @@ import { DEFAULT_HERO_SLIDES, normalizeHeroSlides } from './WebManagePage'
 import {
   ShieldCheck, Zap, Truck, Headphones, ShoppingBag, MessageSquare, Phone,
   Building2, Layers, Search as SearchIcon, ChevronRight, ChevronLeft,
-  SlidersHorizontal, Bot, Clock, Award, CheckCircle
+  SlidersHorizontal, Bot, Clock, Award, CheckCircle, Check, Droplets, Gauge,
+  Sparkles, Wrench, Settings, FileText, Folder, Package, ArrowRight, Activity, Wind,
+  Target, Eye, Star, MapPin, Mail, Globe, Tag, Users, RefreshCw, AlertTriangle,
+  Flame, TrendingUp, Filter, Info, Facebook, HelpCircle, Menu, X, Send, Share2,
+  ExternalLink, ChevronDown, ChevronUp, Trash2
 } from '../components/LucideIcons'
 
 // Bản đồ Logo & Xuất xứ các thương hiệu máy bơm
@@ -740,7 +744,7 @@ export default function WebCatalog() {
         headlineL1: 'ỔN ĐỊNH ÁP LỰC',
         headlineL2: 'TIẾT KIỆM ĐIỆN NĂNG',
         desc: 'Điều khiển áp suất tự động theo lưu lượng thực tế, vận hành ổn định và tối ưu năng lượng.',
-        usps: ['⚡ TIẾT KIỆM ĐIỆN ĐẾN 60%', '◉ VẬN HÀNH ÊM ÁI', '✓ BẢO VỆ CHẠY KHÔ'],
+        usps: ['TIẾT KIỆM ĐIỆN ĐẾN 60%', 'VẬN HÀNH ÊM ÁI', 'BẢO VỆ CHẠY KHÔ'],
         img: customImg || './pump_vertical_cdlf.jpg',
         techCode: 'CDLF SERIES · INVERTER · 380V',
         category: name
@@ -752,7 +756,7 @@ export default function WebCatalog() {
         headlineL1: 'ÁP LỰC ỔN ĐỊNH',
         headlineL2: 'CHO MỌI CÔNG TRÌNH',
         desc: 'Duy trì áp lực nước đầu ra liên tục cho vòi sen, bình nóng lạnh và hệ thống cấp nước sinh hoạt.',
-        usps: ['⚡ TỰ ĐỘNG ĐÓNG NGẮT', '◉ CẢM BIẾN ÁP SUẤT', '✓ CHỐNG CẠN AN TOÀN'],
+        usps: ['TỰ ĐỘNG ĐÓNG NGẮT', 'CẢM BIẾN ÁP SUẤT', 'CHỐNG CẠN AN TOÀN'],
         img: customImg || './pump_booster_green.jpg',
         techCode: 'ELECTRONIC BOOSTER · 220V · IP55',
         category: name
@@ -764,7 +768,7 @@ export default function WebCatalog() {
         headlineL1: 'KHAI THÁC NƯỚC SÂU',
         headlineL2: 'HIỆU QUẢ VƯỢT TRỘI',
         desc: 'Thân vỏ Inox 304 nguyên khối chống ăn mòn, động cơ thả chìm giải nhiệt dầu bền bỉ 24/7.',
-        usps: ['⚡ CỘT ÁP ĐẾN 300M', '◉ INOX 304 CHỐNG GỈ', '✓ ĐỘNG CƠ DẦU 24/7'],
+        usps: ['CỘT ÁP ĐẾN 300M', 'INOX 304 CHỐNG GỈ', 'ĐỘNG CƠ DẦU 24/7'],
         img: customImg || './pump_submersible_blue.jpg',
         techCode: 'SUBMERSIBLE PUMP · HMAX 300M · 380V/220V',
         category: name
@@ -776,7 +780,7 @@ export default function WebCatalog() {
         headlineL1: 'LƯU LƯỢNG SIÊU LỚN',
         headlineL2: 'ĐẨY CAO — VƯỢT BẬC',
         desc: 'Phục vụ trạm cấp nước đô thị, nhà máy xưởng và hệ thống tưới tiêu nông nghiệp diện tích lớn.',
-        usps: ['⚡ LƯU LƯỢNG 200M³/H', '◉ CÁNH ĐÚC HỢP KIM', '✓ TIÊU CHUẨN CHÂU ÂU'],
+        usps: ['LƯU LƯỢNG 200M³/H', 'CÁNH ĐÚC HỢP KIM', 'TIÊU CHUẨN CHÂU ÂU'],
         img: customImg || './pump_horizontal_blue.jpg',
         techCode: 'CENTRIFUGAL HEAVY DUTY · QMAX 200M³/H',
         category: name
@@ -788,7 +792,7 @@ export default function WebCatalog() {
         headlineL1: 'GIẢI PHÁP CẤP NƯỚC',
         headlineL2: 'CHO TÒA NHÀ CAO TẦNG',
         desc: 'Cụm 2-4 máy bơm biến tần chạy luân phiên dự phòng, điều khiển PLC thông minh đồng bộ.',
-        usps: ['⚡ ĐIỀU KHIỂN PLC', '◉ LUÂN PHIÊN DỰ PHÒNG', '✓ ÁP LỰC LIÊN TỤC 24/7'],
+        usps: ['ĐIỀU KHIỂN PLC', 'LUÂN PHIÊN DỰ PHÒNG', 'ÁP LỰC LIÊN TỤC 24/7'],
         img: customImg || './pump_showroom.jpg',
         techCode: 'MULTI-PUMP BOOSTER · PLC INVERTER',
         category: name
@@ -799,7 +803,7 @@ export default function WebCatalog() {
       headlineL1: 'CHỊU TẢI LIÊN TỤC',
       headlineL2: 'VẬN HÀNH ỔN ĐỊNH 24/7',
       desc: 'Giải pháp bơm giải nhiệt máy móc xưởng đúc, xi mạ, công nghiệp nặng và xử lý nước ngập.',
-      usps: ['⚡ THÂN GANG CẦU DÀY', '◉ CÁCH ĐIỆN LỚP F', '✓ BẢO VỆ TIÊU CHUẨN IP55'],
+      usps: ['THÂN GANG CẦU DÀY', 'CÁCH ĐIỆN LỚP F', 'BẢO VỆ TIÊU CHUẨN IP55'],
       img: customImg || './pump_vertical.jpg',
       techCode: 'INDUSTRIAL GRADE · CLASS F · IP55',
       category: name
@@ -1174,7 +1178,7 @@ export default function WebCatalog() {
             className="quick-view-overlay"
             onClick={(e) => { e.stopPropagation(); setQuickViewProduct(p); }}
           >
-            <span>🔍 XEM NHANH</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><SearchIcon size={13} color="#FFFFFF" /> XEM NHANH</span>
           </div>
         </div>
 
@@ -1194,25 +1198,25 @@ export default function WebCatalog() {
           <div className="product-card-specs" style={{ borderTop: '1px dashed #EEF1F4', paddingTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px', margin: '6px 0 10px' }}>
             {pow && (
               <div className="spec-row" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
-                <span className="spec-label" style={{ color: '#64748B' }}>⚡</span>
+                <span className="spec-label" style={{ color: '#0878D9', display: 'inline-flex', alignItems: 'center' }}><Zap size={11} color="#0878D9" /></span>
                 <span className="spec-value" style={{ fontWeight: 700, color: '#071A2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pow}</span>
               </div>
             )}
             {hRange && (
               <div className="spec-row" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
-                <span className="spec-label" style={{ color: '#64748B' }}>↑</span>
+                <span className="spec-label" style={{ color: '#0878D9', display: 'inline-flex', alignItems: 'center' }}><Activity size={11} color="#0878D9" /></span>
                 <span className="spec-value" style={{ fontWeight: 700, color: '#071A2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hRange}</span>
               </div>
             )}
             {qRange && (
               <div className="spec-row" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
-                <span className="spec-label" style={{ color: '#64748B' }}>💧</span>
+                <span className="spec-label" style={{ color: '#0878D9', display: 'inline-flex', alignItems: 'center' }}><Droplets size={11} color="#0878D9" /></span>
                 <span className="spec-value" style={{ fontWeight: 700, color: '#071A2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{qRange}</span>
               </div>
             )}
             {volt && (
               <div className="spec-row" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
-                <span className="spec-label" style={{ color: '#64748B' }}>◉</span>
+                <span className="spec-label" style={{ color: '#0878D9', display: 'inline-flex', alignItems: 'center' }}><Zap size={11} color="#0878D9" /></span>
                 <span className="spec-value" style={{ fontWeight: 700, color: '#071A2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{volt}</span>
               </div>
             )}
@@ -1268,10 +1272,10 @@ export default function WebCatalog() {
     const hRange = hMax ? `${hMax} m` : '';
 
     const specs = [
-      pow && { icon: '⚡', label: 'CS', val: pow },
-      hRange && { icon: '↑', label: 'H', val: hRange },
-      qRange && { icon: '💧', label: 'Q', val: qRange },
-      volt && { icon: '◉', label: 'U', val: volt },
+      pow && { icon: <Zap size={11} color="#0878D9" />, label: 'CS', val: pow },
+      hRange && { icon: <Activity size={11} color="#0878D9" />, label: 'H', val: hRange },
+      qRange && { icon: <Droplets size={11} color="#0878D9" />, label: 'Q', val: qRange },
+      volt && { icon: <Zap size={11} color="#0878D9" />, label: 'U', val: volt },
     ].filter(Boolean).slice(0, 2);
 
     return (
@@ -1364,7 +1368,7 @@ export default function WebCatalog() {
             }}>
               {specs.map((s, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
-                  <span style={{ fontSize: 11 }}>{s.icon}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>{s.icon}</span>
                   <span style={{ color: '#94A3B8', fontWeight: 600 }}>{s.label}:</span>
                   <span style={{ fontWeight: 800, color: '#101828', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.val}</span>
                 </div>
@@ -2850,12 +2854,12 @@ export default function WebCatalog() {
         boxSizing: 'border-box'
       }} className="desktop-only">
         <div style={{ display: 'flex', gap: 20 }}>
-          <span>🚚 Giao hàng toàn quốc</span>
-          <span>🔧 Tư vấn kỹ thuật chuyên sâu</span>
-          <span>🏢 Kênh B2B / Dự án / Nhà thầu</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Truck size={13} color="#38BDF8" /> Giao hàng toàn quốc</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Wrench size={13} color="#38BDF8" /> Tư vấn kỹ thuật chuyên sâu</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Building2 size={13} color="#38BDF8" /> Kênh B2B / Dự án / Nhà thầu</span>
         </div>
         <div style={{ display: 'flex', gap: 16 }}>
-          <span>Hotline hỗ trợ: <strong style={{ color: '#FFFFFF' }}>0984.273.806</strong></span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Phone size={13} color="#38BDF8" /> Hotline hỗ trợ: <strong style={{ color: '#FFFFFF' }}>0984.273.806</strong></span>
         </div>
       </div>
 
@@ -2888,7 +2892,7 @@ export default function WebCatalog() {
             
             {/* Search Input */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }} className="desktop-only">
-              <span style={{ position: 'absolute', left: 12, color: '#667085', fontSize: 14 }}>🔍</span>
+              <span style={{ position: 'absolute', left: 12, color: '#94A3B8', display: 'flex', alignItems: 'center' }}><SearchIcon size={14} color="#94A3B8" /></span>
               <input
                 type="text"
                 placeholder="Tìm kiếm máy bơm theo tên hoặc mã..."
@@ -3070,7 +3074,6 @@ export default function WebCatalog() {
                 border: 'none',
                 cursor: 'pointer',
                 padding: 6,
-                fontSize: 24,
                 color: '#102A43',
                 display: 'flex',
                 justifyContent: 'center',
@@ -3078,7 +3081,7 @@ export default function WebCatalog() {
               }}
               aria-label="Mở menu điều hướng"
             >
-              ☰
+              <Menu size={22} color="#102A43" strokeWidth={2.2} />
             </button>
           </div>
         </div>
@@ -3141,14 +3144,12 @@ export default function WebCatalog() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 15,
-                fontWeight: 800,
                 color: '#475569',
                 cursor: 'pointer'
               }}
               aria-label="Đóng menu"
             >
-              ✕
+              <X size={18} color="#475569" strokeWidth={2.5} />
             </button>
           </div>
 
@@ -3215,7 +3216,7 @@ export default function WebCatalog() {
                 boxShadow: '0 2px 8px rgba(8, 120, 217, 0.25)'
               }}
             >
-              <span>📞</span> HOTLINE: 0984.273.806
+              <span><Phone size={15} color="#FFFFFF" /></span> HOTLINE: 0984.273.806
             </a>
             <a
               href="https://zalo.me/0984273806"
@@ -3236,7 +3237,7 @@ export default function WebCatalog() {
                 borderRadius: 8
               }}
             >
-              <span>💬</span> Chat Zalo Tư Vấn
+              <span><MessageSquare size={15} color="#0878D9" /></span> Chat Zalo Tư Vấn
             </a>
             <div style={{ fontSize: 11, color: '#64748B', textAlign: 'center', marginTop: 2, lineHeight: 1.4 }}>
               Kho LK180, Dương Nội, Hà Đông, Hà Nội
@@ -3256,43 +3257,43 @@ export default function WebCatalog() {
               const name = ((slideItem.headline || '') + ' ' + (slideItem.pill || '') + ' ' + (slideItem.category || '')).toLowerCase();
               if (name.includes('biến tần') || name.includes('tăng áp')) {
                 return [
-                  { icon: '⚡', label: 'Inverter Tiết Kiệm 40%' },
-                  { icon: '🛡️', label: 'Cảm Biến Chống Cạn' }
+                  { icon: <Zap size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Inverter Tiết Kiệm 40%' },
+                  { icon: <ShieldCheck size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Cảm Biến Chống Cạn' }
                 ];
               }
               if (name.includes('hỏa tiễn') || name.includes('giếng khoan') || name.includes('4sl')) {
                 return [
-                  { icon: '💧', label: 'Hmax 285m · Đẩy Siêu Cao' },
-                  { icon: '✨', label: 'Thân Inox 304 Chống Rỉ' }
+                  { icon: <Droplets size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Hmax 285m · Đẩy Siêu Cao' },
+                  { icon: <Sparkles size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Thân Inox 304 Chống Rỉ' }
                 ];
               }
               if (name.includes('nước thải') || name.includes('bùn') || name.includes('hố móng')) {
                 return [
-                  { icon: '⚙️', label: 'Cánh Cắt Rác Chống Nghẹt' },
-                  { icon: '🏭', label: 'Động Cơ Gang Đúc IP68' }
+                  { icon: <Settings size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Cánh Cắt Rác Chống Nghẹt' },
+                  { icon: <Building2 size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Động Cơ Gang Đúc IP68' }
                 ];
               }
               if (name.includes('trục đứng') || name.includes('đa tầng') || name.includes('cdlf')) {
                 return [
-                  { icon: '🏢', label: 'Hmax 240m · Áp Siêu Cao' },
-                  { icon: '💧', label: 'Đa Tầng Cánh Inox 304' }
+                  { icon: <Building2 size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Hmax 240m · Áp Siêu Cao' },
+                  { icon: <Droplets size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Đa Tầng Cánh Inox 304' }
                 ];
               }
               if (name.includes('đầu thổi') || name.includes('roots blower') || name.includes('thổi khí')) {
                 return [
-                  { icon: '💨', label: 'Lưu Lượng Khí Siêu Lớn' },
-                  { icon: '⚙️', label: 'Roots Blower Công Nghiệp' }
+                  { icon: <Wind size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Lưu Lượng Khí Siêu Lớn' },
+                  { icon: <Settings size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Roots Blower Công Nghiệp' }
                 ];
               }
               if (name.includes('ly tâm') || name.includes('trục ngang')) {
                 return [
-                  { icon: '🌊', label: 'Qmax 200m³/h · 380V' },
-                  { icon: '⭐', label: 'Tiêu Chuẩn Châu Âu' }
+                  { icon: <Gauge size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Qmax 200m³/h · 380V' },
+                  { icon: <Award size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Tiêu Chuẩn Châu Âu' }
                 ];
               }
               return [
-                { icon: '⭐', label: 'Chính Hãng T&T · 12T-24T' },
-                { icon: '📜', label: 'Đầy Đủ Chứng Từ CO/CQ' }
+                { icon: <Award size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Chính Hãng T&T · 12T-24T' },
+                { icon: <FileText size={13} color="#0369A1" strokeWidth={2.5} />, label: 'Đầy Đủ Chứng Từ CO/CQ' }
               ];
             };
 
@@ -3459,9 +3460,9 @@ export default function WebCatalog() {
 
                         {/* Dải cam kết nổi bật */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, fontWeight: 700, color: '#38BDF8', marginTop: 2 }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>✓ 100% Chính Hãng</span>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>✓ Đầy Đủ CO/CQ</span>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>✓ Đổi Mới Uy Tín</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> 100% Chính Hãng</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> Đầy Đủ CO/CQ</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> Đổi Mới Uy Tín</span>
                         </div>
 
                         {/* Thành phần 4: Một nút CTA duy nhất */}
@@ -3528,7 +3529,7 @@ export default function WebCatalog() {
                         </div>
                       </div>
 
-                      {/* ── CỘT PHẢI: THẺ ĐÓNG KHUNG XOAY 3.5 ĐỘ + QUẦNG SÁNG + HUY HIỆU GÓC ── */}
+                      {/* ── CỘT PHẢI: KHUNG ẢNH SPOTLIGHT SẢN PHẨM HIỆN ĐẠI ── */}
                       <div
                         style={{
                           flex: '0 0 auto',
@@ -3538,13 +3539,13 @@ export default function WebCatalog() {
                           position: 'relative'
                         }}
                       >
-                        {/* 1. Quầng sáng (Halo Glow) phía sau thẻ ảnh */}
+                        {/* 1. Subtle Glow phía sau thẻ ảnh */}
                         <div
                           style={{
                             position: 'absolute',
-                            inset: -18,
-                            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.4) 0%, rgba(2, 132, 199, 0.15) 50%, transparent 72%)',
-                            filter: 'blur(10px)',
+                            inset: -14,
+                            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(2, 132, 199, 0.08) 60%, transparent 80%)',
+                            filter: 'blur(12px)',
                             zIndex: 1,
                             pointerEvents: 'none',
                             borderRadius: 20
@@ -3564,77 +3565,78 @@ export default function WebCatalog() {
                             position: 'relative',
                             zIndex: 2,
                             background: '#FFFFFF',
-                            padding: 8,
+                            padding: 10,
                             borderRadius: 14,
-                            boxShadow: '0 20px 45px -8px rgba(0, 0, 0, 0.55), 0 6px 18px rgba(0, 0, 0, 0.25)',
-                            transform: 'rotate(3.5deg)',
-                            transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                            boxShadow: '0 20px 45px -10px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.2)',
+                            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                             cursor: 'pointer',
-                            maxWidth: 'clamp(230px, 24vw, 300px)',
+                            maxWidth: 'clamp(240px, 25vw, 310px)',
                             width: '100%',
                             boxSizing: 'border-box'
                           }}
                           onMouseOver={e => {
-                            e.currentTarget.style.transform = 'rotate(0deg) scale(1.025)';
-                            e.currentTarget.style.boxShadow = '0 24px 50px rgba(55, 138, 221, 0.45), 0 8px 20px rgba(0, 0, 0, 0.3)';
+                            e.currentTarget.style.transform = 'translateY(-4px)';
+                            e.currentTarget.style.boxShadow = '0 26px 52px -10px rgba(0, 0, 0, 0.65), 0 0 20px rgba(56, 189, 248, 0.3)';
                           }}
                           onMouseOut={e => {
-                            e.currentTarget.style.transform = 'rotate(3.5deg)';
-                            e.currentTarget.style.boxShadow = '0 20px 45px -8px rgba(0, 0, 0, 0.55), 0 6px 18px rgba(0, 0, 0, 0.25)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 20px 45px -10px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.2)';
                           }}
                           title={`Bấm xem danh mục: ${slide.headline}`}
                         >
-                          {/* 3. Huy hiệu nhỏ nổi ở góc trên bên phải */}
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: -12,
-                              right: -12,
-                              background: '#FFFFFF',
-                              borderRadius: 8,
-                              padding: '5px 11px',
-                              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
-                              border: '1px solid #E2E8F0',
-                              transform: 'rotate(-3.5deg)',
-                              fontSize: '11.5px',
-                              fontWeight: 800,
-                              color: '#0369A1',
-                              whiteSpace: 'nowrap',
-                              zIndex: 4,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}
-                          >
-                            <span>{chips[0]?.icon}</span>
-                            <span>{chips[0]?.label}</span>
-                          </div>
+                          {/* 3. Huy hiệu nhỏ ở góc trên bên phải */}
+                          {chips[0] && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: -10,
+                                right: -10,
+                                background: '#FFFFFF',
+                                borderRadius: 8,
+                                padding: '5px 11px',
+                                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
+                                border: '1px solid #E2E8F0',
+                                fontSize: '11.5px',
+                                fontWeight: 800,
+                                color: '#0369A1',
+                                whiteSpace: 'nowrap',
+                                zIndex: 4,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5
+                              }}
+                            >
+                              <span>{chips[0]?.icon}</span>
+                              <span>{chips[0]?.label}</span>
+                            </div>
+                          )}
 
-                          {/* 4. Huy hiệu nhỏ góc dưới */}
-                          <div
-                            style={{
-                              position: 'absolute',
-                              bottom: 10,
-                              left: -14,
-                              background: '#FFFFFF',
-                              borderRadius: 8,
-                              padding: '4px 10px',
-                              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
-                              border: '1px solid #E2E8F0',
-                              transform: 'rotate(-2deg)',
-                              fontSize: '11px',
-                              fontWeight: 800,
-                              color: '#071A2F',
-                              whiteSpace: 'nowrap',
-                              zIndex: 4,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}
-                          >
-                            <span>{chips[1]?.icon}</span>
-                            <span>{chips[1]?.label}</span>
-                          </div>
+                          {/* 4. Huy hiệu nhỏ góc dưới bên trái */}
+                          {chips[1] && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                bottom: -10,
+                                left: -10,
+                                background: '#FFFFFF',
+                                borderRadius: 8,
+                                padding: '5px 11px',
+                                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
+                                border: '1px solid #E2E8F0',
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                color: '#071A2F',
+                                whiteSpace: 'nowrap',
+                                zIndex: 4,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5
+                              }}
+                            >
+                              <span>{chips[1]?.icon}</span>
+                              <span>{chips[1]?.label}</span>
+                            </div>
+                          )}
 
                           {/* Ảnh Poster sắc nét 100% */}
                           <img
@@ -3819,7 +3821,7 @@ export default function WebCatalog() {
                   border: '1px solid #BFDBFE',
                   boxShadow: '0 1px 3px rgba(8, 120, 217, 0.08)'
                 }}>
-                  <span style={{ fontSize: 13 }}>📂</span> DANH MỤC SẢN PHẨM
+                  <Folder size={13} color="#0878D9" /> DANH MỤC SẢN PHẨM
                 </span>
               </div>
               <h2 style={{ fontSize: 24, fontWeight: 900, color: '#071A2F', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>
@@ -3831,7 +3833,7 @@ export default function WebCatalog() {
                   : 'Khám phá các giải pháp bơm phù hợp cho từng nhu cầu'}
               </p>
 
-              {/* Switcher Tab: [⚡ Máy Bơm] [🔧 Phụ Kiện] */}
+              {/* Switcher Tab: [Máy Bơm] [Phụ Kiện] */}
               <div style={{
                 display: 'inline-flex',
                 background: '#F1F5F9',
@@ -3860,7 +3862,7 @@ export default function WebCatalog() {
                     gap: '6px'
                   }}
                 >
-                  <span>⚡</span> Máy Bơm
+                  <Zap size={14} color={categoryNavType === 'pump' ? '#FFF' : '#64748B'} /> Máy Bơm
                 </button>
                 <button
                   type="button"
@@ -3881,7 +3883,7 @@ export default function WebCatalog() {
                     gap: '6px'
                   }}
                 >
-                  <span>🔧</span> Phụ Kiện
+                  <Wrench size={14} color={categoryNavType === 'accessory' ? '#FFF' : '#64748B'} /> Phụ Kiện
                 </button>
               </div>
             </div>
@@ -4123,7 +4125,7 @@ export default function WebCatalog() {
                     border: '1px solid #FCD34D',
                     boxShadow: '0 1px 2px rgba(245, 158, 11, 0.1)'
                   }}>
-                    <span>⭐</span> SẢN PHẨM ĐẮC LỰC
+                    <Star size={12} color="#92400E" /> SẢN PHẨM ĐẮC LỰC
                   </span>
                 </div>
                 <h2 style={{ fontSize: 22, fontWeight: 900, color: '#082B4C', marginTop: 2, margin: 0 }}>SẢN PHẨM NỔI BẬT</h2>
@@ -4721,17 +4723,18 @@ export default function WebCatalog() {
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  style={{ border: 'none', background: 'transparent', color: '#64748B', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: 6 }}
+                  style={{ border: 'none', background: 'transparent', color: '#64748B', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  aria-label="Xóa từ khóa tìm kiếm"
                 >
-                  ✕
+                  <X size={15} color="#64748B" strokeWidth={2.5} />
                 </button>
               )}
             </div>
 
             {/* Quick search keywords bar */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 10, padding: '0 2px' }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}>
-                🔥 Gợi ý:
+              <span style={{ fontSize: 11.5, fontWeight: 750, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Flame size={13} color="#EA580C" /> Gợi ý:
               </span>
               {POPULAR_SEARCH_KEYWORDS.map((kw, i) => {
                 const isActive = searchTerm.toLowerCase().trim() === kw.toLowerCase().trim();
@@ -4778,10 +4781,13 @@ export default function WebCatalog() {
                     padding: '3px 10px',
                     fontSize: 11.5,
                     fontWeight: 700,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4
                   }}
                 >
-                  ✕ Xóa lọc
+                  <X size={12} color="#DC2626" strokeWidth={2.5} /> Xóa lọc
                 </button>
               )}
             </div>
@@ -4789,13 +4795,13 @@ export default function WebCatalog() {
             {/* Row of modern trust badges */}
             <div className="desktop-only" style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap', marginTop: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 750, color: '#475569' }}>
-                <span style={{ color: '#0878D9', fontSize: 13 }}>✓</span> Đầy đủ CO/CQ chứng quy
+                <CheckCircle size={13} color="#0878D9" strokeWidth={2.5} /> Đầy đủ CO/CQ chứng quy
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 750, color: '#475569' }}>
-                <span style={{ color: '#0878D9', fontSize: 13 }}>✓</span> Bảo hành hãng 12 tháng
+                <CheckCircle size={13} color="#0878D9" strokeWidth={2.5} /> Bảo hành hãng 12 tháng
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 750, color: '#475569' }}>
-                <span style={{ color: '#0878D9', fontSize: 13 }}>✓</span> Hàng sẵn kho số lượng lớn
+                <CheckCircle size={13} color="#0878D9" strokeWidth={2.5} /> Hàng sẵn kho số lượng lớn
               </div>
             </div>
           </div>
@@ -4977,8 +4983,8 @@ export default function WebCatalog() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, background: '#F5F7FA', padding: 3, borderRadius: 6, border: '1px solid #EEF1F4' }}>
                         {[
                           { id: 'ALL', label: 'Tất cả' },
-                          { id: 'pump', label: '⚡ Máy bơm' },
-                          { id: 'accessory', label: '🔧 Phụ kiện' }
+                          { id: 'pump', label: 'Máy bơm' },
+                          { id: 'accessory', label: 'Phụ kiện' }
                         ].map((t) => (
                           <button
                             key={t.id}
@@ -5105,49 +5111,63 @@ export default function WebCatalog() {
                       {filterProductType !== 'ALL' && (
                         <span style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 4, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, color: '#082B4C', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           Phân loại: {filterProductType === 'accessory' ? 'Phụ kiện' : 'Máy bơm'}
-                          <span style={{ cursor: 'pointer', color: '#EF4444' }} onClick={() => setFilterProductType('ALL')}>✕</span>
+                          <span style={{ cursor: 'pointer', color: '#EF4444', display: 'inline-flex', alignItems: 'center' }} onClick={() => setFilterProductType('ALL')} title="Xóa lọc">
+                            <X size={12} color="#EF4444" strokeWidth={2.5} />
+                          </span>
                         </span>
                       )}
                       
                       {selectedCategory !== 'TẤT CẢ' && (
                         <span style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 4, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, color: '#082B4C', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           Danh mục: {selectedCategory}
-                          <span style={{ cursor: 'pointer', color: '#EF4444' }} onClick={() => setSelectedCategory('TẤT CẢ')}>✕</span>
+                          <span style={{ cursor: 'pointer', color: '#EF4444', display: 'inline-flex', alignItems: 'center' }} onClick={() => setSelectedCategory('TẤT CẢ')} title="Xóa lọc">
+                            <X size={12} color="#EF4444" strokeWidth={2.5} />
+                          </span>
                         </span>
                       )}
 
                       {activeBrand !== 'ALL' && (
                         <span style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 4, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, color: '#082B4C', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           Hãng: {activeBrand}
-                          <span style={{ cursor: 'pointer', color: '#EF4444' }} onClick={() => setActiveBrand('ALL')}>✕</span>
+                          <span style={{ cursor: 'pointer', color: '#EF4444', display: 'inline-flex', alignItems: 'center' }} onClick={() => setActiveBrand('ALL')} title="Xóa lọc">
+                            <X size={12} color="#EF4444" strokeWidth={2.5} />
+                          </span>
                         </span>
                       )}
 
                       {filterPower !== 'ALL' && (
                         <span style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 4, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, color: '#082B4C', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           C.Suất: {filterPower}
-                          <span style={{ cursor: 'pointer', color: '#EF4444' }} onClick={() => setFilterPower('ALL')}>✕</span>
+                          <span style={{ cursor: 'pointer', color: '#EF4444', display: 'inline-flex', alignItems: 'center' }} onClick={() => setFilterPower('ALL')} title="Xóa lọc">
+                            <X size={12} color="#EF4444" strokeWidth={2.5} />
+                          </span>
                         </span>
                       )}
 
                       {filterVoltage !== 'ALL' && (
                         <span style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 4, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, color: '#082B4C', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           Điện áp: {filterVoltage === '220V' ? '1 Pha (220V)' : '3 Pha (380V)'}
-                          <span style={{ cursor: 'pointer', color: '#EF4444' }} onClick={() => setFilterVoltage('ALL')}>✕</span>
+                          <span style={{ cursor: 'pointer', color: '#EF4444', display: 'inline-flex', alignItems: 'center' }} onClick={() => setFilterVoltage('ALL')} title="Xóa lọc">
+                            <X size={12} color="#EF4444" strokeWidth={2.5} />
+                          </span>
                         </span>
                       )}
 
                       {sliderHead !== 150 && (
                         <span style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 4, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, color: '#082B4C', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           Cột áp ≤ {sliderHead}m
-                          <span style={{ cursor: 'pointer', color: '#EF4444' }} onClick={() => setSliderHead(150)}>✕</span>
+                          <span style={{ cursor: 'pointer', color: '#EF4444', display: 'inline-flex', alignItems: 'center' }} onClick={() => setSliderHead(150)} title="Xóa lọc">
+                            <X size={12} color="#EF4444" strokeWidth={2.5} />
+                          </span>
                         </span>
                       )}
 
                       {sliderFlow !== 200 && (
                         <span style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 4, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, color: '#082B4C', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           Lưu lượng ≤ {sliderFlow}m³/h
-                          <span style={{ cursor: 'pointer', color: '#EF4444' }} onClick={() => setSliderFlow(200)}>✕</span>
+                          <span style={{ cursor: 'pointer', color: '#EF4444', display: 'inline-flex', alignItems: 'center' }} onClick={() => setSliderFlow(200)} title="Xóa lọc">
+                            <X size={12} color="#EF4444" strokeWidth={2.5} />
+                          </span>
                         </span>
                       )}
 
@@ -5200,7 +5220,7 @@ export default function WebCatalog() {
                   </div>
                 ) : processedProducts.length === 0 ? (
                   <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: '60px 0', textAlign: 'center' }}>
-                    <p style={{ fontSize: 32, margin: '0 0 10px' }}>📋</p>
+                    <div style={{ display: 'flex', justifyContent: 'center', margin: '0 0 12px' }}><Package size={36} color="#94A3B8" /></div>
                     <p style={{ color: '#64748B', fontSize: 13, margin: 0, fontWeight: 600 }}>Không tìm thấy máy bơm nào khớp với điều kiện lọc.</p>
                   </div>
                 ) : (searchTerm.trim() || selectedCategory !== 'TẤT CẢ') ? (
@@ -5352,9 +5372,10 @@ export default function WebCatalog() {
                 
                 <button
                   onClick={() => setQuickViewProduct(null)}
-                  style={{ position: 'absolute', top: 12, right: 12, border: 'none', background: 'transparent', fontSize: 20, cursor: 'pointer', color: '#64748B', fontWeight: 'bold' }}
+                  style={{ position: 'absolute', top: 12, right: 12, border: 'none', background: '#F1F5F9', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748B' }}
+                  aria-label="Đóng xem nhanh"
                 >
-                  ✕
+                  <X size={16} color="#64748B" strokeWidth={2.5} />
                 </button>
 
                 <div style={{ flex: '1 1 40%', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, overflow: 'hidden' }}>
@@ -5373,9 +5394,9 @@ export default function WebCatalog() {
                   <h3 style={{ fontSize: 16, fontWeight: 850, color: '#10233F', margin: 0 }}>{quickViewProduct.name}</h3>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12.5, color: '#475569', marginTop: 8 }}>
-                    {quickViewProduct.webSpecs?.power && <div>⚡ Công suất: <strong>{formatPower(quickViewProduct.webSpecs.power)}</strong></div>}
-                    {quickViewProduct.webSpecs?.voltage && <div>🔌 Điện áp: <strong>{formatVoltage(quickViewProduct.webSpecs.voltage)}</strong></div>}
-                    {quickViewProduct.webSpecs?.specs && <div>📋 Thông số: {quickViewProduct.webSpecs.specs}</div>}
+                    {quickViewProduct.webSpecs?.power && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={14} color="#0878D9" /> Công suất: <strong>{formatPower(quickViewProduct.webSpecs.power)}</strong></div>}
+                    {quickViewProduct.webSpecs?.voltage && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={14} color="#0878D9" /> Điện áp: <strong>{formatVoltage(quickViewProduct.webSpecs.voltage)}</strong></div>}
+                    {quickViewProduct.webSpecs?.specs && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FileText size={14} color="#0878D9" /> Thông số: {quickViewProduct.webSpecs.specs}</div>}
                   </div>
 
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8', marginTop: 12 }}>
@@ -5425,9 +5446,10 @@ export default function WebCatalog() {
                   <h3 style={{ fontSize: 15, fontWeight: 900, color: '#082B4C', margin: 0, letterSpacing: '0.5px' }}>BỘ LỌC TÌM KIẾM</h3>
                   <button
                     onClick={() => setShowMobileFilters(false)}
-                    style={{ border: 'none', background: 'transparent', fontSize: 20, cursor: 'pointer', fontWeight: 'bold', padding: 8, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ border: 'none', background: '#F1F5F9', borderRadius: '50%', width: 34, height: 34, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    aria-label="Đóng bộ lọc"
                   >
-                    ✕
+                    <X size={18} color="#475569" strokeWidth={2.5} />
                   </button>
                 </div>
                 
@@ -5443,8 +5465,8 @@ export default function WebCatalog() {
                       style={{ width: '100%', height: 44, padding: '0 12px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', background: '#FFFFFF', fontSize: 13.5, fontWeight: 600, color: '#102A43' }}
                     >
                       <option value="ALL">Tất cả sản phẩm</option>
-                      <option value="pump">⚡ Máy bơm</option>
-                      <option value="accessory">🔧 Phụ kiện</option>
+                      <option value="pump">Máy bơm</option>
+                      <option value="accessory">Phụ kiện</option>
                     </select>
                   </div>
 
@@ -5711,7 +5733,7 @@ export default function WebCatalog() {
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase' }}>DÒNG BƠM PHÙ HỢP:</span>
                       {app.pumpTypes.map((pt, pti) => (
                         <div key={pti} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#334155', fontWeight: 600 }}>
-                          <span style={{ color: '#0878D9', fontSize: 10 }}>✔</span>
+                          <Check size={12} color="#0878D9" strokeWidth={2.5} />
                           <span>{pt}</span>
                         </div>
                       ))}
@@ -5839,16 +5861,16 @@ export default function WebCatalog() {
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
                     {brand.categories.map((c, ci) => (
-                      <span key={ci} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#1E293B', fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6 }}>
-                        💧 {c}
+                      <span key={ci} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#1E293B', fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6 }}>
+                        <Droplets size={12} color="#0878D9" /> {c}
                       </span>
                     ))}
                   </div>
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, borderTop: '1px dashed #EEF1F4', paddingTop: 14, fontSize: 12.5, color: '#10B981', fontWeight: 700 }}>
                     {brand.highlights.map((hl, hli) => (
-                      <span key={hli} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        ✓ {hl}
+                      <span key={hli} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <CheckCircle size={13} color="#10B981" strokeWidth={2.5} /> {hl}
                       </span>
                     ))}
                   </div>
@@ -5937,16 +5959,16 @@ export default function WebCatalog() {
                 {/* Tầm nhìn & Sứ mệnh 2-Card Box */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 4 }}>
                   <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: 8, padding: '14px 16px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: '#0369A1', textTransform: 'uppercase', marginBottom: 4 }}>
-                      🎯 SỨ MỆNH
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 900, color: '#0369A1', textTransform: 'uppercase', marginBottom: 4 }}>
+                      <Target size={14} color="#0369A1" /> SỨ MỆNH
                     </div>
                     <div style={{ fontSize: 13, color: '#0C4A6E', lineHeight: 1.5, fontWeight: 500 }}>
                       Mang lại nguồn nước ổn định, liên tục và tiết kiệm tối đa điện năng cho mọi công trình và đời sống người dân Việt Nam.
                     </div>
                   </div>
                   <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '14px 16px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: '#0878D9', textTransform: 'uppercase', marginBottom: 4 }}>
-                      🌟 TẦM NHÌN
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 900, color: '#0878D9', textTransform: 'uppercase', marginBottom: 4 }}>
+                      <Eye size={14} color="#0878D9" /> TẦM NHÌN
                     </div>
                     <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>
                       Trở thành nhà cung cấp &amp; đối tác phân phối thiết bị máy bơm công nghiệp - dân dụng số 1 về chất lượng dịch vụ và kỹ thuật.
@@ -5968,8 +5990,8 @@ export default function WebCatalog() {
                   lineHeight: 1.6,
                   marginTop: 6,
                 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase', letterSpacing: '0.8px', borderBottom: '1px solid #E2E8F0', paddingBottom: 6, marginBottom: 4 }}>
-                    🏛️ THÔNG TIN PHÁP LÝ DOANH NGHIỆP
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase', letterSpacing: '0.8px', borderBottom: '1px solid #E2E8F0', paddingBottom: 6, marginBottom: 4 }}>
+                    <Building2 size={14} color="#0878D9" /> THÔNG TIN PHÁP LÝ DOANH NGHIỆP
                   </div>
                   <div><strong>Tên đầy đủ:</strong> CÔNG TY TNHH MÁY BƠM T&amp;T</div>
                   <div><strong>Mã số doanh nghiệp (MST):</strong> 0106888466 (Sở Kế hoạch &amp; Đầu tư TP. Hà Nội cấp)</div>
@@ -6017,21 +6039,27 @@ export default function WebCatalog() {
                 {/* 3 Cam kết năng lực kho & giao hàng */}
                 <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>🏭</span>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Building2 size={18} color="#0878D9" />
+                    </div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: '#071A2F' }}>Kho Bãi 1.500m²</div>
                       <div style={{ fontSize: 11.5, color: '#64748B' }}>Dự trữ đầy đủ mọi phân khúc công suất</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>🚚</span>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Truck size={18} color="#0878D9" />
+                    </div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: '#071A2F' }}>Giao Nhanh 24-48h</div>
                       <div style={{ fontSize: 11.5, color: '#64748B' }}>Vận chuyển an toàn tận chân công trình</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>📑</span>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FileText size={18} color="#0878D9" />
+                    </div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: '#071A2F' }}>100% Hồ Sơ CO/CQ</div>
                       <div style={{ fontSize: 11.5, color: '#64748B' }}>Chứng từ gốc phục vụ nghiệm thu quyết toán</div>
@@ -6041,7 +6069,7 @@ export default function WebCatalog() {
 
                 {/* Giờ Làm Việc */}
                 <div style={{ background: '#FFFFFF', border: '1px solid #EEF1F4', borderRadius: 8, padding: '14px 16px', fontSize: 12.5, color: '#475569', lineHeight: 1.5 }}>
-                  <div style={{ fontWeight: 800, color: '#071A2F', marginBottom: 4 }}>🕒 THỜI GIAN LÀM VIỆC</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, color: '#071A2F', marginBottom: 4 }}><Clock size={14} color="#0878D9" /> THỜI GIAN LÀM VIỆC</div>
                   <div>• Thứ 2 – Thứ 7: <strong>07:30 – 18:00</strong></div>
                   <div>• Trực Hotline kỹ thuật: <strong>24/7 (Kể cả ngày lễ)</strong></div>
                 </div>
@@ -6091,28 +6119,28 @@ export default function WebCatalog() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
                 {[
                   {
-                    icon: '🏢',
+                    icon: <Building2 size={24} color="#0878D9" />,
                     title: 'TÒA NHÀ & CAO TẦNG',
                     desc: 'Cung cấp cụm bơm biến tần song song điều áp tự động, bơm cứu hỏa PCCC, bơm bù áp và hệ thống bơm thoát nước ngập tầng hầm.'
                   },
                   {
-                    icon: '🏭',
+                    icon: <Settings size={24} color="#0878D9" />,
                     title: 'NHÀ MÁY & KHU CÔNG NGHIỆP',
                     desc: 'Hệ thống bơm ly tâm công suất lớn giải nhiệt tháp Cooling Tower, bơm tuần hoàn nước nóng, bơm hóa chất và xử lý nước thải sản xuất.'
                   },
                   {
-                    icon: '🏗️',
+                    icon: <Wrench size={24} color="#0878D9" />,
                     title: 'CÔNG TRÌNH & HỐ MÓNG',
                     desc: 'Dòng bơm chìm bùn cát, bơm cánh cắt rác KTZ chuyên dụng thoát nước hố móng, thi công cầu đường và hạ tầng đô thị.'
                   },
                   {
-                    icon: '🌾',
+                    icon: <Droplets size={24} color="#0878D9" />,
                     title: 'NÔNG NGHIỆP & CẤP NƯỚC',
                     desc: 'Bơm hỏa tiễn thả giếng khoan sâu khai thác nước ngầm Inox 304, bơm ly tâm tưới tiêu tự động cho trang trại diện tích lớn.'
                   }
                 ].map((item, idx) => (
                   <div key={idx} style={{ background: '#FFFFFF', border: '1px solid #EEF1F4', borderRadius: 10, padding: 26, boxShadow: '0 2px 8px rgba(7,26,47,0.03)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ fontSize: 32 }}>{item.icon}</div>
+                    <div style={{ width: 44, height: 44, borderRadius: 8, background: '#F0F9FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</div>
                     <h3 style={{ fontSize: 15, fontWeight: 800, textTransform: 'uppercase', color: '#071A2F', margin: 0 }}>{item.title}</h3>
                     <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>{item.desc}</p>
                   </div>
@@ -6176,15 +6204,15 @@ export default function WebCatalog() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
                 {[
-                  { icon: '📦', title: 'ĐA DẠNG MẪU MÃ', desc: 'Sẵn có hàng ngàn model máy bơm từ dân dụng 0.37kW đến công nghiệp lớn.' },
-                  { icon: '🛡️', title: 'CAM KẾT CHẤT LƯỢNG', desc: '100% sản phẩm chính hãng, đầy đủ CO/CQ, xuất xứ minh bạch rõ ràng.' },
-                  { icon: '🏷️', title: 'GIÁ CẠNH TRANH', desc: 'Chính sách chiết khấu tốt nhất cho đại lý, nhà thầu cơ điện và dự án lớn.' },
-                  { icon: '🤝', title: 'TƯ VẤN CHUYÊN NGHIỆP', desc: 'Đội ngũ kỹ sư giàu kinh nghiệm tính chọn đúng model, cột áp và lưu lượng.' },
-                  { icon: '🔧', title: 'BẢO HÀNH CHU ĐÁO', desc: 'Bảo hành chính hãng 12-24 tháng, phụ tùng thay thế luôn sẵn sàng đáp ứng.' },
-                  { icon: '⚡', title: 'GIAO HÀNG HỎA TỐC', desc: 'Hệ thống vận chuyển nhanh toàn quốc, giao trực tiếp đến tận chân công trình.' }
+                  { icon: <Package size={22} color="#0878D9" />, title: 'ĐA DẠNG MẪU MÃ', desc: 'Sẵn có hàng ngàn model máy bơm từ dân dụng 0.37kW đến công nghiệp lớn.' },
+                  { icon: <ShieldCheck size={22} color="#0878D9" />, title: 'CAM KẾT CHẤT LƯỢNG', desc: '100% sản phẩm chính hãng, đầy đủ CO/CQ, xuất xứ minh bạch rõ ràng.' },
+                  { icon: <Tag size={22} color="#0878D9" />, title: 'GIÁ CẠNH TRANH', desc: 'Chính sách chiết khấu tốt nhất cho đại lý, nhà thầu cơ điện và dự án lớn.' },
+                  { icon: <Users size={22} color="#0878D9" />, title: 'TƯ VẤN CHUYÊN NGHIỆP', desc: 'Đội ngũ kỹ sư giàu kinh nghiệm tính chọn đúng model, cột áp và lưu lượng.' },
+                  { icon: <Wrench size={22} color="#0878D9" />, title: 'BẢO HÀNH CHU ĐÁO', desc: 'Bảo hành chính hãng 12-24 tháng, phụ tùng thay thế luôn sẵn sàng đáp ứng.' },
+                  { icon: <Zap size={22} color="#0878D9" />, title: 'GIAO HÀNG HỎA TỐC', desc: 'Hệ thống vận chuyển nhanh toàn quốc, giao trực tiếp đến tận chân công trình.' }
                 ].map((item, idx) => (
                   <div key={idx} style={{ background: '#FFFFFF', border: '1px solid #EEF1F4', borderRadius: 8, padding: 24, boxShadow: '0 1px 4px rgba(7,26,47,0.02)' }}>
-                    <div style={{ fontSize: 28, marginBottom: 12 }}>{item.icon}</div>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: '#F0F9FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>{item.icon}</div>
                     <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', color: '#071A2F', margin: '0 0 8px 0' }}>{item.title}</h3>
                     <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.55, margin: 0, fontWeight: 500 }}>{item.desc}</p>
                   </div>
@@ -6232,7 +6260,9 @@ export default function WebCatalog() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: 20, background: '#EFF6FF', width: 42, height: 42, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📍</span>
+                    <span style={{ background: '#EFF6FF', width: 42, height: 42, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <MapPin size={20} color="#0878D9" />
+                    </span>
                     <div>
                       <div style={{ fontSize: 11.5, color: '#64748B', textTransform: 'uppercase', fontWeight: 700 }}>Địa chỉ văn phòng &amp; kho hàng:</div>
                       <div style={{ fontWeight: 700, fontSize: 14, color: '#071A2F', marginTop: 2 }}>LK 180 – NO04 Khu 27–28 Dương Nội, Q. Hà Đông, Hà Nội</div>
@@ -6240,7 +6270,9 @@ export default function WebCatalog() {
                   </div>
 
                   <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: 20, background: '#EFF6FF', width: 42, height: 42, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📞</span>
+                    <span style={{ background: '#EFF6FF', width: 42, height: 42, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Phone size={20} color="#0878D9" />
+                    </span>
                     <div>
                       <div style={{ fontSize: 11.5, color: '#64748B', textTransform: 'uppercase', fontWeight: 700 }}>Hotline tư vấn kỹ thuật (24/7):</div>
                       <a href="tel:0984273806" style={{ fontWeight: 900, fontSize: 17, color: '#0878D9', textDecoration: 'none', display: 'block', marginTop: 2 }}>
@@ -6250,7 +6282,9 @@ export default function WebCatalog() {
                   </div>
 
                   <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: 20, background: '#EFF6FF', width: 42, height: 42, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>💬</span>
+                    <span style={{ background: '#EFF6FF', width: 42, height: 42, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <MessageSquare size={20} color="#0878D9" />
+                    </span>
                     <div>
                       <div style={{ fontSize: 11.5, color: '#64748B', textTransform: 'uppercase', fontWeight: 700 }}>Zalo tư vấn &amp; Báo giá:</div>
                       <a href="https://zalo.me/0984273806" target="_blank" rel="noreferrer" style={{ fontWeight: 800, fontSize: 14, color: '#0068FF', textDecoration: 'none', display: 'block', marginTop: 2 }}>
@@ -6260,7 +6294,9 @@ export default function WebCatalog() {
                   </div>
 
                   <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: 20, background: '#EFF6FF', width: 42, height: 42, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🌐</span>
+                    <span style={{ background: '#EFF6FF', width: 42, height: 42, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Globe size={20} color="#0878D9" />
+                    </span>
                     <div>
                       <div style={{ fontSize: 11.5, color: '#64748B', textTransform: 'uppercase', fontWeight: 700 }}>Website chính thức:</div>
                       <a href="https://maybomtandt.com.vn" target="_blank" rel="noreferrer" style={{ fontWeight: 700, fontSize: 14, color: '#071A2F', textDecoration: 'none', display: 'block', marginTop: 2 }}>
@@ -6270,7 +6306,9 @@ export default function WebCatalog() {
                   </div>
 
                   <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: 20, background: '#EFF6FF', width: 42, height: 42, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📘</span>
+                    <span style={{ background: '#EFF6FF', width: 42, height: 42, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Facebook size={20} color="#0878D9" />
+                    </span>
                     <div>
                       <div style={{ fontSize: 11.5, color: '#64748B', textTransform: 'uppercase', fontWeight: 700 }}>Facebook Fanpage:</div>
                       <a href="https://www.facebook.com/profile.php?id=61578469481516" target="_blank" rel="noreferrer" style={{ fontWeight: 700, fontSize: 14, color: '#1877F2', textDecoration: 'none', display: 'block', marginTop: 2 }}>
@@ -6285,10 +6323,10 @@ export default function WebCatalog() {
                     href="tel:0984273806"
                     style={{
                       background: '#071A2F', color: '#FFFFFF', padding: '12px 20px', borderRadius: 6,
-                      fontSize: 13, fontWeight: 800, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6
+                      fontSize: 13, fontWeight: 800, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8
                     }}
                   >
-                    📞 GỌI HOTLINE
+                    <Phone size={14} color="#FFFFFF" /> GỌI HOTLINE
                   </a>
                   <a
                     href="https://zalo.me/0984273806"
@@ -6296,10 +6334,10 @@ export default function WebCatalog() {
                     rel="noreferrer"
                     style={{
                       background: '#0878D9', color: '#FFFFFF', padding: '12px 20px', borderRadius: 6,
-                      fontSize: 13, fontWeight: 800, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6
+                      fontSize: 13, fontWeight: 800, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8
                     }}
                   >
-                    💬 NHẮN ZALO
+                    <MessageSquare size={14} color="#FFFFFF" /> NHẮN ZALO
                   </a>
                 </div>
               </div>
@@ -6431,17 +6469,17 @@ export default function WebCatalog() {
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 10 }}>LOẠI MÁY BƠM MUỐN CHỌN *</label>
                 <div className="calc-type-grid">
                   <div className={`calc-type-card ${calcPumpType === 'submersible' ? 'active' : ''}`} onClick={() => setCalcPumpType('submersible')}>
-                    <div className="calc-icon-bg">💧</div>
+                    <div className="calc-icon-bg"><Droplets size={18} color="#0878D9" /></div>
                     <span style={{ fontSize: 13, fontWeight: 700 }}>Bơm Chìm</span>
                     <span style={{ fontSize: 10, color: '#64748b' }}>Hút thải, giếng khoan</span>
                   </div>
                   <div className={`calc-type-card ${calcPumpType === 'surface' ? 'active' : ''}`} onClick={() => setCalcPumpType('surface')}>
-                    <div className="calc-icon-bg">⚙️</div>
+                    <div className="calc-icon-bg"><Settings size={18} color="#0878D9" /></div>
                     <span style={{ fontSize: 13, fontWeight: 700 }}>Bơm Cạn</span>
                     <span style={{ fontSize: 10, color: '#64748b' }}>Ly tâm trục ngang</span>
                   </div>
                   <div className={`calc-type-card ${calcPumpType === 'booster' ? 'active' : ''}`} onClick={() => setCalcPumpType('booster')}>
-                    <div className="calc-icon-bg">⚡</div>
+                    <div className="calc-icon-bg"><Zap size={18} color="#0878D9" /></div>
                     <span style={{ fontSize: 13, fontWeight: 700 }}>Tăng Áp / Biến Tần</span>
                     <span style={{ fontSize: 10, color: '#64748b' }}>Tăng áp lực vòi nước</span>
                   </div>
@@ -6659,7 +6697,7 @@ export default function WebCatalog() {
                   </div>
 
                   <div style={{ background: '#f8fafc', padding: 14, borderRadius: 10, borderLeft: '3.5px solid #0ea5e9', fontSize: 12.5, lineHeight: 1.5, color: '#334155' }}>
-                    <strong>💡 Lời khuyên kỹ sư T&T:</strong> Để đảm bảo đường ống hoạt động bền bỉ, bạn nên chọn dòng máy bơm có thông số danh định cao hơn mức tính toán tối thiểu từ 10% đến 15% (đã được AI của chúng tôi tích hợp sẵn vào dải lọc bên dưới).
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 800, color: '#0369A1' }}><Sparkles size={14} color="#0EA5E9" /> Lời khuyên kỹ sư T&T:</span> Để đảm bảo đường ống hoạt động bền bỉ, bạn nên chọn dòng máy bơm có thông số danh định cao hơn mức tính toán tối thiểu từ 10% đến 15% (đã được AI của chúng tôi tích hợp sẵn vào dải lọc bên dưới).
                   </div>
                 </div>
               )}
@@ -6675,16 +6713,16 @@ export default function WebCatalog() {
 
                 {calculatedProducts.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
-                    <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><AlertTriangle size={32} color="#F59E0B" /></div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>Không tìm thấy bơm trùng khớp dải này!</div>
                     <p style={{ fontSize: 12, margin: '0 auto', maxWidth: 300, lineHeight: 1.5 }}>
-                      Nhu cầu cột áp hoặc lưu lượng vượt ngoài dải tiêu chuẩn. Vui lòng bấm bên dưới để gửi thông số kỹ thuật, kỹ sư T&T sẽ tính chọn trực tiếp giúp bạn.
+                       Nhu cầu cột áp hoặc lưu lượng vượt ngoài dải tiêu chuẩn. Vui lòng bấm bên dưới để gửi thông số kỹ thuật, kỹ sư T&T sẽ tính chọn trực tiếp giúp bạn.
                     </p>
                     <button 
                       onClick={() => window.open(`https://zalo.me/0984273806?text=${encodeURIComponent(`Chào bạn, tôi cần tư vấn máy bơm có thông số tự tính trên web: Cột áp ${calcResults?.head || calcHeight}m, Lưu lượng ${calcResults?.flow || calcVolume} m3/h. Nhờ kỹ sư T&T hỗ trợ chọn giúp!`)}`, '_blank')}
-                      style={{ marginTop: 16, border: 'none', background: '#3b82f6', color: '#fff', padding: '10px 20px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      style={{ marginTop: 16, border: 'none', background: '#3b82f6', color: '#fff', padding: '10px 20px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     >
-                      💬 Gửi Yêu Cầu Trực Tiếp Qua Zalo
+                      <MessageSquare size={14} color="#FFFFFF" /> Gửi Yêu Cầu Trực Tiếp Qua Zalo
                     </button>
                   </div>
                 ) : (
@@ -6769,7 +6807,7 @@ export default function WebCatalog() {
           </div>
         ) : !currentProduct ? (
           <div style={{ maxWidth: 640, margin: '60px auto 100px', textAlign: 'center', padding: '48px 24px', background: '#FFFFFF', borderRadius: 16, border: '1px solid #E2E8F0', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📦</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Package size={48} color="#94A3B8" /></div>
             <h2 style={{ fontSize: 22, fontWeight: 800, color: '#071A2F', marginBottom: 10 }}>Không tìm thấy sản phẩm</h2>
             <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, marginBottom: 28, maxWidth: 460, margin: '0 auto 28px' }}>
               Mã sản phẩm này có thể không tồn tại hoặc đã được cập nhật. Bạn vui lòng quay lại trang chủ hoặc duyệt danh mục sản phẩm.
@@ -6851,10 +6889,10 @@ export default function WebCatalog() {
                     />
                     <div style={{
                       position: 'absolute', bottom: 12, right: 12, background: 'rgba(11, 31, 58, 0.8)', color: '#FFFFFF',
-                      padding: '5px 12px', borderRadius: 4, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '5px 12px', borderRadius: 4, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5,
                       backdropFilter: 'blur(4px)', zIndex: 3
                     }}>
-                      🔍 Phóng to
+                      <SearchIcon size={12} color="#FFFFFF" /> Phóng to
                     </div>
                   </div>
                   
@@ -6966,9 +7004,9 @@ export default function WebCatalog() {
                       </div>
                       {/* Bullet points */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', fontSize: 12, fontWeight: 700, color: '#475569' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ color: '#0878D9' }}>✓</span> Chính hãng</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ color: '#0878D9' }}>✓</span> CO/CQ</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ color: '#0878D9' }}>✓</span> BH 12 tháng</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle size={13} color="#0878D9" strokeWidth={2.5} /> Chính hãng</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle size={13} color="#0878D9" strokeWidth={2.5} /> CO/CQ</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle size={13} color="#0878D9" strokeWidth={2.5} /> BH 12 tháng</span>
                       </div>
                     </div>
 
@@ -7018,9 +7056,9 @@ export default function WebCatalog() {
                       <a 
                         href="tel:0984273806"
                         className="cta-btn"
-                        style={{ background: '#082B4C', color: '#FFFFFF', border: 'none', padding: '11px 14px', fontSize: 12.5, fontWeight: 800, borderRadius: 6, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', letterSpacing: '0.3px' }}
+                        style={{ background: '#082B4C', color: '#FFFFFF', border: 'none', padding: '11px 14px', fontSize: 12.5, fontWeight: 800, borderRadius: 6, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, letterSpacing: '0.3px' }}
                       >
-                        📞 GỌI NGAY HỖ TRỢ
+                        <Phone size={14} color="#FFFFFF" /> GỌI NGAY HỖ TRỢ
                       </a>
                     </div>
                   </div>
@@ -7072,7 +7110,7 @@ export default function WebCatalog() {
                           {`Là dòng sản phẩm mũi nhọn nhập khẩu, các sản phẩm máy bơm của thương hiệu ${currentProduct.webBrand || 'T&T'} được chế tạo với độ chính xác cơ khí cực cao, đảm bảo hiệu suất làm việc bền bỉ trong môi trường khắc nghiệt.\n\nSản phẩm sở hữu ưu điểm vượt trội về hiệu năng thủy lực, tiết kiệm điện năng tiêu thụ, giảm thiểu tiếng ồn và đặc biệt dễ dàng lắp đặt, bảo dưỡng định kỳ.`}
                         </p>
                         
-                        <h4 style={{ color: '#071A2F', fontWeight: 800, fontSize: 14, marginBottom: 12, borderBottom: '1px solid #EEF1F4', paddingBottom: 8, textTransform: 'uppercase' }}>⚙️ ƯU ĐIỂM CẤU TẠO NỔI BẬT</h4>
+                        <h4 style={{ color: '#071A2F', fontWeight: 800, fontSize: 14, marginBottom: 12, borderBottom: '1px solid #EEF1F4', paddingBottom: 8, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}><Settings size={14} color="#0878D9" /> ƯU ĐIỂM CẤU TẠO NỔI BẬT</h4>
                         <ul style={{ paddingLeft: 20, marginBottom: 28, fontWeight: 500 }}>
                           <li style={{ marginBottom: 8 }}>Chất liệu thân bơm và cánh bơm chế tạo từ vật liệu chống ăn mòn (Inox/Gang đúc chất lượng cao).</li>
                           <li style={{ marginBottom: 8 }}>Động cơ quấn dây đồng 100%, tích hợp cảm biến nhiệt tự ngắt bảo vệ khi quá tải.</li>
@@ -7080,7 +7118,7 @@ export default function WebCatalog() {
                           <li style={{ marginBottom: 8 }}>Đạt tiêu chuẩn lớp cách điện F và tiêu chuẩn chống bụi/nước IP68/IP55 quốc tế.</li>
                         </ul>
 
-                        <h4 style={{ color: '#071A2F', fontWeight: 800, fontSize: 14, marginBottom: 12, borderBottom: '1px solid #EEF1F4', paddingBottom: 8, textTransform: 'uppercase' }}>💧 ỨNG DỤNG THỰC TẾ TIÊU BIỂU</h4>
+                        <h4 style={{ color: '#071A2F', fontWeight: 800, fontSize: 14, marginBottom: 12, borderBottom: '1px solid #EEF1F4', paddingBottom: 8, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}><Droplets size={14} color="#0878D9" /> ỨNG DỤNG THỰC TẾ TIÊU BIỂU</h4>
                         <ul style={{ paddingLeft: 20, margin: 0, fontWeight: 500 }}>
                           <li style={{ marginBottom: 8 }}>Bơm cấp nước sạch sinh hoạt gia đình, tòa nhà chung cư cao tầng, khách sạn.</li>
                           <li style={{ marginBottom: 8 }}>Sử dụng trong nông nghiệp: tưới tiêu tự động vườn cây, cấp thoát nước ao hồ thủy sản.</li>
@@ -7136,7 +7174,7 @@ export default function WebCatalog() {
                     </p>
                     <div style={{ marginTop: 8 }}>
                       <a href="tel:0984273806" style={{ textDecoration: 'none', background: '#0878D9', color: '#FFFFFF', padding: '10px 20px', fontSize: 12.5, fontWeight: 800, borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        📞 Yêu cầu hồ sơ kỹ thuật
+                        <Phone size={14} color="#FFFFFF" /> Yêu cầu hồ sơ kỹ thuật
                       </a>
                     </div>
                   </div>
@@ -7222,7 +7260,7 @@ export default function WebCatalog() {
               {/* Cột trái: Đổi trả */}
               <div>
                 <h3 style={{ fontSize: 18, fontWeight: 800, color: '#3b82f6', borderBottom: '2px solid #e2e8f0', paddingBottom: 10, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>🔄</span> CHÍNH SÁCH ĐỔI TRẢ
+                  <RefreshCw size={18} color="#3B82F6" /> CHÍNH SÁCH ĐỔI TRẢ
                 </h3>
                 <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.6, marginBottom: 12 }}>
                   Chúng tôi chấp nhận đổi trả hàng hóa trong những trường hợp sau đây:
@@ -7234,7 +7272,7 @@ export default function WebCatalog() {
                 </ul>
 
                 <h3 style={{ fontSize: 17, fontWeight: 800, color: '#1e293b', borderBottom: '2px solid #e2e8f0', paddingBottom: 10, marginBottom: 16, marginTop: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>📦</span> LÀM SAO ĐỂ ĐỔI TRẢ HÀNG HÓA?
+                  <Package size={18} color="#1E293B" /> LÀM SAO ĐỂ ĐỔI TRẢ HÀNG HÓA?
                 </h3>
                 <div style={{ background: '#f8fafc', padding: 20, borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 13.5, lineHeight: 1.6, color: '#334155' }}>
                   <p style={{ marginBottom: 12 }}>
@@ -7244,8 +7282,14 @@ export default function WebCatalog() {
                     <strong>Bước 2:</strong> Sau khi công ty xác nhận phù hợp với quy định, quý vị gửi hàng về địa chỉ văn phòng:
                   </p>
                   <div style={{ background: '#fff', border: '1px solid #cbd5e1', padding: 12, borderRadius: 8, fontSize: 13, color: '#1e293b', fontWeight: 600, marginBottom: 12 }}>
-                    📍 LK 27,28 KĐT Dương Nội, (Cạnh nhà máy SYM) Hà Đông, Hà Nội<br />
-                    📞 SĐT: 0984.273.806 – Mr Tuấn
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                      <MapPin size={15} color="#0878D9" style={{ flexShrink: 0, marginTop: 2 }} />
+                      <span>LK 27,28 KĐT Dương Nội, (Cạnh nhà máy SYM) Hà Đông, Hà Nội</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                      <Phone size={14} color="#0878D9" />
+                      <span>SĐT: 0984.273.806 – Mr Tuấn</span>
+                    </div>
                   </div>
                   <p style={{ margin: 0 }}>
                     <strong>Bước 3:</strong> Ngay sau khi nhận và kiểm tra hàng cần đổi, chúng tôi sẽ liên hệ khách hàng để gửi lại sản phẩm mới hoả tốc.
@@ -7256,7 +7300,7 @@ export default function WebCatalog() {
               {/* Cột phải: Bảo hành */}
               <div>
                 <h3 style={{ fontSize: 18, fontWeight: 800, color: '#3b82f6', borderBottom: '2px solid #e2e8f0', paddingBottom: 10, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>🛡️</span> QUY ĐỊNH BẢO HÀNH
+                  <ShieldCheck size={18} color="#3B82F6" /> QUY ĐỊNH BẢO HÀNH
                 </h3>
                 <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.6, marginBottom: 12 }}>
                   Tất cả các sản phẩm do công ty cung cấp đều được bảo hành chính hãng theo quy định của nhà sản xuất (Thời gian bảo hành chi tiết ghi tại từng sản phẩm).
@@ -7268,7 +7312,7 @@ export default function WebCatalog() {
                 </ul>
 
                 <h3 style={{ fontSize: 17, fontWeight: 800, color: '#ef4444', borderBottom: '2px solid #e2e8f0', paddingBottom: 10, marginBottom: 16, marginTop: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>⚠️</span> TRƯỜNG HỢP KHÔNG ĐƯỢC BẢO HÀNH
+                  <AlertTriangle size={18} color="#EF4444" /> TRƯỜNG HỢP KHÔNG ĐƯỢC BẢO HÀNH
                 </h3>
                 <ul style={{ paddingLeft: 20, fontSize: 13.5, color: '#475569', lineHeight: 1.7, margin: 0 }}>
                   <li style={{ marginBottom: 6 }}>Hư hỏng do sử dụng sai mục đích thiết kế, sử dụng sai quy cách kỹ thuật.</li>
@@ -7295,7 +7339,9 @@ export default function WebCatalog() {
               marginTop: 20
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <span style={{ fontSize: 32 }}>👥</span>
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Users size={24} color="#1E3A8A" />
+                </div>
                 <div>
                   <h4 style={{ fontSize: 15, fontWeight: 800, color: '#1e3a8a', margin: '0 0 4px 0' }}>Kết nối với chúng tôi qua Facebook</h4>
                   <p style={{ fontSize: 13, color: '#60a5fa', fontWeight: 600, margin: 0 }}>Theo dõi Fanpage để cập nhật mẫu bơm mới và báo giá ưu đãi nhanh nhất</p>
@@ -7313,7 +7359,7 @@ export default function WebCatalog() {
                 onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                 onMouseOut={e => e.currentTarget.style.transform = 'none'}
               >
-                <span>👍</span> Fanpage Facebook T&T
+                <Facebook size={16} color="#FFFFFF" /> Fanpage Facebook T&T
               </a>
             </div>
           </div>
@@ -7347,9 +7393,9 @@ export default function WebCatalog() {
               Công ty TNHH Máy Bơm T&amp;T chuyên nhập khẩu và phân phối trực tiếp các dòng máy bơm nước công nghiệp &amp; dân dụng: UPTI PUMP, SELANNI, MASTRA, BERATI.
             </p>
 
-            <div style={{ fontSize: 12, color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
-              <div>📍 <strong>Kho &amp; VP:</strong> LK 27,28 KĐT Dương Nội, Hà Đông, Hà Nội</div>
-              <div>📞 <strong>Hotline/Zalo:</strong> <a href="tel:0984273806" style={{ color: '#38BDF8', fontWeight: 800, textDecoration: 'none' }}>0984 273 806</a> (Mr Tuấn)</div>
+            <div style={{ fontSize: 12, color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><MapPin size={14} color="#38BDF8" /> <span><strong>Kho &amp; VP:</strong> LK 27,28 KĐT Dương Nội, Hà Đông, Hà Nội</span></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Phone size={14} color="#38BDF8" /> <span><strong>Hotline/Zalo:</strong> <a href="tel:0984273806" style={{ color: '#38BDF8', fontWeight: 800, textDecoration: 'none' }}>0984 273 806</a> (Mr Tuấn)</span></div>
             </div>
           </div>
 
@@ -7431,10 +7477,13 @@ export default function WebCatalog() {
                   fontWeight: 900,
                   color: '#38BDF8',
                   textDecoration: 'none',
-                  letterSpacing: '0.5px'
+                  letterSpacing: '0.5px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8
                 }}
               >
-                📞 0984 273 806
+                <Phone size={18} color="#38BDF8" /> 0984 273 806
               </a>
               <div style={{ fontSize: 11.5, color: '#CBD5E1' }}>
                 Phục vụ mọi công trình trên toàn quốc
@@ -7503,14 +7552,14 @@ export default function WebCatalog() {
                 justifyContent: 'center',
                 color: '#FFFFFF',
                 textDecoration: 'none',
-                fontSize: 13,
-                fontWeight: 800,
                 transition: 'all 0.2s'
               }}
               onMouseOver={e => { e.currentTarget.style.background = '#FE2C55'; }}
               onMouseOut={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; }}
             >
-              ♪
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.85.12V9.32a6.34 6.34 0 0 0-.85-.06A6.33 6.33 0 0 0 3.1 15.6a6.34 6.34 0 0 0 10.84 4.47 6.28 6.28 0 0 0 1.95-4.52V8.04a8.17 8.17 0 0 0 4.7 1.48V6.69h-1z"/>
+              </svg>
             </a>
 
             <a
@@ -7553,13 +7602,12 @@ export default function WebCatalog() {
                 justifyContent: 'center',
                 color: '#22C55E',
                 textDecoration: 'none',
-                fontSize: 14,
                 transition: 'all 0.2s'
               }}
               onMouseOver={e => { e.currentTarget.style.background = '#22C55E'; e.currentTarget.style.color = '#FFFFFF'; }}
               onMouseOut={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; e.currentTarget.style.color = '#22C55E'; }}
             >
-              📞
+              <Phone size={15} color="currentColor" strokeWidth={2.2} />
             </a>
           </div>
         </div>
@@ -8816,17 +8864,17 @@ export default function WebCatalog() {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <div style={{
               width: 38, height: 38, borderRadius: '50%', background: '#EFF6FF',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               border: '1px solid #DBEAFE'
             }}>
-              🤖
+              <Bot size={20} color="#0878D9" />
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: '#071A2F', marginBottom: 3 }}>
                 Trợ lý AI T&amp;T Pump
               </div>
               <p style={{ fontSize: 12, color: '#475569', margin: '0 0 10px 0', lineHeight: 1.45 }}>
-                👋 Chào bạn! Bạn cần tư vấn chọn máy bơm phù hợp cho công trình hay gia đình?
+                Chào bạn! Bạn cần tư vấn chọn máy bơm phù hợp cho công trình hay gia đình?
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
@@ -8864,11 +8912,11 @@ export default function WebCatalog() {
               }}
               style={{
                 background: 'transparent', border: 'none', color: '#94A3B8',
-                fontSize: 16, cursor: 'pointer', padding: 0, lineHeight: 1,
+                cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
               aria-label="Đóng lời mời tư vấn"
             >
-              ✕
+              <X size={16} color="#94A3B8" strokeWidth={2} />
             </button>
           </div>
         </div>
@@ -8981,7 +9029,7 @@ export default function WebCatalog() {
           aria-label="Liên hệ & Tư vấn"
         >
           {showContactMenu ? (
-            <span style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', transform: 'rotate(90deg)', transition: 'transform 0.25s ease' }}>✕</span>
+            <X size={22} color="#FFFFFF" strokeWidth={2.5} />
           ) : (
             <>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -9007,15 +9055,15 @@ export default function WebCatalog() {
         <div className="ai-chat-widget">
           {/* Header */}
           <div style={{
-            background: 'linear-gradient(135deg, #3b82f6 0%, #3b82f6 100%)',
+            background: 'linear-gradient(135deg, #071A2F 0%, #185FA5 100%)',
             color: '#fff', padding: '16px 20px', display: 'flex',
             justifyContent: 'space-between', alignItems: 'center'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 20 }}>🤖</span>
+              <Bot size={20} color="#FFFFFF" strokeWidth={2} />
               <div>
                 <h4 style={{ margin: 0, fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trợ lý chọn bơm AI</h4>
-                <div style={{ fontSize: 9, opacity: 0.9, fontWeight: 600 }}>Tự động tư vấn thông số 24/7</div>
+                <div style={{ fontSize: 9.5, opacity: 0.9, fontWeight: 600 }}>Tự động tư vấn thông số 24/7</div>
               </div>
             </div>
             <button 
@@ -9023,9 +9071,10 @@ export default function WebCatalog() {
                 setShowFloatingChat(false);
                 localStorage.setItem('tt_ai_chat_closed', 'true');
               }}
-              style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 22, fontWeight: 'bold', cursor: 'pointer', padding: 0 }}
+              style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              aria-label="Đóng chat"
             >
-              &times;
+              <X size={20} color="#FFFFFF" strokeWidth={2.5} />
             </button>
           </div>
 
@@ -9048,7 +9097,7 @@ export default function WebCatalog() {
                     </div>
                   ) : (
                     <div style={{
-                      background: isAi ? '#fff' : '#3b82f6',
+                      background: isAi ? '#fff' : '#0878D9',
                       color: isAi ? '#1e293b' : '#fff',
                       border: isAi ? '1px solid #e2e8f0' : 'none',
                       borderRadius: isAi ? '16px 16px 16px 4px' : '16px 16px 4px 16px',
@@ -9067,16 +9116,16 @@ export default function WebCatalog() {
                   {isAi && index === 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, width: '100%', maxWidth: '85%' }}>
                       {[
-                        { text: '🏠 Cần tư vấn bơm đẩy cao tầng', query: 'Bơm đẩy cao cấp nước cho gia đình' },
-                        { text: '🌀 Cần tư vấn bơm chìm hố ga, ngập hầm', query: 'Bơm chìm hút hố ga, ngập hầm, nước thải' },
-                        { text: '🌾 Cần tư vấn bơm tưới tiêu', query: 'Bơm tưới tiêu nông nghiệp, sân vườn' }
+                        { text: 'Cần tư vấn bơm đẩy cao tầng', query: 'Bơm đẩy cao cấp nước cho gia đình' },
+                        { text: 'Cần tư vấn bơm chìm hố ga, ngập hầm', query: 'Bơm chìm hút hố ga, ngập hầm, nước thải' },
+                        { text: 'Cần tư vấn bơm tưới tiêu', query: 'Bơm tưới tiêu nông nghiệp, sân vườn' }
                       ].map((btn, bIdx) => (
                         <button
                           key={bIdx}
                           onClick={() => handleSendChatMessage(btn.query)}
                           style={{
-                            width: '100%', padding: '10px 14px', background: '#fff', border: '1px solid #3b82f6',
-                            color: '#3b82f6', borderRadius: 8, fontSize: 11, fontWeight: 700, textAlign: 'left',
+                            width: '100%', padding: '10px 14px', background: '#fff', border: '1px solid #0878D9',
+                            color: '#0878D9', borderRadius: 8, fontSize: 11, fontWeight: 700, textAlign: 'left',
                             cursor: 'pointer', transition: 'all 0.2s'
                           }}
                           onMouseOver={e => { e.currentTarget.style.background = '#eff6ff'; }}
@@ -9107,19 +9156,19 @@ export default function WebCatalog() {
                       border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.02)', transition: 'all 0.2s'
                     }}
-                    onMouseOver={e => e.currentTarget.style.borderColor = '#3b82f6'}
+                    onMouseOver={e => e.currentTarget.style.borderColor = '#0878D9'}
                     onMouseOut={e => e.currentTarget.style.borderColor = '#e2e8f0'}
                   >
                     <div style={{ width: 44, height: 44, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: '1px solid #f1f5f9', background: '#fff' }}>
                       <ProductImage src={item.webImages?.[0]} alt={item.name} fallbackTitle={item.code || item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <h5 style={{ fontSize: 11, fontWeight: 800, color: '#3b82f6', margin: '0 0 2px 0', textTransform: 'uppercase' }}>{item.name}</h5>
+                      <h5 style={{ fontSize: 11, fontWeight: 800, color: '#0878D9', margin: '0 0 2px 0', textTransform: 'uppercase' }}>{item.name}</h5>
                       <p style={{ fontSize: 9, color: '#64748b', margin: 0 }}>
                         {item.webSpecs?.specs || 'Hãng UPTI'}
                       </p>
                     </div>
-                    <span style={{ fontSize: 12, color: '#3b82f6' }}>➔</span>
+                    <ArrowRight size={13} color="#0878D9" />
                   </div>
                 ))}
               </div>
@@ -9144,12 +9193,13 @@ export default function WebCatalog() {
             <button 
               type="submit"
               style={{
-                background: '#3b82f6', color: '#fff', border: 'none', width: 36, height: 36,
+                background: '#0878D9', color: '#fff', border: 'none', width: 36, height: 36,
                 borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', transition: 'all 0.2s'
               }}
+              aria-label="Gửi tin nhắn"
             >
-              ➔
+              <Send size={15} color="#FFFFFF" strokeWidth={2} />
             </button>
           </form>
         </div>
@@ -9181,13 +9231,14 @@ export default function WebCatalog() {
           justifyContent: 'space-between', alignItems: 'center'
         }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 8 }}>
-            🛒 GIỎ HÀNG CỦA BẠN ({(cart || []).reduce((sum, item) => sum + (item?.quantity || 1), 0)})
+            <ShoppingBag size={18} color="#0878D9" /> GIỎ HÀNG CỦA BẠN ({(cart || []).reduce((sum, item) => sum + (item?.quantity || 1), 0)})
           </h3>
           <button 
             onClick={() => setShowCartDrawer(false)}
-            style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#94a3b8', fontWeight: 'bold' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            aria-label="Đóng giỏ hàng"
           >
-            &times;
+            <X size={20} color="#64748B" strokeWidth={2.2} />
           </button>
         </div>
 
@@ -9195,7 +9246,7 @@ export default function WebCatalog() {
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
           {(cart || []).filter(item => item && item.product && item.product.id).length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🛒</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><ShoppingBag size={48} color="#94A3B8" /></div>
               <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Giỏ hàng đang trống.</p>
               <p style={{ fontSize: 12, margin: '8px 0 0 0' }}>Hãy thêm các sản phẩm máy bơm cần mua vào giỏ hàng nhé!</p>
             </div>
@@ -9239,11 +9290,12 @@ export default function WebCatalog() {
                     </div>
                     <button 
                       onClick={() => handleRemoveFromCart(item.product.id)}
-                      style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 16, cursor: 'pointer', alignSelf: 'flex-start', padding: 4 }}
+                      style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', alignSelf: 'flex-start', padding: 4, display: 'flex', alignItems: 'center' }}
                       onMouseOver={e => e.currentTarget.style.color = '#ef4444'}
                       onMouseOut={e => e.currentTarget.style.color = '#94a3b8'}
+                      title="Xóa khỏi giỏ"
                     >
-                      🗑️
+                      <Trash2 size={16} color="currentColor" />
                     </button>
                   </div>
                 ))}
@@ -9264,8 +9316,8 @@ export default function WebCatalog() {
 
               {/* Checkout Form */}
               <form onSubmit={handleCheckoutSubmit} style={{ borderTop: '1px solid #f1f5f9', paddingTop: 20 }}>
-                <h4 style={{ margin: '0 0 16px 0', fontSize: 13, fontWeight: 800, color: '#1e293b', textTransform: 'uppercase' }}>
-                  📋 THÔNG TIN YÊU CẦU BÁO GIÁ
+                <h4 style={{ margin: '0 0 16px 0', fontSize: 13, fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FileText size={15} color="#0878D9" /> THÔNG TIN YÊU CẦU BÁO GIÁ
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
@@ -9322,7 +9374,7 @@ export default function WebCatalog() {
                   >
                     {isSubmittingOrder ? 'ĐANG GỬI YÊU CẦU...' : (
                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> GỬI YÊU CẦU BÁO GIÁ
+                         <MessageSquare size={15} color="#FFFFFF" /> GỬI YÊU CẦU BÁO GIÁ
                        </span>
                     )}
                   </button>
@@ -9377,14 +9429,15 @@ export default function WebCatalog() {
             onClick={() => setShowLightbox(false)}
             style={{
               position: 'absolute', top: 20, right: 20, width: 44, height: 44, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', fontSize: 20,
+              background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none',
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.2s', outline: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
             }}
             onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
             onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+            aria-label="Đóng phóng to ảnh"
           >
-            ✕
+            <X size={22} color="#FFFFFF" strokeWidth={2.5} />
           </button>
 
           {/* Large image area with Hover Magnifier */}
@@ -9452,7 +9505,7 @@ export default function WebCatalog() {
           )}
           
           <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 16, fontWeight: 500 }}>
-            {activeImageIndex + 1} / {currentProduct.webImages?.length || 1} - Chạm hoặc bấm ✕ để đóng
+            {activeImageIndex + 1} / {currentProduct.webImages?.length || 1} - Chạm hoặc bấm phím để đóng
           </div>
         </div>
       )}

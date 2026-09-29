@@ -2514,6 +2514,26 @@ export default function WebCatalog() {
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
+  const handleMobileSearchSubmit = (e) => {
+    if (e) e.preventDefault()
+    if (detailProductId) setDetailProductId('')
+    if (viewMode !== 'catalog') {
+      setViewMode('catalog')
+      setActiveTab('products')
+      currentViewModeRef.current = 'catalog'
+      lastNonDetailPageHash.current = '#web/catalog'
+      if (window.location.hash !== '#web/catalog') {
+        window.location.hash = '#web/catalog'
+      }
+    }
+    setTimeout(() => {
+      const el = document.getElementById('web-catalog-container') || document.querySelector('.catalog-layout-container')
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 100)
+  }
+
   const handleNavApplications = () => {
     setDetailProductId('')
     setViewMode('applications')
@@ -3202,19 +3222,17 @@ export default function WebCatalog() {
         </div>
       </div>
 
-      <header style={{
+      <header className="app-main-header" style={{
         position: 'sticky',
         top: 0,
         zIndex: 100,
         background: '#FFFFFF',
         borderBottom: '1px solid #E2E8F0',
-        height: 72,
         boxShadow: '0 4px 12px rgba(15,23,42,0.05)',
         boxSizing: 'border-box'
       }}>
-        <div style={{
+        <div className="header-top-row" style={{
           maxWidth: 1440,
-          height: '100%',
           margin: '0 auto',
           padding: '0 24px',
           display: 'flex',
@@ -3423,6 +3441,62 @@ export default function WebCatalog() {
               <Menu size={22} color="#102A43" strokeWidth={2.2} />
             </button>
           </div>
+        </div>
+
+        {/* Mobile Search Bar Row (Directly below logo & menu, above banner) */}
+        <div className="mobile-only" style={{ padding: '0 16px 12px 16px', background: '#FFFFFF' }}>
+          <form onSubmit={handleMobileSearchSubmit} style={{ display: 'flex', width: '100%', height: 38, boxSizing: 'border-box' }}>
+            <input
+              type="text"
+              placeholder="Tìm kiếm máy bơm, mã sản phẩm..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                if (viewMode !== 'catalog') {
+                  setViewMode('catalog');
+                  setActiveTab('products');
+                }
+              }}
+              style={{
+                flex: 1,
+                height: 38,
+                padding: '0 12px',
+                border: '1px solid #CBD5E1',
+                borderRight: 'none',
+                borderRadius: '6px 0 0 6px',
+                fontSize: 13,
+                fontWeight: 500,
+                color: '#102A43',
+                outline: 'none',
+                background: '#FFFFFF',
+                boxSizing: 'border-box'
+              }}
+              onFocus={e => e.currentTarget.style.borderColor = '#0878D9'}
+              onBlur={e => e.currentTarget.style.borderColor = '#CBD5E1'}
+            />
+            <button
+              type="submit"
+              style={{
+                height: 38,
+                padding: '0 14px',
+                background: '#0878D9',
+                color: '#FFFFFF',
+                border: '1px solid #0878D9',
+                borderRadius: '0 6px 6px 0',
+                fontSize: 12.5,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                cursor: 'pointer',
+                flexShrink: 0,
+                boxSizing: 'border-box'
+              }}
+            >
+              <SearchIcon size={14} color="#FFFFFF" strokeWidth={2.5} />
+              <span>Tìm kiếm</span>
+            </button>
+          </form>
         </div>
       </header>
 
@@ -8744,6 +8818,14 @@ export default function WebCatalog() {
           box-shadow: 0 6px 16px rgba(8, 120, 217, 0.35);
         }
 
+        /* Header height defaults */
+        .app-main-header {
+          height: 72px;
+        }
+        .header-top-row {
+          height: 72px;
+        }
+
         /* Utility visibility classes */
         @media (min-width: 769px) {
           .mobile-only, .mobile-only-flex {
@@ -8753,6 +8835,13 @@ export default function WebCatalog() {
 
         /* ── MOBILE SPECIFIC STYLES (<= 768px ONLY) ── */
         @media (max-width: 768px) {
+          .app-main-header {
+            height: auto !important;
+          }
+          .header-top-row {
+            height: 56px !important;
+            padding: 0 16px !important;
+          }
           .category-slider-track {
             gap: 12px !important;
             padding: 4px 12px 14px !important;

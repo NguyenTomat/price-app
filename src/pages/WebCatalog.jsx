@@ -3228,11 +3228,13 @@ export default function WebCatalog() {
         zIndex: 100,
         background: '#FFFFFF',
         borderBottom: '1px solid #E2E8F0',
+        height: 72,
         boxShadow: '0 4px 12px rgba(15,23,42,0.05)',
         boxSizing: 'border-box'
       }}>
         <div className="header-top-row" style={{
           maxWidth: 1440,
+          height: '100%',
           margin: '0 auto',
           padding: '0 24px',
           display: 'flex',
@@ -3441,62 +3443,6 @@ export default function WebCatalog() {
               <Menu size={22} color="#102A43" strokeWidth={2.2} />
             </button>
           </div>
-        </div>
-
-        {/* Mobile Search Bar Row (Directly below logo & menu, above banner) */}
-        <div className="mobile-only" style={{ padding: '0 16px 12px 16px', background: '#FFFFFF' }}>
-          <form onSubmit={handleMobileSearchSubmit} style={{ display: 'flex', width: '100%', height: 38, boxSizing: 'border-box' }}>
-            <input
-              type="text"
-              placeholder="Tìm kiếm máy bơm, mã sản phẩm..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                if (viewMode !== 'catalog') {
-                  setViewMode('catalog');
-                  setActiveTab('products');
-                }
-              }}
-              style={{
-                flex: 1,
-                height: 38,
-                padding: '0 12px',
-                border: '1px solid #CBD5E1',
-                borderRight: 'none',
-                borderRadius: '6px 0 0 6px',
-                fontSize: 13,
-                fontWeight: 500,
-                color: '#102A43',
-                outline: 'none',
-                background: '#FFFFFF',
-                boxSizing: 'border-box'
-              }}
-              onFocus={e => e.currentTarget.style.borderColor = '#0878D9'}
-              onBlur={e => e.currentTarget.style.borderColor = '#CBD5E1'}
-            />
-            <button
-              type="submit"
-              style={{
-                height: 38,
-                padding: '0 14px',
-                background: '#0878D9',
-                color: '#FFFFFF',
-                border: '1px solid #0878D9',
-                borderRadius: '0 6px 6px 0',
-                fontSize: 12.5,
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                cursor: 'pointer',
-                flexShrink: 0,
-                boxSizing: 'border-box'
-              }}
-            >
-              <SearchIcon size={14} color="#FFFFFF" strokeWidth={2.5} />
-              <span>Tìm kiếm</span>
-            </button>
-          </form>
         </div>
       </header>
 
@@ -3725,16 +3671,93 @@ export default function WebCatalog() {
             const chips = getSlideChips(slide);
 
             return (
-              <div
-                className="hero-banner-container"
-                style={{
-                  maxWidth: 1240,
-                  margin: '20px auto 0',
-                  padding: '0 20px',
-                  boxSizing: 'border-box',
-                  width: '100%'
-                }}
-              >
+              <>
+                {/* Mobile Search Bar - Located comfortably above Hero Banner */}
+                <div
+                  className="mobile-only"
+                  style={{
+                    maxWidth: 1240,
+                    margin: '14px auto 0',
+                    padding: '0 16px',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
+                >
+                  <form
+                    onSubmit={handleMobileSearchSubmit}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      height: 42,
+                      boxSizing: 'border-box',
+                      boxShadow: '0 2px 8px rgba(15,23,42,0.05)',
+                      borderRadius: 8,
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm..."
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        if (viewMode !== 'catalog') {
+                          setViewMode('catalog');
+                          setActiveTab('products');
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        height: 42,
+                        padding: '0 14px',
+                        border: '1px solid #CBD5E1',
+                        borderRight: 'none',
+                        borderRadius: '8px 0 0 8px',
+                        fontSize: 13.5,
+                        fontWeight: 500,
+                        color: '#102A43',
+                        outline: 'none',
+                        background: '#FFFFFF',
+                        boxSizing: 'border-box'
+                      }}
+                      onFocus={e => e.currentTarget.style.borderColor = '#0878D9'}
+                      onBlur={e => e.currentTarget.style.borderColor = '#CBD5E1'}
+                    />
+                    <button
+                      type="submit"
+                      style={{
+                        height: 42,
+                        padding: '0 16px',
+                        background: '#0878D9',
+                        color: '#FFFFFF',
+                        border: '1px solid #0878D9',
+                        borderRadius: '0 8px 8px 0',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <SearchIcon size={14} color="#FFFFFF" strokeWidth={2.5} />
+                      <span>Tìm kiếm</span>
+                    </button>
+                  </form>
+                </div>
+
+                <div
+                  className="hero-banner-container"
+                  style={{
+                    maxWidth: 1240,
+                    margin: '14px auto 0',
+                    padding: '0 20px',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
+                >
                 <section
                   className="hero-banner-section"
                   style={{
@@ -4150,7 +4173,8 @@ export default function WebCatalog() {
                   </button>
                 </section>
               </div>
-            );
+            </>
+          );
           })()}
 
                 {/* ── 2. TRUST BAR / DẢI ICON TIN CẬY (Placed immediately below Hero) ── */}
@@ -8836,10 +8860,10 @@ export default function WebCatalog() {
         /* ── MOBILE SPECIFIC STYLES (<= 768px ONLY) ── */
         @media (max-width: 768px) {
           .app-main-header {
-            height: auto !important;
+            height: 60px !important;
           }
           .header-top-row {
-            height: 56px !important;
+            height: 100% !important;
             padding: 0 16px !important;
           }
           .category-slider-track {

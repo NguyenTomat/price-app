@@ -3245,8 +3245,8 @@ export default function WebCatalog() {
         }}>
           {/* Logo & Search Bar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={handleNavHome}>
-              <img src="./logo_tt.png" alt="T&T Logo" style={{ height: 38, width: 'auto', objectFit: 'contain' }} />
+            <div className="header-logo-container" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={handleNavHome}>
+              <img src="./logo_tt.png" alt="T&T Logo" style={{ height: 40, width: 'auto', objectFit: 'contain' }} />
             </div>
             
             {/* Search Input */}
@@ -8860,11 +8860,25 @@ export default function WebCatalog() {
         /* ── MOBILE SPECIFIC STYLES (<= 768px ONLY) ── */
         @media (max-width: 768px) {
           .app-main-header {
-            height: 60px !important;
+            height: auto !important;
+            min-height: 64px !important;
+            padding-top: env(safe-area-inset-top, 0px) !important;
           }
           .header-top-row {
-            height: 100% !important;
-            padding: 0 16px !important;
+            height: 64px !important;
+            padding: 8px 16px !important;
+            box-sizing: border-box !important;
+          }
+          .header-logo-container {
+            display: flex !important;
+            align-items: center !important;
+            padding: 4px 0 !important;
+          }
+          .header-logo-container img {
+            height: 40px !important;
+            max-height: 40px !important;
+            width: auto !important;
+            object-fit: contain !important;
           }
           .category-slider-track {
             gap: 12px !important;

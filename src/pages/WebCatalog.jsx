@@ -47,6 +47,18 @@ const BRAND_METADATA = {
   }
 }
 
+// Helper lấy logo màu của hãng
+const getBrandLogo = (brandName) => {
+  if (!brandName) return null;
+  const bn = brandName.toUpperCase().trim();
+  if (bn.includes('UPTI')) return './logo_upti.png';
+  if (bn.includes('SELANNI')) return './logo_selanni.png';
+  if (bn.includes('BERATI')) return './logo_berati.png';
+  if (bn.includes('MASTRA')) return './logo_mastra.png';
+  if (BRAND_METADATA[bn]?.logo) return BRAND_METADATA[bn].logo;
+  return null;
+};
+
 // Danh sách từ khóa tìm kiếm nhanh phổ biến
 const POPULAR_SEARCH_KEYWORDS = [
   'Bơm hỏa tiễn',
@@ -1198,7 +1210,7 @@ export default function WebCatalog() {
         </div>
 
         <div className="product-card-content">
-          <span className="product-card-brand" style={{ fontSize: 10, fontWeight: 800, color: '#378ADD', textTransform: 'uppercase', letterSpacing: '0.8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span className="product-card-brand" style={{ fontSize: 10.5, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3, minHeight: 28, display: '-webkit-box', WebkitLineClamp: 2, lineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 2 }} title={`${p.group || 'MÁY BƠM'} · ${p.webBrand || 'UPTI PUMP'}`}>
             {p.group || 'MÁY BƠM'} · {p.webBrand || 'UPTI PUMP'}
           </span>
 
@@ -1346,7 +1358,7 @@ export default function WebCatalog() {
         {/* Content */}
         <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
           {/* Category / Brand */}
-          <span style={{ fontSize: 10, fontWeight: 800, color: '#378ADD', textTransform: 'uppercase', letterSpacing: '0.8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ fontSize: 10.5, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3, minHeight: 28, display: '-webkit-box', WebkitLineClamp: 2, lineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={`${p.group || 'MÁY BƠM'} · ${p.webBrand || 'T&T'}`}>
             {p.group || 'MÁY BƠM'} · {p.webBrand || 'T&T'}
           </span>
 
@@ -5489,6 +5501,7 @@ export default function WebCatalog() {
                             }}>
                               {cat.subBrands.map((sub, subIdx) => {
                                 const isSubActive = selectedCategory === cat.name && activeBrand.toUpperCase() === sub.brand.toUpperCase();
+                                const brandLogo = getBrandLogo(sub.brand);
                                 return (
                                   <button
                                     key={subIdx}
@@ -5499,7 +5512,7 @@ export default function WebCatalog() {
                                     }}
                                     style={{
                                       width: '100%',
-                                      padding: '4px 8px',
+                                      padding: '5px 8px',
                                       background: isSubActive ? '#EAF3FF' : 'transparent',
                                       color: isSubActive ? '#0878D9' : '#475569',
                                       border: 'none',
@@ -5511,7 +5524,8 @@ export default function WebCatalog() {
                                       transition: 'all 0.12s ease',
                                       display: 'flex',
                                       justifyContent: 'space-between',
-                                      alignItems: 'center'
+                                      alignItems: 'center',
+                                      gap: 6
                                     }}
                                     onMouseOver={e => {
                                       if (!isSubActive) e.currentTarget.style.background = '#F8FAFC';
@@ -5520,9 +5534,30 @@ export default function WebCatalog() {
                                       if (!isSubActive) e.currentTarget.style.background = 'transparent';
                                     }}
                                   >
-                                    <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
-                                      {sub.brand}
-                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                                      {brandLogo ? (
+                                        <img
+                                          src={brandLogo}
+                                          alt={sub.brand}
+                                          style={{
+                                            width: 18,
+                                            height: 18,
+                                            objectFit: 'contain',
+                                            borderRadius: 3,
+                                            flexShrink: 0,
+                                            background: '#FFFFFF',
+                                            padding: 1,
+                                            border: '1px solid #EEF1F4',
+                                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                                          }}
+                                        />
+                                      ) : (
+                                        <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#94A3B8', flexShrink: 0 }} />
+                                      )}
+                                      <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
+                                        {sub.brand}
+                                      </span>
+                                    </div>
                                     <span style={{
                                       fontSize: 10.5,
                                       fontWeight: 600,

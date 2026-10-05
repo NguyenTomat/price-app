@@ -3028,113 +3028,50 @@ export default function WebCatalog() {
             padding: 12px !important;
           }
           
-          /* Modern Proportional Mobile Hero */
+          /* Modern Full-Image Responsive Hero Banner & Compact Trust Bar */
           .hero-banner-container {
-            margin: 8px auto 0 !important;
-            padding: 0 10px !important;
+            margin: 10px auto 0 !important;
+            padding: 0 12px !important;
           }
           .hero-banner-section {
-            min-height: 0 !important;
-            height: auto !important;
-            max-height: none !important;
-            padding: 12px 12px 14px !important;
-            border-radius: 14px !important;
-            margin-top: 4px !important;
+            aspect-ratio: 16 / 8.5 !important;
+            min-height: 180px !important;
+            max-height: 340px !important;
+            border-radius: 12px !important;
+            padding: 0 !important;
             display: block !important;
-          }
-          .hero-ambient-light {
-            display: none !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
           }
           .hero-nav-arrow {
             display: none !important;
           }
-          .hero-split-grid {
-            display: flex !important;
-            flex-direction: column !important;
-            text-align: center !important;
-            align-items: center !important;
-            justify-content: flex-start !important;
+          .hero-trust-grid {
+            grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            height: auto !important;
-            width: 100% !important;
+            padding: 10px 12px !important;
           }
-          .hero-split-grid > div,
-          .hero-text-col,
-          .hero-stage-col {
-            flex: none !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            height: auto !important;
-            min-height: 0 !important;
-            align-items: center !important;
+          .hero-trust-item {
+            gap: 8px !important;
+            padding: 2px !important;
           }
-          .hero-stage-col {
-            order: 1 !important;
+          .hero-trust-icon-box {
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 8px !important;
           }
-          .hero-text-col {
-            order: 2 !important;
-            gap: 6px !important;
-            align-items: center !important;
+          .hero-trust-icon-box svg {
+            width: 16px !important;
+            height: 16px !important;
           }
-          .hero-stage-card {
-            max-width: 100% !important;
-            width: 100% !important;
-            padding: 0 !important;
-            border-radius: 10px !important;
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            height: auto !important;
+          .hero-trust-title {
+            font-size: 11.5px !important;
           }
-          .hero-stage-img-box {
-            height: 140px !important;
-            max-height: 140px !important;
-            border-radius: 10px !important;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.3) !important;
-            background: #FFFFFF !important;
-          }
-          .hero-stage-img-box img {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: contain !important;
-            padding: 6px !important;
-            box-sizing: border-box !important;
-          }
-          .hero-tech-ribbon {
-            display: none !important;
-          }
-          .hero-eyebrow-row {
-            display: none !important;
-          }
-          .hero-h1-title {
-            font-size: 15px !important;
-            line-height: 1.3 !important;
-            margin: 0 !important;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.6) !important;
-            text-align: center !important;
-            font-weight: 800 !important;
-          }
-          .hero-desc-p {
-            display: none !important;
-          }
-          .hero-trust-row {
-            display: none !important;
-          }
-          .hero-cta-btn {
-            padding: 7px 18px !important;
-            font-size: 12px !important;
-            font-weight: 800 !important;
-            border-radius: 6px !important;
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4) !important;
-            margin-top: 2px !important;
-          }
-          .hero-pagination-dots {
-            margin-top: 4px !important;
-            justify-content: center !important;
+          .hero-trust-desc {
+            font-size: 10px !important;
           }
         }
 
-        /* Hero Banner Navigation Arrows (Show only on desktop hover, smooth glide) */
+        /* Hero Banner Navigation Arrows (Show on desktop hover, smooth glide) */
         .hero-nav-arrow {
           opacity: 0 !important;
           pointer-events: none !important;
@@ -3671,16 +3608,17 @@ export default function WebCatalog() {
             const activeSlides = (homepageSlides && homepageSlides.length > 0 ? homepageSlides : DEFAULT_HERO_SLIDES).map((s, idx) => ({
               id: s.id || `slide-${idx + 1}`,
               poster: s.img || s.defaultImg || './pump_vertical_cdlf.jpg',
-              pill: (s.badge || s.pill || s.sub || 'máy bơm chính hãng').toLowerCase(),
-              headline: s.headline || s.title || 'Máy Bơm Nước Chuyên Dụng',
-              desc: s.desc || 'Cung cấp giải pháp máy bơm chính hãng, bảo hành dài hạn toàn quốc.',
+              pill: (s.badge || s.pill || s.sub || '').toLowerCase(),
+              headline: s.headline || s.title || '',
+              desc: s.desc || '',
               cta: s.cta || 'Xem sản phẩm & báo giá →',
-              category: s.category || 'TẤT CẢ'
+              category: s.category || 'TẤT CẢ',
+              showText: !!s.showText,
+              textPos: s.textPos || 'bottom-left'
             }));
 
             const currentIdx = currentSlide % activeSlides.length;
             const slide = activeSlides[currentIdx] || activeSlides[0];
-            const chips = getSlideChips(slide);
 
             return (
               <>
@@ -3760,6 +3698,7 @@ export default function WebCatalog() {
                   </form>
                 </div>
 
+                {/* ── 1. MODERN FULL-IMAGE HERO BANNER ── */}
                 <div
                   className="hero-banner-container"
                   style={{
@@ -3770,482 +3709,287 @@ export default function WebCatalog() {
                     width: '100%'
                   }}
                 >
-                <section
-                  className="hero-banner-section"
-                  style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    minHeight: 'clamp(380px, 38vw, 440px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    borderRadius: 20,
-                    boxShadow: '0 20px 50px -10px rgba(7, 26, 47, 0.45), 0 0 0 1px rgba(56, 189, 248, 0.25)',
-                    boxSizing: 'border-box',
-                    background: 'radial-gradient(ellipse at 85% 50%, #0d3460 0%, #081a2f 60%, #05101d 100%)',
-                    padding: '36px clamp(32px, 6.5vw, 84px)'
-                  }}
-                  onMouseEnter={() => setSliderPaused(true)}
-                  onMouseLeave={() => setSliderPaused(false)}
-                  onTouchStart={(e) => {
-                    heroTouchStartX.current = e.targetTouches[0].clientX;
-                  }}
-                  onTouchMove={(e) => {
-                    heroTouchEndX.current = e.targetTouches[0].clientX;
-                  }}
-                  onTouchEnd={() => {
-                    if (!heroTouchStartX.current || !heroTouchEndX.current) return;
-                    const diff = heroTouchStartX.current - heroTouchEndX.current;
-                    if (diff > 45) {
-                      setSliderInteracted(true);
-                      setCurrentSlide(prev => (prev + 1) % activeSlides.length);
-                    } else if (diff < -45) {
-                      setSliderInteracted(true);
-                      setCurrentSlide(prev => (prev - 1 + activeSlides.length) % activeSlides.length);
-                    }
-                    heroTouchStartX.current = 0;
-                    heroTouchEndX.current = 0;
-                  }}
-                >
-                  {/* High-tech Subtle Grid Overlay */}
-                  <div
+                  <section
+                    className="hero-banner-section"
                     style={{
-                      position: 'absolute',
-                      inset: 0,
-                      backgroundImage: 'linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px)',
-                      backgroundSize: '36px 36px',
-                      opacity: 0.8,
-                      zIndex: 1,
-                      pointerEvents: 'none'
-                    }}
-                  />
-
-                  {/* Dramatic Ambient Light behind Showcase */}
-                  <div
-                    className="hero-ambient-light"
-                    style={{
-                      position: 'absolute',
-                      right: '8%',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      width: '460px',
-                      height: '460px',
-                      background: 'radial-gradient(circle, rgba(56, 189, 248, 0.35) 0%, rgba(2, 132, 199, 0.12) 50%, transparent 70%)',
-                      zIndex: 2,
-                      pointerEvents: 'none'
-                    }}
-                  />
-
-                  {/* Main 2-Column Responsive Layout */}
-                  <div
-                    style={{
-                      maxWidth: 1060,
-                      margin: '0 auto',
-                      width: '100%',
                       position: 'relative',
-                      zIndex: 3,
-                      boxSizing: 'border-box'
+                      overflow: 'hidden',
+                      width: '100%',
+                      aspectRatio: '16 / 8',
+                      minHeight: '320px',
+                      maxHeight: '560px',
+                      borderRadius: 16,
+                      boxShadow: '0 8px 30px rgba(7, 26, 47, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+                      boxSizing: 'border-box',
+                      background: '#F1F5F9',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => navigateToCategory(slide.category || 'TẤT CẢ')}
+                    onMouseEnter={() => setSliderPaused(true)}
+                    onMouseLeave={() => setSliderPaused(false)}
+                    onTouchStart={(e) => {
+                      heroTouchStartX.current = e.targetTouches[0].clientX;
+                    }}
+                    onTouchMove={(e) => {
+                      heroTouchEndX.current = e.targetTouches[0].clientX;
+                    }}
+                    onTouchEnd={() => {
+                      if (!heroTouchStartX.current || !heroTouchEndX.current) return;
+                      const diff = heroTouchStartX.current - heroTouchEndX.current;
+                      if (diff > 45) {
+                        setSliderInteracted(true);
+                        setCurrentSlide(prev => (prev + 1) % activeSlides.length);
+                      } else if (diff < -45) {
+                        setSliderInteracted(true);
+                        setCurrentSlide(prev => (prev - 1 + activeSlides.length) % activeSlides.length);
+                      }
+                      heroTouchStartX.current = 0;
+                      heroTouchEndX.current = 0;
                     }}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 'clamp(24px, 3.5vw, 48px)',
-                        width: '100%'
-                      }}
-                      className="hero-split-grid"
-                    >
-                      {/* ── CỘT TRÁI: TEXT & CTA ── */}
-                      <div className="hero-text-col" style={{ flex: '1 1 500px', maxWidth: 540, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
-                        {/* Eyebrow / Category Tag */}
-                        <div className="hero-eyebrow-row" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              background: 'rgba(56, 189, 248, 0.12)',
-                              border: '1px solid rgba(56, 189, 248, 0.4)',
-                              borderRadius: 20,
-                              padding: '5px 14px',
-                              fontSize: 12,
-                              fontWeight: 700,
-                              color: '#38BDF8',
-                              letterSpacing: '0.4px',
-                              lineHeight: '1.4',
-                              textTransform: 'lowercase',
-                              whiteSpace: 'nowrap',
-                              backdropFilter: 'blur(8px)',
-                              boxShadow: '0 2px 8px rgba(56, 189, 248, 0.15)'
-                            }}
-                          >
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38BDF8', boxShadow: '0 0 8px #38BDF8', display: 'inline-block' }} />
-                            {slide.pill}
-                          </span>
-                          <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            T&amp;T Pumps Solution
-                          </span>
-                        </div>
-
-                        {/* Heading H1 */}
-                        <h1
-                          className="hero-h1-title"
-                          style={{
-                            fontSize: 'clamp(26px, 3.4vw, 38px)',
-                            fontWeight: 900,
-                            color: '#FFFFFF',
-                            margin: 0,
-                            lineHeight: 1.18,
-                            letterSpacing: '-0.3px',
-                            textShadow: '0 2px 12px rgba(0,0,0,0.5)'
-                          }}
-                        >
-                          {slide.headline}
-                        </h1>
-
-                        {/* Description */}
-                        <p
-                          className="hero-desc-p"
-                          style={{
-                            fontSize: 'clamp(14px, 1.15vw, 15px)',
-                            color: '#CBD5E1',
-                            margin: 0,
-                            lineHeight: 1.6,
-                            maxWidth: 500,
-                            fontWeight: 400
-                          }}
-                        >
-                          {slide.desc}
-                        </p>
-
-                        {/* Trust Badges Bar */}
-                        <div className="hero-trust-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, fontWeight: 700, color: '#38BDF8', marginTop: 2 }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> 100% Chính Hãng</span>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> Đầy Đủ CO/CQ</span>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckCircle size={13} color="#38BDF8" strokeWidth={2.5} /> Đổi Mới Uy Tín</span>
-                        </div>
-
-                        {/* CTA Button */}
-                        <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                          <button
-                            className="hero-cta-btn"
-                            onClick={() => navigateToCategory(slide.category || 'TẤT CẢ')}
-                            style={{
-                              background: 'linear-gradient(135deg, #0284C7 0%, #0878D9 50%, #0369A1 100%)',
-                              color: '#FFFFFF',
-                              border: '1px solid rgba(255, 255, 255, 0.25)',
-                              borderRadius: 8,
-                              padding: '12px 26px',
-                              fontSize: 13.5,
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                              boxShadow: '0 6px 20px rgba(2, 132, 199, 0.45)',
-                              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 8
-                            }}
-                            onMouseOver={e => {
-                              e.currentTarget.style.filter = 'brightness(1.15)';
-                              e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = '0 8px 26px rgba(2, 132, 199, 0.65)';
-                            }}
-                            onMouseOut={e => {
-                              e.currentTarget.style.filter = 'brightness(1)';
-                              e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.boxShadow = '0 6px 20px rgba(2, 132, 199, 0.45)';
-                            }}
-                          >
-                            <span>{slide.cta}</span>
-                          </button>
-                        </div>
-
-                        {/* Slide Pagination Indicator */}
-                        <div className="hero-pagination-dots" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                          {activeSlides.map((_, idx) => (
-                            <div
-                              key={idx}
-                              onClick={() => { setSliderInteracted(true); setCurrentSlide(idx); }}
-                              style={{
-                                width: idx === currentIdx ? 24 : 6,
-                                height: 6,
-                                borderRadius: 3,
-                                background: idx === currentIdx ? '#38BDF8' : 'rgba(255, 255, 255, 0.25)',
-                                cursor: 'pointer',
-                                transition: 'all 0.25s ease',
-                                boxShadow: idx === currentIdx ? '0 0 8px rgba(56, 189, 248, 0.6)' : 'none'
-                              }}
-                              title={`Chuyển tới slide ${idx + 1}`}
-                            />
-                          ))}
-                          <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace', fontWeight: 700, marginLeft: 8 }}>
-                            {String(currentIdx + 1).padStart(2, '0')} / {String(activeSlides.length).padStart(2, '0')}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* ── CỘT PHẢI: SÂN KHẤU SHOWCASE THÍCH ỨNG (ADAPTIVE STAGE) ── */}
-                      <div
-                        className="hero-stage-col"
-                        style={{
-                          flex: '0 1 480px',
-                          maxWidth: 480,
-                          width: '100%',
-                          display: 'flex',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          position: 'relative'
-                        }}
-                      >
-                        {/* Frosted Glass Stage Frame */}
+                    {/* Cross-fade Stacked Slides (Mờ dần khi chuyển slide) */}
+                    {activeSlides.map((s, idx) => {
+                      const isCurrent = idx === currentIdx;
+                      return (
                         <div
-                          className="hero-stage-card"
-                          onClick={() => navigateToCategory(slide.category || 'TẤT CẢ')}
+                          key={`hero-slide-layer-${s.id || idx}`}
                           style={{
-                            position: 'relative',
-                            zIndex: 2,
-                            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%)',
-                            backdropFilter: 'blur(16px)',
-                            WebkitBackdropFilter: 'blur(16px)',
-                            border: '1px solid rgba(255, 255, 255, 0.18)',
-                            borderRadius: 16,
-                            padding: 12,
-                            boxShadow: '0 20px 45px -10px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.25)',
-                            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                            cursor: 'pointer',
-                            width: '100%',
-                            boxSizing: 'border-box',
+                            position: 'absolute',
+                            inset: 0,
+                            opacity: isCurrent ? 1 : 0,
+                            transition: 'opacity 0.65s cubic-bezier(0.4, 0, 0.2, 1)',
+                            pointerEvents: isCurrent ? 'auto' : 'none',
+                            zIndex: isCurrent ? 2 : 1,
                             display: 'flex',
-                            flexDirection: 'column',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            background: '#F8FAFC'
                           }}
-                          onMouseOver={e => {
-                            e.currentTarget.style.transform = 'translateY(-4px)';
-                            e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.6)';
-                            e.currentTarget.style.boxShadow = '0 24px 50px -10px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.25)';
-                          }}
-                          onMouseOut={e => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
-                            e.currentTarget.style.boxShadow = '0 20px 45px -10px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.25)';
-                          }}
-                          title={`Bấm xem danh mục: ${slide.headline}`}
                         >
-                          {/* Inner Display Area (Aspect-ratio locked for clean presentation) */}
-                          <div
-                            className="hero-stage-img-box"
+                          <img
+                            src={s.poster}
+                            alt={s.headline || `Banner ${idx + 1}`}
+                            loading={idx === 0 ? 'eager' : 'lazy'}
                             style={{
                               width: '100%',
-                              height: 250,
-                              borderRadius: 10,
-                              overflow: 'hidden',
-                              background: '#FFFFFF',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              position: 'relative'
+                              height: '100%',
+                              objectFit: 'cover',
+                              objectPosition: 'center',
+                              display: 'block'
                             }}
-                          >
-                            <img
-                              key={`card-poster-${slide.id}-${slide.poster}`}
-                              src={slide.poster}
-                              alt={slide.headline}
-                              loading="eager"
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'contain',
-                                display: 'block',
-                                transition: 'transform 0.35s ease'
-                              }}
-                            />
+                          />
 
-                            {/* Top-Right Badge Pill */}
+                          {/* Optional Text Overlay (Chỉ khi bật showText) */}
+                          {s.showText && (s.headline || s.desc || s.pill) && (
                             <div
+                              className="hero-text-overlay"
                               style={{
                                 position: 'absolute',
-                                top: 8,
-                                right: 8,
-                                background: 'rgba(7, 26, 47, 0.88)',
-                                backdropFilter: 'blur(8px)',
-                                color: '#38BDF8',
-                                border: '1px solid rgba(56, 189, 248, 0.35)',
-                                borderRadius: 14,
-                                padding: '3px 9px',
-                                fontSize: '10.5px',
-                                fontWeight: 800,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.25)'
+                                ...(s.textPos === 'top-left' ? { top: 20, left: 24 } :
+                                   s.textPos === 'top-right' ? { top: 20, right: 24 } :
+                                   s.textPos === 'bottom-right' ? { bottom: 24, right: 24 } :
+                                   s.textPos === 'center' ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' } :
+                                   { bottom: 24, left: 24 }),
+                                background: 'rgba(7, 26, 47, 0.85)',
+                                backdropFilter: 'blur(10px)',
+                                WebkitBackdropFilter: 'blur(10px)',
+                                border: '1px solid rgba(56, 189, 248, 0.4)',
+                                borderRadius: 12,
+                                padding: '12px 18px',
+                                maxWidth: 'min(480px, 85%)',
+                                boxShadow: '0 10px 25px rgba(0,0,0,0.4)',
+                                zIndex: 4
                               }}
                             >
-                              <Zap size={11} color="#38BDF8" />
-                              <span>{chips[0]?.label || 'Chính Hãng T&T'}</span>
+                              {s.pill && (
+                                <span style={{ fontSize: 11, fontWeight: 800, color: '#38BDF8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 4 }}>
+                                  {s.pill}
+                                </span>
+                              )}
+                              {s.headline && (
+                                <h2 style={{ fontSize: 'clamp(16px, 2vw, 24px)', fontWeight: 900, color: '#FFFFFF', margin: 0, lineHeight: 1.25 }}>
+                                  {s.headline}
+                                </h2>
+                              )}
+                              {s.desc && (
+                                <p style={{ fontSize: 'clamp(12px, 1.1vw, 13.5px)', color: '#CBD5E1', margin: '4px 0 0', lineHeight: 1.4 }}>
+                                  {s.desc}
+                                </p>
+                              )}
                             </div>
-                          </div>
-
-                          {/* Bottom Tech Ribbon under image */}
-                          <div className="hero-tech-ribbon" style={{
-                            width: '100%',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: '8px 6px 2px',
-                            fontSize: '11px',
-                            color: '#94A3B8',
-                            fontWeight: 600
-                          }}>
-                            <span style={{ color: '#38BDF8', fontWeight: 750, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <CheckCircle size={11} color="#38BDF8" /> {chips[1]?.label || 'Đầy đủ CO/CQ'}
-                            </span>
-                            <span>Bấm để xem danh mục →</span>
-                          </div>
+                          )}
                         </div>
-                      </div>
-                    </div>
-                  </div>
+                      );
+                    })}
 
-                  {/* Left / Right Glassmorphic Nav Arrows (Visible on Hover) */}
-                  <button
-                    className="hero-nav-arrow hero-prev"
-                    onClick={() => {
-                      setSliderInteracted(true);
-                      setCurrentSlide(prev => (prev - 1 + activeSlides.length) % activeSlides.length);
-                    }}
-                    style={{
-                      position: 'absolute',
-                      left: 18,
-                      top: '50%',
-                      width: 42,
-                      height: 42,
-                      borderRadius: '50%',
-                      background: 'rgba(7, 26, 47, 0.75)',
-                      backdropFilter: 'blur(10px)',
-                      WebkitBackdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(56, 189, 248, 0.4)',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      zIndex: 5,
-                      boxShadow: '0 6px 16px rgba(0,0,0,0.35)'
-                    }}
-                    onMouseOver={e => {
-                      e.currentTarget.style.background = '#0878D9';
-                      e.currentTarget.style.borderColor = '#38BDF8';
-                    }}
-                    onMouseOut={e => {
-                      e.currentTarget.style.background = 'rgba(7, 26, 47, 0.75)';
-                      e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.4)';
-                    }}
-                    aria-label="Slide trước"
-                  >
-                    <ChevronLeft size={22} strokeWidth={2.5} color="#FFFFFF" />
-                  </button>
-                  <button
-                    className="hero-nav-arrow hero-next"
-                    onClick={() => {
-                      setSliderInteracted(true);
-                      setCurrentSlide(prev => (prev + 1) % activeSlides.length);
-                    }}
-                    style={{
-                      position: 'absolute',
-                      right: 18,
-                      top: '50%',
-                      width: 42,
-                      height: 42,
-                      borderRadius: '50%',
-                      background: 'rgba(7, 26, 47, 0.75)',
-                      backdropFilter: 'blur(10px)',
-                      WebkitBackdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(56, 189, 248, 0.4)',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      zIndex: 5,
-                      boxShadow: '0 6px 16px rgba(0,0,0,0.35)'
-                    }}
-                    onMouseOver={e => {
-                      e.currentTarget.style.background = '#0878D9';
-                      e.currentTarget.style.borderColor = '#38BDF8';
-                    }}
-                    onMouseOut={e => {
-                      e.currentTarget.style.background = 'rgba(7, 26, 47, 0.75)';
-                      e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.4)';
-                    }}
-                    aria-label="Slide tiếp theo"
-                  >
-                    <ChevronRight size={22} strokeWidth={2.5} color="#FFFFFF" />
-                  </button>
-                </section>
-              </div>
-            </>
-          );
+                    {/* Dots Indicator */}
+                    <div
+                      className="hero-pagination-capsule"
+                      onClick={e => e.stopPropagation()}
+                      style={{
+                        position: 'absolute',
+                        bottom: 12,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: 'rgba(7, 26, 47, 0.65)',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        borderRadius: 20,
+                        padding: '5px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        zIndex: 5
+                      }}
+                    >
+                      {activeSlides.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={(e) => { e.stopPropagation(); setSliderInteracted(true); setCurrentSlide(idx); }}
+                          style={{
+                            width: idx === currentIdx ? 22 : 6,
+                            height: 6,
+                            borderRadius: 3,
+                            background: idx === currentIdx ? '#38BDF8' : 'rgba(255, 255, 255, 0.4)',
+                            border: 'none',
+                            padding: 0,
+                            cursor: 'pointer',
+                            transition: 'all 0.25s ease',
+                            boxShadow: idx === currentIdx ? '0 0 8px rgba(56, 189, 248, 0.8)' : 'none'
+                          }}
+                          title={`Slide ${idx + 1}`}
+                        />
+                      ))}
+                      <span style={{ fontSize: 11, color: '#E2E8F0', fontFamily: 'monospace', fontWeight: 700, marginLeft: 4 }}>
+                        {String(currentIdx + 1).padStart(2, '0')}/{String(activeSlides.length).padStart(2, '0')}
+                      </span>
+                    </div>
+
+                    {/* Desktop Navigation Arrows on Hover */}
+                    <button
+                      className="hero-nav-arrow hero-prev"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSliderInteracted(true);
+                        setCurrentSlide(prev => (prev - 1 + activeSlides.length) % activeSlides.length);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        left: 14,
+                        top: '50%',
+                        width: 40,
+                        height: 40,
+                        borderRadius: '50%',
+                        background: 'rgba(7, 26, 47, 0.65)',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 5,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                      }}
+                      aria-label="Slide trước"
+                    >
+                      <ChevronLeft size={22} strokeWidth={2.5} color="#FFFFFF" />
+                    </button>
+                    <button
+                      className="hero-nav-arrow hero-next"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSliderInteracted(true);
+                        setCurrentSlide(prev => (prev + 1) % activeSlides.length);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        right: 14,
+                        top: '50%',
+                        width: 40,
+                        height: 40,
+                        borderRadius: '50%',
+                        background: 'rgba(7, 26, 47, 0.65)',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 5,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                      }}
+                      aria-label="Slide tiếp theo"
+                    >
+                      <ChevronRight size={22} strokeWidth={2.5} color="#FFFFFF" />
+                    </button>
+                  </section>
+                </div>
+              </>
+            );
           })()}
 
                 {/* ── 2. TRUST BAR / DẢI ICON TIN CẬY (Placed immediately below Hero) ── */}
                 <section style={{
                   maxWidth: 1240,
-                  margin: '16px auto 0',
+                  margin: '14px auto 0',
                   padding: '0 20px',
                   boxSizing: 'border-box',
                   width: '100%'
                 }}>
-                  <div style={{
+                  <div className="hero-trust-grid" style={{
                     background: '#FFFFFF',
                     borderRadius: 14,
-                    padding: '16px 20px',
+                    padding: '14px 20px',
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 16,
-                    boxShadow: '0 4px 20px rgba(30, 58, 95, 0.06)',
+                    boxShadow: '0 2px 12px rgba(30, 58, 95, 0.04)',
                     border: '1px solid #E2E8F0',
                     width: '100%',
                     boxSizing: 'border-box',
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
-                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
-                        <ShieldCheck size={22} color="#185FA5" strokeWidth={2} />
+                    <div className="hero-trust-item" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 4px' }}>
+                      <div className="hero-trust-icon-box" style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
+                        <ShieldCheck size={20} color="#185FA5" strokeWidth={2} />
                       </div>
                       <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>100% Chính Hãng</div>
-                        <div style={{ fontSize: 11.5, color: '#64748B' }}>Đầy đủ chứng từ CO/CQ</div>
+                        <div className="hero-trust-title" style={{ fontSize: 13, fontWeight: 800, color: '#071A2F' }}>100% Chính Hãng</div>
+                        <div className="hero-trust-desc" style={{ fontSize: 11, color: '#64748B' }}>Đầy đủ chứng từ CO/CQ</div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
-                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
-                        <Award size={22} color="#185FA5" strokeWidth={2} />
+                    <div className="hero-trust-item" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 4px' }}>
+                      <div className="hero-trust-icon-box" style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
+                        <Award size={20} color="#185FA5" strokeWidth={2} />
                       </div>
                       <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>Bảo Hành 12 - 24 Tháng</div>
-                        <div style={{ fontSize: 11.5, color: '#64748B' }}>Cam kết đổi mới uy tín</div>
+                        <div className="hero-trust-title" style={{ fontSize: 13, fontWeight: 800, color: '#071A2F' }}>Bảo Hành 12 - 24 Tháng</div>
+                        <div className="hero-trust-desc" style={{ fontSize: 11, color: '#64748B' }}>Cam kết đổi mới uy tín</div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
-                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
-                        <Truck size={22} color="#185FA5" strokeWidth={2} />
+                    <div className="hero-trust-item" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 4px' }}>
+                      <div className="hero-trust-icon-box" style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
+                        <Truck size={20} color="#185FA5" strokeWidth={2} />
                       </div>
                       <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>Giao Hàng Siêu Tốc</div>
-                        <div style={{ fontSize: 11.5, color: '#64748B' }}>Toàn quốc trong 24 - 48h</div>
+                        <div className="hero-trust-title" style={{ fontSize: 13, fontWeight: 800, color: '#071A2F' }}>Giao Hàng Siêu Tốc</div>
+                        <div className="hero-trust-desc" style={{ fontSize: 11, color: '#64748B' }}>Toàn quốc trong 24 - 48h</div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px' }}>
-                      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
-                        <Headphones size={22} color="#185FA5" strokeWidth={2} />
+                    <div className="hero-trust-item" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 4px' }}>
+                      <div className="hero-trust-icon-box" style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#185FA5' }}>
+                        <Headphones size={20} color="#185FA5" strokeWidth={2} />
                       </div>
                       <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 800, color: '#071A2F' }}>Tư Vấn Kỹ Thuật 24/7</div>
-                        <div style={{ fontSize: 11.5, color: '#64748B' }}>Tính chọn lưu lượng &amp; cột áp</div>
+                        <div className="hero-trust-title" style={{ fontSize: 13, fontWeight: 800, color: '#071A2F' }}>Tư Vấn Kỹ Thuật 24/7</div>
+                        <div className="hero-trust-desc" style={{ fontSize: 11, color: '#64748B' }}>Tính chọn lưu lượng &amp; cột áp</div>
                       </div>
                     </div>
                   </div>

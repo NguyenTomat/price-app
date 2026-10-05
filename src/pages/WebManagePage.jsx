@@ -90,6 +90,53 @@ const compressCategoryImage = (file) => {
   })
 }
 
+// High-resolution compressor for hero banner images (preserves sharpness up to 1920px Full HD)
+const compressBannerImage = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target.result
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const maxDim = 1920
+        let width = img.width
+        let height = img.height
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width)
+            width = maxDim
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height)
+            height = maxDim
+          }
+        }
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = 'high'
+          ctx.drawImage(img, 0, 0, width, height)
+        }
+
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('Không thể xử lý ảnh banner')),
+          'image/webp',
+          0.90
+        )
+      }
+      img.onerror = (err) => reject(err)
+    }
+    reader.onerror = (err) => reject(err)
+  })
+}
+
 const blobToBase64 = (blob) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -591,11 +638,11 @@ export default function WebManagePage() {
 
   const handleUploadSlideImage = async (slideIdx, file) => {
     try {
-      const blob = await compressImage(file)
+      const blob = await compressBannerImage(file)
       try {
-        const url = await uploadWebCategoryImage(blob, 'jpg')
+        const url = await uploadWebCategoryImage(blob, 'webp')
         handleUpdateSlideField(slideIdx, 'img', url)
-        toast(`Đã tải ảnh Banner 0${slideIdx + 1} thành công! Nhớ bấm "Lưu cấu hình" để xuất bản.`, 'success')
+        toast(`Đã tải ảnh Banner 0${slideIdx + 1} sắc nét thành công! Nhớ bấm "Lưu cấu hình" để xuất bản.`, 'success')
       } catch (storageErr) {
         console.warn("Storage upload failed, falling back to base64:", storageErr)
         const base64Url = await blobToBase64(blob)
@@ -2026,6 +2073,43 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                 >
                   {savingHeroSlides ? '⏳ Đang lưu...' : '💾 XUẤT BẢN BANNER LÊN WEB'}
                 </button>
+              </div>
+            </div>
+
+            {/* Guidelines Card for Banner Sizing & Format */}
+            <div style={{
+              background: 'linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%)',
+              border: '1px solid #BFDBFE',
+              borderRadius: 12,
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.05)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1E40AF', fontWeight: 800, fontSize: 14 }}>
+                <span>📐 HƯỚNG DẪN KÍCH THƯỚC & ĐỊNH DẠNG BANNER CHUẨN (FIT ĐẸP CẢ MOBILE & DESKTOP)</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, fontSize: 12.5, color: '#1E293B' }}>
+                <div style={{ background: '#FFFFFF', padding: '10px 14px', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontWeight: 700, color: '#2563EB', marginBottom: 3 }}>📏 Tỉ lệ & Kích thước chuẩn:</div>
+                  <div>• <b>Tỉ lệ vàng</b>: <b>16:6</b> hoặc <b>16:7</b> (khoảng 2.6 : 1)</div>
+                  <div>• <b>Kích thước đề xuất</b>: <b>1920 × 740 px</b> (hoặc <b>1200 × 480 px</b>, <b>1440 × 550 px</b>)</div>
+                </div>
+                <div style={{ background: '#FFFFFF', padding: '10px 14px', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontWeight: 700, color: '#16A34A', marginBottom: 3 }}>🖼️ Định dạng & Dung lượng:</div>
+                  <div>• <b>Định dạng</b>: <b>WebP</b>, <b>PNG</b> hoặc <b>JPG</b> chất lượng cao</div>
+                  <div>• <b>Dung lượng</b>: Dưới <b>500 KB</b> để web tải tức thì trên điện thoại</div>
+                </div>
+                <div style={{ background: '#FFFFFF', padding: '10px 14px', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontWeight: 700, color: '#D97706', marginBottom: 3 }}>🎯 Vùng an toàn (Safe Zone):</div>
+                  <div>• Gom chữ, logo & sản phẩm chính vào <b>80% vùng giữa</b> (chừa 10% mép 2 bên)</div>
+                  <div>• Giúp không bị che khuất hay cắt chữ trên các loại màn hình điện thoại</div>
+                </div>
+                <div style={{ background: '#FFFFFF', padding: '10px 14px', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontWeight: 700, color: '#7C3AED', marginBottom: 3 }}>💡 Mẹo hiển thị Full Ảnh:</div>
+                  <div>• Nếu ảnh đã thiết kế sẵn chữ + logo $\rightarrow$ <b>Tắt</b> ô <i>"Hiển thị chữ đè"</i> bên dưới để hiển thị trọn vẹn 100% ảnh gốc.</div>
+                </div>
               </div>
             </div>
 

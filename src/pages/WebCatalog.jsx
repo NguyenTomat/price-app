@@ -3034,9 +3034,9 @@ export default function WebCatalog() {
             padding: 0 12px !important;
           }
           .hero-banner-section {
-            aspect-ratio: 16 / 8.5 !important;
-            min-height: 180px !important;
-            max-height: 340px !important;
+            aspect-ratio: 1920 / 740 !important;
+            min-height: 140px !important;
+            max-height: 320px !important;
             border-radius: 12px !important;
             padding: 0 !important;
             display: block !important;
@@ -3715,9 +3715,9 @@ export default function WebCatalog() {
                       position: 'relative',
                       overflow: 'hidden',
                       width: '100%',
-                      aspectRatio: '16 / 8',
-                      minHeight: '320px',
-                      maxHeight: '560px',
+                      aspectRatio: '1920 / 740',
+                      minHeight: '220px',
+                      maxHeight: '480px',
                       borderRadius: 16,
                       boxShadow: '0 8px 30px rgba(7, 26, 47, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05)',
                       boxSizing: 'border-box',

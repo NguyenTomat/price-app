@@ -61,19 +61,20 @@ export default function TechnicalDossiersPage() {
   const [selectedLine, setSelectedLine] = useState('')
   const [viewing, setViewing] = useState(null)
   const [uploading, setUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, text: '' })
   const [showForm, setShowForm] = useState(false)
   const [addMode, setAddMode] = useState('file') // 'file' | 'link'
-  const [form, setForm] = useState({
-    name: '',
-    lineName: '',
-    priceListId: '',
-    note: '',
-    linkUrl: '',
-    customLineName: ''
-  })
+  
+  // Form states
+  const [selectedLineForUpload, setSelectedLineForUpload] = useState('')
+  const [customLineName, setCustomLineName] = useState('')
+  const [note, setNote] = useState('')
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkName, setLinkName] = useState('')
+
+  // Batch file upload: danh sách các file được chọn [{ file, name, id }]
+  const [selectedFiles, setSelectedFiles] = useState([])
   const [dragOver, setDragOver] = useState(false)
-  const [selectedFile, setSelectedFile] = useState(null)
   const fileRef = useRef(null)
 
   // Tải danh sách hồ sơ thời gian thực
@@ -97,7 +98,6 @@ export default function TechnicalDossiersPage() {
     priceLists.forEach(pl => {
       if (pl.name?.trim()) names.add(pl.name.trim())
     })
-    // Bổ sung các lineName đã có trong dossiers (nếu có dòng trước đó)
     dossiers.forEach(d => {
       if (d.lineName?.trim()) names.add(d.lineName.trim())
     })
@@ -119,77 +119,92 @@ export default function TechnicalDossiersPage() {
 
   const resetForm = () => {
     setShowForm(false)
-    setSelectedFile(null)
-    setUploadProgress(0)
-    setForm({
-      name: '',
-      lineName: '',
-      priceListId: '',
-      note: '',
-      linkUrl: '',
-      customLineName: ''
-    })
+    setSelectedFiles([])
+    setUploadProgress({ current: 0, total: 0, text: '' })
+    setSelectedLineForUpload('')
+    setCustomLineName('')
+    setNote('')
+    setLinkUrl('')
+    setLinkName('')
   }
 
-  const handleFilePick = (file) => {
-    if (!file) return
-    if (file.size > 50 * 1024 * 1024) {
-      toast('File lớn hơn 50MB. Vui lòng tải lên Google Drive và dán Link!', 'error')
-      return
+  // Thêm file vào danh sách batch
+  const handleAddFiles = (filesList) => {
+    if (!filesList || filesList.length === 0) return
+    const newItems = []
+    for (let i = 0; i < filesList.length; i++) {
+      const file = filesList[i]
+      if (file.size > 100 * 1024 * 1024) {
+        toast(`File "${file.name}" > 100MB. Vui lòng tải qua Google Drive!`, 'error')
+        continue
+      }
+      newItems.push({
+        id: Math.random().toString(36).substring(2, 9),
+        file,
+        name: file.name.replace(/\.[^/.]+$/, '')
+      })
     }
-    setSelectedFile(file)
-    setAddMode('file')
-    setForm(f => ({
-      ...f,
-      name: f.name || file.name.replace(/\.[^/.]+$/, ''),
-      lineName: f.lineName || (availableLines[0] || '')
-    }))
-    setShowForm(true)
+
+    if (newItems.length > 0) {
+      setSelectedFiles(prev => [...prev, ...newItems])
+      setAddMode('file')
+      if (!selectedLineForUpload && availableLines.length > 0) {
+        setSelectedLineForUpload(availableLines[0])
+      }
+      setShowForm(true)
+    }
+  }
+
+  const handleRemoveFile = (id) => {
+    setSelectedFiles(prev => prev.filter(f => f.id !== id))
+  }
+
+  const handleUpdateFileName = (id, newName) => {
+    setSelectedFiles(prev => prev.map(f => f.id === id ? { ...f, name: newName } : f))
   }
 
   const handleOpenAddModal = (mode = 'file') => {
     setAddMode(mode)
-    setForm(f => ({
-      ...f,
-      lineName: f.lineName || (availableLines[0] || '')
-    }))
+    if (!selectedLineForUpload && availableLines.length > 0) {
+      setSelectedLineForUpload(availableLines[0])
+    }
     setShowForm(true)
   }
 
   const handleSave = async () => {
-    const lineToUse = form.lineName === '__custom__'
-      ? form.customLineName.trim()
-      : form.lineName.trim()
+    const lineToUse = selectedLineForUpload === '__custom__'
+      ? customLineName.trim()
+      : selectedLineForUpload.trim()
 
     if (!lineToUse) {
       toast('Vui lòng chọn hoặc nhập dòng sản phẩm (tên bảng giá)!', 'error')
       return
     }
 
-    if (!form.name.trim()) {
-      toast('Vui lòng nhập tên hồ sơ / tài liệu!', 'error')
-      return
-    }
-
     const matchedPL = priceLists.find(p => p.name?.trim() === lineToUse)
     const currentUserName = profile?.name || user?.email?.split('@')[0] || 'Admin'
 
+    // Chế độ thêm Link Google Drive
     if (addMode === 'link') {
-      if (!form.linkUrl.trim()) {
+      if (!linkName.trim()) {
+        toast('Vui lòng nhập tên tài liệu / link!', 'error')
+        return
+      }
+      if (!linkUrl.trim()) {
         toast('Vui lòng dán link Google Drive hoặc liên kết tải!', 'error')
         return
       }
       setUploading(true)
       try {
         await addTechnicalDossierLink({
-          name: form.name.trim(),
+          name: linkName.trim(),
           lineName: lineToUse,
           priceListId: matchedPL?.id || '',
-          note: form.note.trim(),
-          linkUrl: toEmbedUrl(form.linkUrl.trim()),
+          note: note.trim(),
+          linkUrl: toEmbedUrl(linkUrl.trim()),
           uploadedBy: currentUserName,
         })
-        toast('Đã lưu hồ sơ kỹ thuật thành công!', 'success')
+        toast('Đã lưu liên kết hồ sơ thành công!', 'success')
         resetForm()
       } catch (err) {
         toast('Lỗi khi lưu link: ' + err.message, 'error')
@@ -199,31 +214,53 @@ export default function TechnicalDossiersPage() {
       return
     }
 
-    // Chế độ Upload File
-    if (!selectedFile) {
-      toast('Vui lòng chọn file tài liệu cần upload!', 'error')
+    // Chế độ Upload Batch File (Tải hàng loạt file)
+    if (selectedFiles.length === 0) {
+      toast('Vui lòng chọn hoặc kéo thả ít nhất 1 file tài liệu!', 'error')
       return
     }
 
     setUploading(true)
-    setUploadProgress(0)
+    const total = selectedFiles.length
+    let successCount = 0
+    let failedCount = 0
+
     try {
-      await uploadTechnicalDossier({
-        file: selectedFile,
-        name: form.name.trim(),
-        lineName: lineToUse,
-        priceListId: matchedPL?.id || '',
-        note: form.note.trim(),
-        uploadedBy: currentUserName,
-        onProgress: (pct) => setUploadProgress(pct),
-      })
-      toast('Đã upload hồ sơ kỹ thuật thành công!', 'success')
-      resetForm()
+      for (let i = 0; i < total; i++) {
+        const item = selectedFiles[i]
+        setUploadProgress({
+          current: i + 1,
+          total,
+          text: `Đang tải lên (${i + 1}/${total}): ${item.file.name}...`
+        })
+
+        try {
+          await uploadTechnicalDossier({
+            file: item.file,
+            name: item.name.trim() || item.file.name,
+            lineName: lineToUse,
+            priceListId: matchedPL?.id || '',
+            note: note.trim(),
+            uploadedBy: currentUserName,
+          })
+          successCount++
+        } catch (uploadErr) {
+          console.error(`Lỗi tải file ${item.file.name}:`, uploadErr)
+          failedCount++
+        }
+      }
+
+      if (failedCount === 0) {
+        toast(`Đã tải lên thành công tất cả ${successCount} hồ sơ cho dòng "${lineToUse}"!`, 'success')
+        resetForm()
+      } else {
+        toast(`Đã tải xong: ${successCount} thành công, ${failedCount} lỗi.`, 'error')
+      }
     } catch (err) {
-      toast('Lỗi khi upload: ' + err.message, 'error')
+      toast('Lỗi tiến trình tải file: ' + err.message, 'error')
     } finally {
       setUploading(false)
-      setUploadProgress(0)
+      setUploadProgress({ current: 0, total: 0, text: '' })
     }
   }
 
@@ -278,9 +315,9 @@ export default function TechnicalDossiersPage() {
             <button
               className="btn primary sm"
               onClick={() => fileRef.current?.click()}
-              title="Tải file hồ sơ trực tiếp từ máy"
+              title="Tải nhiều file hồ sơ cùng lúc"
             >
-              ⬆ Tải lên hồ sơ
+              ⬆ Tải lên hồ sơ (Nhiều file)
             </button>
           </div>
         )}
@@ -288,10 +325,13 @@ export default function TechnicalDossiersPage() {
         <input
           ref={fileRef}
           type="file"
+          multiple
           accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.dwg,.dxf,image/*"
           style={{ display: 'none' }}
           onChange={e => {
-            if (e.target.files[0]) handleFilePick(e.target.files[0])
+            if (e.target.files && e.target.files.length > 0) {
+              handleAddFiles(e.target.files)
+            }
             e.target.value = ''
           }}
         />
@@ -372,9 +412,9 @@ export default function TechnicalDossiersPage() {
           <div className="card" style={{ marginBottom: 20, border: '1.5px solid var(--accent)', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
               <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span>📁</span> Thêm hồ sơ kỹ thuật mới
+                <span>📁</span> Thêm hồ sơ kỹ thuật (Hỗ trợ kéo chọn nhiều file)
               </div>
-              <button className="btn sm ghost" onClick={resetForm} style={{ padding: '2px 8px' }}>✕ Đóng</button>
+              <button className="btn sm ghost" onClick={resetForm} disabled={uploading} style={{ padding: '2px 8px' }}>✕ Đóng</button>
             </div>
 
             {/* Mode selection */}
@@ -385,7 +425,7 @@ export default function TechnicalDossiersPage() {
                 className={`btn sm ${addMode === 'file' ? 'primary' : ''}`}
                 style={{ borderRadius: 6 }}
               >
-                ⬆ Tải file trực tiếp (&lt;50MB)
+                ⬆ Tải file trực tiếp (Chọn hoặc kéo thả nhiều file)
               </button>
               <button
                 type="button"
@@ -393,11 +433,11 @@ export default function TechnicalDossiersPage() {
                 className={`btn sm ${addMode === 'link' ? 'primary' : ''}`}
                 style={{ borderRadius: 6 }}
               >
-                🔗 Link Google Drive / Web (Không giới hạn)
+                🔗 Link Google Drive / Web (Không giới hạn dung lượng)
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, marginBottom: 14 }}>
               {/* Product line selection (from price lists) */}
               <div className="field" style={{ marginBottom: 0 }}>
                 <label className="field-label" style={{ fontWeight: 600 }}>
@@ -405,18 +445,21 @@ export default function TechnicalDossiersPage() {
                 </label>
                 <select
                   className="input select"
-                  value={form.lineName}
-                  onChange={e => setForm(f => ({ ...f, lineName: e.target.value }))}
+                  value={selectedLineForUpload}
+                  onChange={e => setSelectedLineForUpload(e.target.value)}
                 >
-                  <option value="">-- Chọn dòng sản phẩm --</option>
+                  <option value="">-- Chọn dòng sản phẩm áp dụng --</option>
                   {availableLines.map(line => (
                     <option key={line} value={line}>{line}</option>
                   ))}
-                  <option value="__custom__">+ Nhập dòng sản phẩm khác...</option>
+                  <option value="__custom__">+ Nhập tên dòng sản phẩm mới...</option>
                 </select>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+                  💡 Tất cả các file trong đợt này sẽ được gán vào dòng sản phẩm đã chọn ở đây.
+                </div>
               </div>
 
-              {form.lineName === '__custom__' && (
+              {selectedLineForUpload === '__custom__' && (
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label className="field-label" style={{ fontWeight: 600 }}>
                     Tên dòng sản phẩm mới <span style={{ color: 'var(--danger)' }}>*</span>
@@ -424,106 +467,173 @@ export default function TechnicalDossiersPage() {
                   <input
                     className="input"
                     placeholder="VD: BƠM APP CHÌM BAV..."
-                    value={form.customLineName}
-                    onChange={e => setForm(f => ({ ...f, customLineName: e.target.value }))}
+                    value={customLineName}
+                    onChange={e => setCustomLineName(e.target.value)}
                   />
                 </div>
               )}
 
-              {/* Dossier Name */}
-              <div className="field" style={{ marginBottom: 0 }}>
-                <label className="field-label" style={{ fontWeight: 600 }}>
-                  Tên hồ sơ / tài liệu <span style={{ color: 'var(--danger)' }}>*</span>
-                </label>
-                <input
-                  className="input"
-                  placeholder="VD: Catalogue thông số kỹ thuật & Bản vẽ CAD"
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                />
-              </div>
-
               {/* Note */}
-              <div className="field" style={{ marginBottom: 0, gridColumn: addMode === 'link' ? '1 / -1' : 'auto' }}>
-                <label className="field-label">Ghi chú thêm (tùy chọn)</label>
+              <div className="field" style={{ marginBottom: 0, gridColumn: addMode === 'link' ? 'auto' : '1 / -1' }}>
+                <label className="field-label">Ghi chú chung (tùy chọn)</label>
                 <input
                   className="input"
-                  placeholder="VD: Cập nhật 2026, kèm chứng nhận CO/CQ..."
-                  value={form.note}
-                  onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+                  placeholder="VD: Bản vẽ kỹ thuật 2026, CO/CQ..."
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
                 />
               </div>
 
               {/* Link Input if mode is link */}
               {addMode === 'link' && (
-                <div className="field" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
-                  <label className="field-label" style={{ fontWeight: 600 }}>
-                    Link Google Drive / Web <span style={{ color: 'var(--danger)' }}>*</span>
-                  </label>
-                  <input
-                    className="input"
-                    placeholder="https://drive.google.com/file/d/... hoặc link tài liệu"
-                    value={form.linkUrl}
-                    onChange={e => setForm(f => ({ ...f, linkUrl: e.target.value }))}
-                  />
-                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
-                    💡 Hướng dẫn Drive: Chuột phải file trên Google Drive → <strong>Chia sẻ (Bất kỳ ai có liên kết)</strong> → <strong>Sao chép liên kết</strong> rồi dán vào đây.
+                <>
+                  <div className="field" style={{ marginBottom: 0 }}>
+                    <label className="field-label" style={{ fontWeight: 600 }}>
+                      Tên hồ sơ / tài liệu <span style={{ color: 'var(--danger)' }}>*</span>
+                    </label>
+                    <input
+                      className="input"
+                      placeholder="VD: Catalogue tổng hợp CNP 2026"
+                      value={linkName}
+                      onChange={e => setLinkName(e.target.value)}
+                    />
                   </div>
-                  {form.linkUrl && isGoogleDriveUrl(form.linkUrl) && (
-                    <div style={{ fontSize: 12, color: 'var(--success)', marginTop: 3 }}>
-                      ✓ Đã nhận diện đường link Google Drive
+                  <div className="field" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                    <label className="field-label" style={{ fontWeight: 600 }}>
+                      Link Google Drive / Web <span style={{ color: 'var(--danger)' }}>*</span>
+                    </label>
+                    <input
+                      className="input"
+                      placeholder="https://drive.google.com/file/d/... hoặc link tài liệu"
+                      value={linkUrl}
+                      onChange={e => setLinkUrl(e.target.value)}
+                    />
+                    <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
+                      💡 Hướng dẫn Drive: Chuột phải file trên Google Drive → <strong>Chia sẻ (Bất kỳ ai có liên kết)</strong> → <strong>Sao chép liên kết</strong> rồi dán vào đây.
                     </div>
-                  )}
-                </div>
+                    {linkUrl && isGoogleDriveUrl(linkUrl) && (
+                      <div style={{ fontSize: 12, color: 'var(--success)', marginTop: 3 }}>
+                        ✓ Đã nhận diện đường link Google Drive
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
 
-            {/* File selection status if mode is file */}
+            {/* Multiple files preview & management */}
             {addMode === 'file' && (
-              <div style={{ marginBottom: 14, padding: 12, background: 'var(--bg)', borderRadius: 'var(--radius)', border: '1px dashed var(--border)' }}>
-                {selectedFile ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 20 }}>📄</span>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{selectedFile.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text2)' }}>Dung lượng: {fmtSize(selectedFile.size)}</div>
-                      </div>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
+                    Danh sách file đã chọn ({selectedFiles.length} file):
+                  </div>
+                  <button
+                    type="button"
+                    className="btn sm"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    + Chọn thêm file...
+                  </button>
+                </div>
+
+                {selectedFiles.length === 0 ? (
+                  <div
+                    onClick={() => fileRef.current?.click()}
+                    style={{
+                      padding: 24,
+                      border: '2px dashed var(--border)',
+                      borderRadius: 'var(--radius)',
+                      textAlign: 'center',
+                      background: 'var(--bg)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ fontSize: 24, marginBottom: 4 }}>📑</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
+                      Chưa có file nào được chọn
                     </div>
-                    <button
-                      type="button"
-                      className="btn sm"
-                      onClick={() => fileRef.current?.click()}
-                    >
-                      Đổi file khác
-                    </button>
+                    <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+                      Bấm vào đây hoặc kéo thả một hoặc nhiều file vào khung
+                    </div>
                   </div>
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
-                    <button
-                      type="button"
-                      className="btn sm primary"
-                      onClick={() => fileRef.current?.click()}
-                    >
-                      Chọn file tài liệu từ máy...
-                    </button>
-                    <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6 }}>
-                      Hỗ trợ PDF, Word (.docx), Excel (.xlsx), CAD (.dwg), ZIP/RAR (tối đa 50MB)
-                    </div>
+                  <div style={{
+                    maxHeight: 220,
+                    overflowY: 'auto',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                    background: 'var(--bg)',
+                    padding: 8,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6
+                  }}>
+                    {selectedFiles.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          background: 'var(--surface)',
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          border: '1px solid var(--border)',
+                        }}
+                      >
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', width: 22 }}>
+                          #{idx + 1}
+                        </span>
+                        <span style={{ fontSize: 18 }}>📄</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <input
+                            className="input"
+                            style={{ height: 28, fontSize: 12, padding: '2px 8px', fontWeight: 600 }}
+                            value={item.name}
+                            onChange={e => handleUpdateFileName(item.id, e.target.value)}
+                            title="Sửa tên hiển thị của tài liệu"
+                            disabled={uploading}
+                          />
+                          <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 2, display: 'flex', gap: 10 }}>
+                            <span>Tên gốc: {item.file.name}</span>
+                            <span>Dung lượng: {fmtSize(item.file.size)}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn ghost sm"
+                          onClick={() => handleRemoveFile(item.id)}
+                          disabled={uploading}
+                          style={{ color: 'var(--danger)', fontSize: 16, padding: '2px 6px' }}
+                          title="Bỏ file này"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             )}
 
             {/* Progress bar */}
-            {uploading && uploadProgress > 0 && (
-              <div style={{ marginBottom: 14 }}>
+            {uploading && uploadProgress.total > 0 && (
+              <div style={{ marginBottom: 14, background: 'var(--bg)', padding: 10, borderRadius: 'var(--radius)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-                  <span>Đang tải lên...</span>
-                  <span style={{ fontWeight: 700 }}>{uploadProgress}%</span>
+                  <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{uploadProgress.text}</span>
+                  <span style={{ fontWeight: 700 }}>
+                    {Math.round((uploadProgress.current / uploadProgress.total) * 100)}%
+                  </span>
                 </div>
-                <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'var(--accent)', transition: 'width 0.2s' }}/>
+                <div style={{ height: 8, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.round((uploadProgress.current / uploadProgress.total) * 100)}%`,
+                    background: 'var(--accent)',
+                    transition: 'width 0.2s'
+                  }}/>
                 </div>
               </div>
             )}
@@ -536,7 +646,7 @@ export default function TechnicalDossiersPage() {
               <button
                 className="btn sm primary"
                 onClick={handleSave}
-                disabled={uploading}
+                disabled={uploading || (addMode === 'file' && selectedFiles.length === 0)}
                 style={{ fontWeight: 700 }}
               >
                 {uploading ? (
@@ -544,7 +654,7 @@ export default function TechnicalDossiersPage() {
                 ) : addMode === 'link' ? (
                   '🔗 Lưu liên kết hồ sơ'
                 ) : (
-                  '⬆ Tải lên & Lưu hồ sơ'
+                  `⬆ Tải lên & Lưu ${selectedFiles.length > 0 ? selectedFiles.length + ' file' : 'hồ sơ'}`
                 )}
               </button>
             </div>
@@ -559,8 +669,9 @@ export default function TechnicalDossiersPage() {
             onDrop={e => {
               e.preventDefault()
               setDragOver(false)
-              const f = e.dataTransfer.files[0]
-              if (f) handleFilePick(f)
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleAddFiles(e.dataTransfer.files)
+              }
             }}
             onClick={() => fileRef.current?.click()}
             style={{
@@ -576,12 +687,12 @@ export default function TechnicalDossiersPage() {
               fontSize: 13,
             }}
           >
-            <div style={{ fontSize: 24, marginBottom: 6 }}>📑</div>
+            <div style={{ fontSize: 28, marginBottom: 6 }}>📑</div>
             <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
-              Kéo thả file hồ sơ kỹ thuật vào đây hoặc bấm để chọn
+              Kéo thả một hoặc nhiều file hồ sơ vào đây (hoặc bấm để chọn)
             </div>
             <div style={{ fontSize: 11 }}>
-              Hỗ trợ PDF, Word, Excel, Bản vẽ CAD, File nén (tự động phân loại theo dòng sản phẩm)
+              Hỗ trợ kéo cùng lúc nhiều file PDF, Word, Excel, Bản vẽ CAD, File nén để cùng lưu vào 1 dòng sản phẩm
             </div>
           </div>
         )}
@@ -597,7 +708,7 @@ export default function TechnicalDossiersPage() {
               {search || selectedLine
                 ? 'Thử xóa bộ lọc hoặc tìm kiếm với từ khóa khác.'
                 : isAdmin
-                  ? 'Bấm nút "Tải lên hồ sơ" hoặc "Thêm link Drive" phía trên để lưu tài liệu theo các dòng sản phẩm.'
+                  ? 'Bấm nút "Tải lên hồ sơ (Nhiều file)" hoặc "Thêm link Drive" phía trên để lưu tài liệu theo các dòng sản phẩm.'
                   : 'Hiện chưa có tài liệu kỹ thuật nào được đăng tải cho dòng này.'}
             </div>
           </div>

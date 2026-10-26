@@ -1332,65 +1332,27 @@ export const addTechnicalDossierLink = async ({ name, lineName, priceListId, not
   })
 }
 
-export const uploadTechnicalDossier = async ({ file, name, lineName, priceListId, note, uploadedBy, onProgress }) => {
+export const uploadTechnicalDossier = async ({ file, name, lineName, priceListId, note, uploadedBy }) => {
   const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
   const storageRef = ref(storage, 'technical_dossiers/' + Date.now() + '_' + cleanName)
-  
-  if (onProgress) {
-    const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type || 'application/octet-stream' })
-    return new Promise((resolve, reject) => {
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-          onProgress(Math.round(progress))
-        },
-        (error) => reject(error),
-        async () => {
-          try {
-            const url = await getDownloadURL(uploadTask.snapshot.ref)
-            const docRef = await addDoc(collection(db, 'technical_dossiers'), {
-              name: name || file.name,
-              fileName: file.name,
-              fileSize: file.size,
-              fileType: file.type || '',
-              isExternalLink: false,
-              storagePath: uploadTask.snapshot.ref.fullPath,
-              url,
-              lineName: lineName || '',
-              priceListId: priceListId || '',
-              note: note || '',
-              uploadedBy: uploadedBy || 'Admin',
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            })
-            resolve({ id: docRef.id, url })
-          } catch (err) {
-            reject(err)
-          }
-        }
-      )
-    })
-  } else {
-    const snap = await uploadBytes(storageRef, file, { contentType: file.type || 'application/octet-stream' })
-    const url = await getDownloadURL(snap.ref)
-    const docRef = await addDoc(collection(db, 'technical_dossiers'), {
-      name: name || file.name,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type || '',
-      isExternalLink: false,
-      storagePath: snap.ref.fullPath,
-      url,
-      lineName: lineName || '',
-      priceListId: priceListId || '',
-      note: note || '',
-      uploadedBy: uploadedBy || 'Admin',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    })
-    return { id: docRef.id, url }
-  }
+  const snap = await uploadBytes(storageRef, file, { contentType: file.type || 'application/octet-stream' })
+  const url = await getDownloadURL(snap.ref)
+  const docRef = await addDoc(collection(db, 'technical_dossiers'), {
+    name: name || file.name,
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type || '',
+    isExternalLink: false,
+    storagePath: snap.ref.fullPath,
+    url,
+    lineName: lineName || '',
+    priceListId: priceListId || '',
+    note: note || '',
+    uploadedBy: uploadedBy || 'Admin',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+  return { id: docRef.id, url }
 }
 
 export const updateTechnicalDossier = async (id, data) => {

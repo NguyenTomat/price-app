@@ -4,6 +4,7 @@ import {
   uploadTechnicalDossier,
   addTechnicalDossierLink,
   deleteTechnicalDossier,
+  getDossierBlobUrl,
   getPriceLists
 } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
@@ -18,6 +19,7 @@ const fmtSize = (bytes) => {
 /** Chuyển link Google Drive share hoặc PDF → embed URL */
 const toEmbedUrl = (raw) => {
   if (!raw) return ''
+  if (raw.startsWith('blob:')) return raw
   const m = raw.match(/\/file\/d\/([^/?\s]+)/)
   if (m) return `https://drive.google.com/file/d/${m[1]}/preview`
   const m2 = raw.match(/[?&]id=([^&\s]+)/)
@@ -25,15 +27,7 @@ const toEmbedUrl = (raw) => {
   if (raw.includes('drive.google.com') && raw.includes('/view')) {
     return raw.replace(/\/view.*$/, '/preview')
   }
-  if (raw.includes('firebasestorage.googleapis.com') || raw.toLowerCase().includes('.pdf')) {
-    return `https://docs.google.com/viewer?url=${encodeURIComponent(raw)}&embedded=true`
-  }
   return raw
-}
-
-const openDossier = (dossier) => {
-  if (!dossier?.url) return
-  window.open(dossier.url, '_blank', 'noopener,noreferrer')
 }
 
 const isGoogleDriveUrl = (url) => url && url.includes('drive.google.com')
@@ -59,7 +53,8 @@ export default function TechnicalDossiersPage() {
   const [priceLists, setPriceLists] = useState([])
   const [search, setSearch] = useState('')
   const [selectedLine, setSelectedLine] = useState('')
-  const [viewing, setViewing] = useState(null)
+  const [viewing, setViewing] = useState(null) // { dossier, blobUrl }
+  const [loadingDocId, setLoadingDocId] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, text: '' })
   const [showForm, setShowForm] = useState(false)
@@ -134,8 +129,8 @@ export default function TechnicalDossiersPage() {
     const newItems = []
     for (let i = 0; i < filesList.length; i++) {
       const file = filesList[i]
-      if (file.size > 100 * 1024 * 1024) {
-        toast(`File "${file.name}" > 100MB. Vui lòng tải qua Google Drive!`, 'error')
+      if (file.size > 20 * 1024 * 1024) {
+        toast(`File "${file.name}" > 20MB. Với file cực lớn hãy dùng tab "Link Google Drive"!`, 'error')
         continue
       }
       newItems.push({
@@ -214,7 +209,7 @@ export default function TechnicalDossiersPage() {
       return
     }
 
-    // Chế độ Upload Batch File (Tải hàng loạt file)
+    // Chế độ Upload Batch File (Tải hàng loạt file miễn phí 100%)
     if (selectedFiles.length === 0) {
       toast('Vui lòng chọn hoặc kéo thả ít nhất 1 file tài liệu!', 'error')
       return
@@ -231,7 +226,7 @@ export default function TechnicalDossiersPage() {
         setUploadProgress({
           current: i + 1,
           total,
-          text: `Đang tải lên (${i + 1}/${total}): ${item.file.name}...`
+          text: `Đang xử lý & lưu file (${i + 1}/${total}): ${item.file.name}...`
         })
 
         try {
@@ -251,7 +246,7 @@ export default function TechnicalDossiersPage() {
       }
 
       if (failedCount === 0) {
-        toast(`Đã tải lên thành công tất cả ${successCount} hồ sơ cho dòng "${lineToUse}"!`, 'success')
+        toast(`Đã lưu thành công tất cả ${successCount} hồ sơ cho dòng "${lineToUse}"!`, 'success')
         resetForm()
       } else {
         toast(`Đã tải xong: ${successCount} thành công, ${failedCount} lỗi.`, 'error')
@@ -261,6 +256,42 @@ export default function TechnicalDossiersPage() {
     } finally {
       setUploading(false)
       setUploadProgress({ current: 0, total: 0, text: '' })
+    }
+  }
+
+  // Xem tài liệu
+  const handleView = async (dossier) => {
+    try {
+      setLoadingDocId(dossier.id)
+      const blobUrl = await getDossierBlobUrl(dossier)
+      setViewing({ dossier, blobUrl })
+    } catch (err) {
+      toast('Lỗi khi mở tài liệu: ' + err.message, 'error')
+    } finally {
+      setLoadingDocId(null)
+    }
+  }
+
+  // Tải file về máy
+  const handleDownload = async (dossier) => {
+    try {
+      setLoadingDocId(dossier.id)
+      const url = await getDossierBlobUrl(dossier)
+      if (dossier.isExternalLink) {
+        window.open(url, '_blank', 'noopener,noreferrer')
+        return
+      }
+      const a = document.createElement('a')
+      a.href = url
+      a.download = dossier.fileName || dossier.name || 'tai_lieu'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      toast('Bắt đầu tải file...', 'info')
+    } catch (err) {
+      toast('Lỗi khi tải file: ' + err.message, 'error')
+    } finally {
+      setLoadingDocId(null)
     }
   }
 
@@ -283,7 +314,7 @@ export default function TechnicalDossiersPage() {
             <span>📁</span> Hồ sơ kỹ thuật
           </h2>
           <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
-            Tài liệu, bản vẽ kỹ thuật, CO-CQ theo từng dòng sản phẩm
+            Tài liệu, bản vẽ kỹ thuật, CO-CQ theo từng dòng sản phẩm (Miễn phí 100%)
           </div>
         </div>
 
@@ -315,7 +346,7 @@ export default function TechnicalDossiersPage() {
             <button
               className="btn primary sm"
               onClick={() => fileRef.current?.click()}
-              title="Tải nhiều file hồ sơ cùng lúc"
+              title="Kéo chọn nhiều file tải lên miễn phí"
             >
               ⬆ Tải lên hồ sơ (Nhiều file)
             </button>
@@ -412,7 +443,7 @@ export default function TechnicalDossiersPage() {
           <div className="card" style={{ marginBottom: 20, border: '1.5px solid var(--accent)', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
               <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span>📁</span> Thêm hồ sơ kỹ thuật (Hỗ trợ kéo chọn nhiều file)
+                <span>📁</span> Thêm hồ sơ kỹ thuật (Hoàn toàn Miễn phí - Không cần trả phí Storage)
               </div>
               <button className="btn sm ghost" onClick={resetForm} disabled={uploading} style={{ padding: '2px 8px' }}>✕ Đóng</button>
             </div>
@@ -455,7 +486,7 @@ export default function TechnicalDossiersPage() {
                   <option value="__custom__">+ Nhập tên dòng sản phẩm mới...</option>
                 </select>
                 <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
-                  💡 Tất cả các file trong đợt này sẽ được gán vào dòng sản phẩm đã chọn ở đây.
+                  💡 Tất cả các file trong đợt này sẽ được lưu chung vào dòng sản phẩm đã chọn.
                 </div>
               </div>
 
@@ -650,7 +681,7 @@ export default function TechnicalDossiersPage() {
                 style={{ fontWeight: 700 }}
               >
                 {uploading ? (
-                  <><span className="spinner" style={{ width: 13, height: 13 }}/> Đang tải lên...</>
+                  <><span className="spinner" style={{ width: 13, height: 13 }}/> Đang lưu...</>
                 ) : addMode === 'link' ? (
                   '🔗 Lưu liên kết hồ sơ'
                 ) : (
@@ -692,7 +723,7 @@ export default function TechnicalDossiersPage() {
               Kéo thả một hoặc nhiều file hồ sơ vào đây (hoặc bấm để chọn)
             </div>
             <div style={{ fontSize: 11 }}>
-              Hỗ trợ kéo cùng lúc nhiều file PDF, Word, Excel, Bản vẽ CAD, File nén để cùng lưu vào 1 dòng sản phẩm
+              Hỗ trợ kéo cùng lúc nhiều file PDF, Word, Excel, Bản vẽ CAD, File nén (Lưu trữ trực tiếp 100% Miễn phí)
             </div>
           </div>
         )}
@@ -725,6 +756,7 @@ export default function TechnicalDossiersPage() {
               const formattedDate = dossier.createdAt?.toDate
                 ? dossier.createdAt.toDate().toLocaleDateString('vi-VN')
                 : ''
+              const isLoadingThis = loadingDocId === dossier.id
 
               return (
                 <div
@@ -810,7 +842,7 @@ export default function TechnicalDossiersPage() {
                           wordBreak: 'break-word',
                           cursor: 'pointer'
                         }}
-                        onClick={() => isPdfOrDrive ? setViewing(dossier) : openDossier(dossier)}
+                        onClick={() => isPdfOrDrive ? handleView(dossier) : handleDownload(dossier)}
                         title="Bấm để xem hoặc mở tài liệu"
                       >
                         {dossier.name}
@@ -854,16 +886,22 @@ export default function TechnicalDossiersPage() {
                     {isPdfOrDrive ? (
                       <button
                         className="btn sm"
-                        onClick={() => setViewing(dossier)}
+                        onClick={() => handleView(dossier)}
+                        disabled={isLoadingThis}
                         style={{ flex: 1, fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
                       >
-                        <span>👁</span> Xem tài liệu
+                        {isLoadingThis ? (
+                          <><span className="spinner" style={{ width: 11, height: 11 }}/> Đang mở...</>
+                        ) : (
+                          <><span>👁</span> Xem tài liệu</>
+                        )}
                       </button>
                     ) : null}
 
                     <button
                       className="btn sm primary"
-                      onClick={() => openDossier(dossier)}
+                      onClick={() => handleDownload(dossier)}
+                      disabled={isLoadingThis}
                       style={{
                         flex: isPdfOrDrive ? '0 0 auto' : 1,
                         fontSize: 12,
@@ -873,9 +911,10 @@ export default function TechnicalDossiersPage() {
                         justifyContent: 'center',
                         gap: 4
                       }}
-                      title="Mở tab mới hoặc tải file về"
+                      title="Tải file về máy"
                     >
-                      <span>↗</span> {dossier.isExternalLink ? 'Mở link' : 'Tải về'}
+                      <span>{dossier.isExternalLink ? '↗' : '⬇'}</span>
+                      {dossier.isExternalLink ? 'Mở link' : 'Tải về'}
                     </button>
 
                     {isAdmin && (
@@ -896,7 +935,7 @@ export default function TechnicalDossiersPage() {
         )}
       </div>
 
-      {/* PDF / Google Drive Document Preview Modal */}
+      {/* PDF / Document Preview Modal */}
       {viewing && (
         <div className="overlay" onClick={e => e.target === e.currentTarget && setViewing(null)}>
           <div style={{
@@ -920,20 +959,20 @@ export default function TechnicalDossiersPage() {
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {viewing.name}
+                  {viewing.dossier.name}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>
-                  Dòng sản phẩm: {viewing.lineName || 'Chung'}
+                  Dòng sản phẩm: {viewing.dossier.lineName || 'Chung'}
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={() => openDossier(viewing)}
+                onClick={() => handleDownload(viewing.dossier)}
                 className="btn sm primary"
                 style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
               >
-                <span>↗</span> Mở tab ngoài / Tải về
+                <span>⬇</span> Tải file về máy
               </button>
 
               <button
@@ -945,32 +984,12 @@ export default function TechnicalDossiersPage() {
               </button>
             </div>
 
-            {/* Hint Bar */}
-            <div style={{
-              padding: '8px 16px',
-              background: '#f8fafc',
-              borderBottom: '1px solid var(--border)',
-              fontSize: 12,
-              color: 'var(--text2)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <span>💡 Nếu tài liệu tải chậm hoặc trang trắng do mạng:</span>
-              <button
-                onClick={() => openDossier(viewing)}
-                style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 700, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
-              >
-                Bấm vào đây để mở trực tiếp trong Tab mới ↗
-              </button>
-            </div>
-
             {/* Iframe View */}
             <div style={{ flex: 1, position: 'relative', background: '#1e293b' }}>
               <iframe
-                src={toEmbedUrl(viewing.url)}
+                src={toEmbedUrl(viewing.blobUrl)}
                 style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none', background: '#ffffff' }}
-                title={viewing.name}
+                title={viewing.dossier.name}
                 allow="autoplay; encrypted-media"
               />
             </div>

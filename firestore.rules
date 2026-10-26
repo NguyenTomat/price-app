@@ -62,6 +62,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /technical_dossier_chunks/{chunkId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
     match /orders/{orderId} {
       allow read: if request.auth != null && (
         resource.data.uid == request.auth.uid || isAdmin()

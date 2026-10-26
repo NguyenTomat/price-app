@@ -1303,9 +1303,16 @@ export const subscribeWebAnalyticsLogs = (onUpdate, maxLogs = 50) => {
   }
 }
 
-// ── TECHNICAL DOSSIERS (Hồ sơ kỹ thuật) ─────────────────────────────────────────
+// ── TECHNICAL DOSSIERS (Hồ sơ kỹ thuật - 100% Free trong Firestore) ─────────
 // Collection: technical_dossiers/{id}
-// { name, fileName, fileSize, fileType, storagePath, url, lineName, priceListId, note, uploadedBy, createdAt, updatedAt }
+// Chunks: technical_dossier_chunks/{id}_{index}
+
+const fileToBase64 = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve(reader.result)
+  reader.onerror = reject
+  reader.readAsDataURL(file)
+})
 
 export const subscribeTechnicalDossiers = (cb) => {
   const q = query(collection(db, 'technical_dossiers'), orderBy('createdAt', 'desc'))
@@ -1321,7 +1328,7 @@ export const addTechnicalDossierLink = async ({ name, lineName, priceListId, not
     fileSize: null,
     fileType: 'link',
     isExternalLink: true,
-    storagePath: null,
+    storageType: 'link',
     url: linkUrl,
     lineName: lineName || '',
     priceListId: priceListId || '',
@@ -1332,19 +1339,24 @@ export const addTechnicalDossierLink = async ({ name, lineName, priceListId, not
   })
 }
 
-export const uploadTechnicalDossier = async ({ file, name, lineName, priceListId, note, uploadedBy }) => {
-  const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const storageRef = ref(storage, 'technical_dossiers/' + Date.now() + '_' + cleanName)
-  const snap = await uploadBytes(storageRef, file, { contentType: file.type || 'application/octet-stream' })
-  const url = await getDownloadURL(snap.ref)
+export const uploadTechnicalDossier = async ({ file, name, lineName, priceListId, note, uploadedBy, onProgress }) => {
+  const dataUrl = await fileToBase64(file)
+  const commaIdx = dataUrl.indexOf(',')
+  const header = dataUrl.slice(0, commaIdx)
+  const rawBase64 = dataUrl.slice(commaIdx + 1)
+  
+  const CHUNK_SIZE = 500000
+  const totalChunks = Math.ceil(rawBase64.length / CHUNK_SIZE) || 1
+
   const docRef = await addDoc(collection(db, 'technical_dossiers'), {
     name: name || file.name,
     fileName: file.name,
     fileSize: file.size,
     fileType: file.type || '',
+    mimeType: file.type || 'application/octet-stream',
     isExternalLink: false,
-    storagePath: snap.ref.fullPath,
-    url,
+    storageType: 'firestore_chunks',
+    chunksCount: totalChunks,
     lineName: lineName || '',
     priceListId: priceListId || '',
     note: note || '',
@@ -1352,7 +1364,68 @@ export const uploadTechnicalDossier = async ({ file, name, lineName, priceListId
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
-  return { id: docRef.id, url }
+
+  for (let i = 0; i < totalChunks; i++) {
+    const chunkStr = rawBase64.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE)
+    await setDoc(doc(db, 'technical_dossier_chunks', `${docRef.id}_${i}`), {
+      dossierId: docRef.id,
+      chunkIndex: i,
+      data: chunkStr,
+      header: i === 0 ? header : '',
+      createdAt: serverTimestamp(),
+    })
+    if (onProgress) {
+      onProgress(Math.round(((i + 1) / totalChunks) * 100))
+    }
+  }
+
+  return { id: docRef.id }
+}
+
+const dossierBlobCache = new Map()
+
+export const getDossierBlobUrl = async (dossier) => {
+  if (!dossier) return ''
+  if (dossier.isExternalLink) return dossier.url
+  if (dossierBlobCache.has(dossier.id)) {
+    return dossierBlobCache.get(dossier.id)
+  }
+
+  if (dossier.storageType === 'firestore_chunks') {
+    const count = dossier.chunksCount || 1
+    const parts = []
+    let header = 'data:' + (dossier.mimeType || dossier.fileType || 'application/pdf') + ';base64'
+
+    for (let i = 0; i < count; i++) {
+      const snap = await getDoc(doc(db, 'technical_dossier_chunks', `${dossier.id}_${i}`))
+      if (snap.exists()) {
+        const cData = snap.data()
+        if (cData.header) header = cData.header
+        parts.push(cData.data || '')
+      }
+    }
+
+    const fullBase64 = parts.join('')
+    const mime = dossier.mimeType || dossier.fileType || (header.match(/data:([^;]+);/)?.[1]) || 'application/octet-stream'
+
+    const byteCharacters = atob(fullBase64)
+    const byteArrays = []
+    const sliceSize = 1024
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const slice = byteCharacters.slice(offset, offset + sliceSize)
+      const byteNumbers = new Array(slice.length)
+      for (let j = 0; j < slice.length; j++) {
+        byteNumbers[j] = slice.charCodeAt(j)
+      }
+      byteArrays.push(new Uint8Array(byteNumbers))
+    }
+    const blob = new Blob(byteArrays, { type: mime })
+    const blobUrl = URL.createObjectURL(blob)
+    dossierBlobCache.set(dossier.id, blobUrl)
+    return blobUrl
+  }
+
+  return dossier.url || ''
 }
 
 export const updateTechnicalDossier = async (id, data) => {
@@ -1363,11 +1436,17 @@ export const updateTechnicalDossier = async (id, data) => {
 }
 
 export const deleteTechnicalDossier = async (dossier) => {
-  if (dossier.storagePath) {
-    try { await deleteObject(ref(storage, dossier.storagePath)) } catch (e) {
-      console.warn('Storage delete error:', e)
+  if (dossier.chunksCount) {
+    const promises = []
+    for (let i = 0; i < dossier.chunksCount; i++) {
+      promises.push(deleteDoc(doc(db, 'technical_dossier_chunks', `${dossier.id}_${i}`)))
     }
+    await Promise.allSettled(promises)
   }
+  if (dossier.storagePath) {
+    try { await deleteObject(ref(storage, dossier.storagePath)) } catch (e) {}
+  }
+  dossierBlobCache.delete(dossier.id)
   await deleteDoc(doc(db, 'technical_dossiers', dossier.id))
 }
 

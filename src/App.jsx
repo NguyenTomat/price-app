@@ -13,6 +13,7 @@ import OrdersPage from './pages/OrdersPage'
 import CostPricesPage from './pages/CostPricesPage'
 import InventoryPage from './pages/InventoryPage'
 import CatalogPage from './pages/CatalogPage'
+import TechnicalDossiersPage from './pages/TechnicalDossiersPage'
 import RevenuePage from './pages/RevenuePage'
 import BusPage from './pages/BusPage'
 import Spotlight from './components/Spotlight'
@@ -98,6 +99,7 @@ function AppContent() {
     'cost-prices':  <CostPricesPage/>,
     'inventory':    <InventoryPage/>,
     'catalog':      <CatalogPage/>,
+    'technical-dossiers': <TechnicalDossiersPage/>,
     'revenue':      <RevenuePage/>,
     'bus':          <BusPage/>,
     'web-manage':   <WebManagePage/>,

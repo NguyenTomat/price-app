@@ -196,6 +196,7 @@ export default function MyPricesPage() {
         name: p.name || '',
         spec1: p.spec1 || '',
         spec2: p.spec2 || '',
+        phiHocng: p.phiHocng || p.pipe || '',
         originalPrice: p.price,
         myPrice: calcPrice(p.price),
         image: (p.webImages && p.webImages[0]) || (p.images && p.images[0]) || null
@@ -227,6 +228,7 @@ export default function MyPricesPage() {
         const savedImgs = getSavedRowImages(r)
         return {
           ...r,
+          phiHocng: r.phiHocng || r.pipe || '',
           image: r.image || (r.webImages && r.webImages[0]) || (r.images && r.images[0]) || (savedImgs && savedImgs[0]) || null
         }
       })

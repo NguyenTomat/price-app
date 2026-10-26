@@ -8,7 +8,7 @@ import {
   Sparkles, Wrench, Settings, FileText, Folder, Package, ArrowRight, Activity, Wind,
   Target, Eye, Star, MapPin, Mail, Globe, Tag, Users, RefreshCw, AlertTriangle,
   Flame, TrendingUp, Filter, Info, Facebook, HelpCircle, Menu, X, Send, Share2,
-  ExternalLink, ChevronDown, ChevronUp, Trash2
+  ExternalLink, ChevronDown, ChevronUp, Trash2, Disc
 } from '../components/LucideIcons'
 
 // Bản đồ Logo & Xuất xứ các thương hiệu máy bơm
@@ -225,7 +225,16 @@ function ProductImage({ src, alt, style = {}, className = '', fallbackTitle = ''
     }
   }, [src])
 
-  const isValidSrc = src && typeof src === 'string' && src.trim().length > 0 && !src.includes('unsplash.com')
+  let cleanSrc = src
+  if (cleanSrc && typeof cleanSrc === 'string') {
+    if (cleanSrc.startsWith('./')) {
+      cleanSrc = '/' + cleanSrc.slice(2)
+    } else if (cleanSrc.startsWith('product_images/')) {
+      cleanSrc = '/' + cleanSrc
+    }
+  }
+
+  const isValidSrc = cleanSrc && typeof cleanSrc === 'string' && cleanSrc.trim().length > 0 && !cleanSrc.includes('unsplash.com')
 
   if (!isValidSrc || error) {
     return (
@@ -293,7 +302,7 @@ function ProductImage({ src, alt, style = {}, className = '', fallbackTitle = ''
       )}
       <img
         ref={imgRef}
-        src={src}
+        src={cleanSrc}
         alt={alt || 'Máy bơm T&T'}
         decoding="async"
         onLoad={() => setLoaded(true)}
@@ -1150,10 +1159,58 @@ export default function WebCatalog() {
     return Number(num.toFixed(1)).toString();
   };
 
+  const formatPipeStr = (val) => {
+    if (!val || typeof val !== 'string') return '';
+    const s = String(val).trim();
+    if (!s || s.toLowerCase() === 'vỏ nhôm' || s === '-' || s === '—') return '';
+    
+    // If already formatted with DN (e.g. DN100, DN50)
+    if (/^DN\s*\d+/i.test(s)) return s.toUpperCase().replace(/\s+/, '');
+    
+    // If already has Ø symbol
+    if (/^[ØφΦ]\s*/i.test(s)) {
+      const clean = s.replace(/^[ØφΦ]\s*/i, '').trim();
+      return clean.includes('mm') || clean.includes('inch') || clean.includes('"') ? `Ø${clean}` : `Ø${clean} mm`;
+    }
+    
+    // Pair match like "42 - 34" or "42-34" or "60 - 48" (Hút - Xả)
+    const pairMatch = s.match(/^(\d+)\s*[-/]\s*(\d+)$/);
+    if (pairMatch) {
+      const p1 = pairMatch[1];
+      const p2 = pairMatch[2];
+      if (p1 === p2) return `Ø${p1} mm`;
+      return `Hút Ø${p1} / Xả Ø${p2} mm`;
+    }
+    
+    // Pure number like "34", "48", "60", "21"
+    if (/^\d+(\.\d+)?$/.test(s)) {
+      return `Ø${s} mm`;
+    }
+    
+    return s;
+  };
+
+  const getProductPipe = (p) => {
+    if (!p) return '';
+    const raw = p.pipe || p.phiHocng || p.webSpecs?.pipe || '';
+    if (raw && formatPipeStr(raw)) {
+      return formatPipeStr(raw);
+    }
+    const specText = `${p.spec2 || ''} ${p.webSpecs?.specs || ''} ${p.specs || ''}`;
+    if (specText) {
+      const dnMatch = specText.match(/\b(DN\s*\d+)\b/i);
+      if (dnMatch) return dnMatch[1].toUpperCase().replace(/\s+/, '');
+      const phiMatch = specText.match(/(?:phi\s*họng|họng\s*xả|phi|họng|ống|Ø)\s*:?\s*(\d+)/i);
+      if (phiMatch) return formatPipeStr(phiMatch[1]);
+    }
+    return '';
+  };
+
   const getProductSpecInfo = (p) => {
-    if (!p) return { pow: '', volt: '', hRange: 'Liên hệ', qRange: 'Liên hệ', hMax: 0, qMax: 0 };
+    if (!p) return { pow: '', volt: '', pipe: '', hRange: 'Liên hệ', qRange: 'Liên hệ', hMax: 0, qMax: 0 };
     const pow = p.webSpecs?.power ? formatPower(p.webSpecs.power) : (p.powerKw ? formatPower(p.powerKw) : (p.powerHp ? formatPower(p.powerHp) : ''));
     const volt = p.webSpecs?.voltage ? formatVoltage(p.webSpecs.voltage) : (p.voltage ? formatVoltage(p.voltage) : '');
+    const pipe = getProductPipe(p);
     const parsed = parsePumpSpecs(p.webSpecs?.specs, p);
 
     const qMin = parsed.qMin > 0 ? formatSpecNumber(parsed.qMin) : '';
@@ -1179,13 +1236,14 @@ export default function WebCatalog() {
       qRange = `${p.flow} m³/h`;
     }
 
-    return { pow, volt, hRange: hRange || 'Liên hệ', qRange: qRange || 'Liên hệ', hMax: parsed.hMax, qMax: parsed.qMax };
+    return { pow, volt, pipe, hRange: hRange || 'Liên hệ', qRange: qRange || 'Liên hệ', hMax: parsed.hMax, qMax: parsed.qMax };
   };
 
   const renderProductCard = (p) => {
     const specInfo = getProductSpecInfo(p);
     const pow = specInfo.pow;
     const volt = specInfo.volt;
+    const pipe = specInfo.pipe;
     const qRange = specInfo.qRange !== 'Liên hệ' ? specInfo.qRange : '';
     const hRange = specInfo.hRange !== 'Liên hệ' ? specInfo.hRange : '';
     
@@ -1241,12 +1299,17 @@ export default function WebCatalog() {
                 <span className="spec-value" style={{ fontWeight: 700, color: '#071A2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{qRange}</span>
               </div>
             )}
-            {volt && (
+            {pipe ? (
+              <div className="spec-row" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }} title={`Họng xả: ${pipe}`}>
+                <span className="spec-label" style={{ color: '#0878D9', display: 'inline-flex', alignItems: 'center' }}><Disc size={11} color="#0878D9" /></span>
+                <span className="spec-value" style={{ fontWeight: 700, color: '#071A2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pipe}</span>
+              </div>
+            ) : volt ? (
               <div className="spec-row" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
                 <span className="spec-label" style={{ color: '#0878D9', display: 'inline-flex', alignItems: 'center' }}><Zap size={11} color="#0878D9" /></span>
                 <span className="spec-value" style={{ fontWeight: 700, color: '#071A2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{volt}</span>
               </div>
-            )}
+            ) : null}
           </div>
 
           <div style={{ borderTop: '1px solid #EEF1F4', margin: '6px 0 8px 0' }} />
@@ -1748,8 +1811,8 @@ export default function WebCatalog() {
 
   // Load products with LocalStorage cache and real-time Firestore sync
   useEffect(() => {
-    const CACHE_KEY = 'tt_web_products_cache_v6'
-    const CACHE_TIME_KEY = 'tt_web_products_cache_time_v6'
+    const CACHE_KEY = 'tt_web_products_cache_v8'
+    const CACHE_TIME_KEY = 'tt_web_products_cache_time_v8'
 
     const fetchCategories = async () => {
       try {
@@ -1767,10 +1830,11 @@ export default function WebCatalog() {
       try {
         const data = await getWebCatalogProducts()
         if (Array.isArray(data) && data.length > 0) {
-          setProducts(data)
+          const activeData = data.filter(p => p && p.showOnWeb !== false)
+          setProducts(activeData)
           try {
             // Lưu dữ liệu vào cache để truy cập siêu tốc ngay cả khi tải lại trang
-            const lightData = data.map(p => ({
+            const lightData = activeData.map(p => ({
               id: p.id,
               listId: p.listId,
               name: p.name,
@@ -1779,9 +1843,14 @@ export default function WebCatalog() {
               webBrand: p.webBrand,
               group: p.group,
               category: p.category,
+              featured: p.featured || false,
+              productType: p.productType || 'pump',
+              showOnWeb: true,
               voltage: p.voltage,
+              pipe: p.pipe || p.phiHocng || '',
+              phiHocng: p.phiHocng || p.pipe || '',
               webSpecs: p.webSpecs,
-              webImages: p.webImages || []
+              webImages: (p.webImages || []).filter(img => typeof img === 'string' && !img.startsWith('data:')).slice(0, 2)
             }))
             localStorage.setItem(CACHE_KEY, JSON.stringify(lightData))
             localStorage.setItem(CACHE_TIME_KEY, Date.now().toString())
@@ -1803,7 +1872,7 @@ export default function WebCatalog() {
       if (cachedData) {
         const parsed = JSON.parse(cachedData)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setProducts(parsed)
+          setProducts(parsed.filter(p => p && p.showOnWeb !== false))
           setLoading(false)
         }
       }
@@ -1815,10 +1884,29 @@ export default function WebCatalog() {
     // 2. Lắng nghe cập nhật thời gian thực (đổi ảnh/sửa thông tin từ admin là lập tức ăn ngay mà không cần reload)
     const unsub = subscribeWebCatalogProducts((liveData) => {
       if (Array.isArray(liveData) && liveData.length > 0) {
-        setProducts(liveData)
+        const activeLive = liveData.filter(p => p && p.showOnWeb !== false)
+        setProducts(activeLive)
         setLoading(false)
         try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify(liveData))
+          const lightLive = activeLive.map(p => ({
+            id: p.id,
+            listId: p.listId,
+            name: p.name,
+            code: p.code,
+            price: p.price,
+            webBrand: p.webBrand,
+            group: p.group,
+            category: p.category,
+            featured: p.featured || false,
+            productType: p.productType || 'pump',
+            showOnWeb: true,
+            voltage: p.voltage,
+            pipe: p.pipe || p.phiHocng || '',
+            phiHocng: p.phiHocng || p.pipe || '',
+            webSpecs: p.webSpecs,
+            webImages: (p.webImages || []).filter(img => typeof img === 'string' && !img.startsWith('data:')).slice(0, 2)
+          }))
+          localStorage.setItem(CACHE_KEY, JSON.stringify(lightLive))
         } catch {}
       }
     })
@@ -2002,7 +2090,7 @@ export default function WebCatalog() {
 
   // Brand, Category, Search Filtering & Sorting
   const processedProducts = useMemo(() => {
-    let result = [...products]
+    let result = products.filter(p => p && p.showOnWeb !== false)
 
     // 1. FAST & ACCURATE SEARCH (Debounced for 60fps typing)
     if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
@@ -5676,6 +5764,7 @@ export default function WebCatalog() {
                     {quickViewProduct.webSpecs?.power && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={14} color="#0878D9" /> Công suất: <strong>{formatPower(quickViewProduct.webSpecs.power)}</strong></div>}
                     {quickViewProduct.webSpecs?.voltage && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={14} color="#0878D9" /> Điện áp: <strong>{formatVoltage(quickViewProduct.webSpecs.voltage)}</strong></div>}
                     {quickViewProduct.webSpecs?.specs && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FileText size={14} color="#0878D9" /> Thông số: {quickViewProduct.webSpecs.specs}</div>}
+                    {getProductPipe(quickViewProduct) && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Disc size={14} color="#0878D9" /> Họng xả: <strong>{getProductPipe(quickViewProduct)}</strong></div>}
                   </div>
 
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8', marginTop: 12 }}>
@@ -7141,6 +7230,7 @@ export default function WebCatalog() {
             const specInfo = getProductSpecInfo(currentProduct);
             const pow = specInfo.pow;
             const volt = specInfo.volt;
+            const pipe = specInfo.pipe;
             const hRange = specInfo.hRange;
             const qRange = specInfo.qRange;
 
@@ -7273,6 +7363,12 @@ export default function WebCatalog() {
                       <>
                         <span style={{ fontSize: 10.5, fontWeight: 800, color: '#64748B', letterSpacing: '0.5px', display: 'flex', alignItems: 'center' }}>LƯU LƯỢNG (QMAX)</span>
                         <span style={{ fontSize: 13.5, color: '#0878D9', fontWeight: 800 }}>{qRange}</span>
+                      </>
+                    )}
+                    {pipe && (
+                      <>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: '#64748B', letterSpacing: '0.5px', display: 'flex', alignItems: 'center' }}>HỌNG XẢ</span>
+                        <span style={{ fontSize: 13.5, color: '#0878D9', fontWeight: 800 }}>{pipe}</span>
                       </>
                     )}
                     {(() => {
@@ -7441,6 +7537,7 @@ export default function WebCatalog() {
                           { label: 'Điện áp', val: volt || 'Liên hệ' },
                           { label: 'Cột áp tối đa (Hmax)', val: hRange || 'Liên hệ' },
                           { label: 'Lưu lượng tối đa (Qmax)', val: qRange || 'Liên hệ' },
+                          ...(pipe ? [{ label: 'Đường kính họng xả', val: pipe }] : []),
                           ...((() => {
                             const isSub = (currentProduct.group || '').toLowerCase().includes('chìm') || 
                                           (currentProduct.name || '').toLowerCase().includes('chìm') ||

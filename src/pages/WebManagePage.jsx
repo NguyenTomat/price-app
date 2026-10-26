@@ -332,6 +332,7 @@ export default function WebManagePage() {
   const [head, setHead] = useState('')
   const [flow, setFlow] = useState('')
   const [voltage, setVoltage] = useState('220V')
+  const [pipe, setPipe] = useState('')
   const [webDesc, setWebDesc] = useState('')
   const [webName, setWebName] = useState('')
   const [webCode, setWebCode] = useState('')
@@ -814,6 +815,21 @@ export default function WebManagePage() {
     })
   }, [products, search, filterProductType])
 
+  const getStaticCatalog = async () => {
+    try {
+      if (window.__staticWebCatalogCache) return window.__staticWebCatalogCache
+      const res = await fetch('/web_catalog.json', { cache: 'no-cache' })
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data)) {
+          window.__staticWebCatalogCache = data
+          return data
+        }
+      }
+    } catch {}
+    return []
+  }
+
   const openEditModal = async (p) => {
     if (!p) return
     setEditingProduct(p)
@@ -835,18 +851,35 @@ export default function WebManagePage() {
     setPower(defaultPower)
     setHead(defaultSpecs) // Sử dụng biến state head đại diện cho trường thông số gộp
     setVoltage(defaultVoltage)
+    setPipe(p.pipe || p.phiHocng || p.webSpecs?.pipe || '')
     setWebDesc(p.webDesc || '')
-    setWebImages(Array.isArray(p.webImages) ? p.webImages : (Array.isArray(p.images) ? p.images : []))
+
+    const baseList = await getStaticCatalog()
+    const staticProd = baseList.find(x => x.id === p.id || (x.code && String(x.code).trim() === String(p.code || '').trim()))
+    const staticImages = (staticProd && Array.isArray(staticProd.webImages)) ? staticProd.webImages : []
+
+    const initialImgs = (Array.isArray(p.webImages) && p.webImages.length > 0)
+      ? p.webImages
+      : (Array.isArray(p.images) && p.images.length > 0)
+        ? p.images
+        : staticImages
+
+    setWebImages(initialImgs)
     
     const listId = p.listId || selectedListId
     if (listId && p.id) {
       try {
         const detail = await getProductDetail(listId, p.id)
         if (detail) {
-          // Ưu tiên webImages (đã upload lên Storage), fallback sang images cũ
+          if (detail.phiHocng || detail.pipe || detail.webSpecs?.pipe) {
+            setPipe(detail.pipe || detail.phiHocng || detail.webSpecs?.pipe || '')
+          }
+          // Ưu tiên webImages (đã upload lên Storage), fallback sang images cũ, fallback sang static catalog
           const imgs = (Array.isArray(detail.webImages) && detail.webImages.length > 0)
             ? detail.webImages
-            : (Array.isArray(detail.images) ? detail.images : [])
+            : (Array.isArray(detail.images) && detail.images.length > 0)
+              ? detail.images
+              : staticImages
           setWebImages(imgs)
         }
       } catch (err) {
@@ -1260,12 +1293,15 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
         code: webCode,
         group: webGroup,
         webDesc,
+        pipe,
+        phiHocng: pipe,
         webImages: validImages,
         images: compressedLegacyImages, // Cập nhật lại trường ảnh cũ đã nén
         webSpecs: {
           power,
           specs: head,
-          voltage
+          voltage,
+          pipe
         }
       }
       await updateProduct(selectedListId, editingProduct.id, dataToUpdate)
@@ -3718,7 +3754,11 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                       <option value="220V/380V">220V/380V (Có cả 2 loại)</option>
                     </select>
                   </div>
-                  <div style={{ gridColumn: 'span 2' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, marginBottom: 2 }}>Họng xả (Phi mm / DN):</label>
+                    <input className="input" style={{ padding: '6px 10px', fontSize: 13 }} placeholder="Ví dụ: 48, 60, DN50, 42-34..." value={pipe} onChange={e => setPipe(e.target.value)}/>
+                  </div>
+                  <div>
                     <label style={{ display: 'block', fontSize: 11, marginBottom: 2 }}>Thông số H và Q (Cột áp - Lưu lượng):</label>
                     <input className="input" style={{ padding: '6px 10px', fontSize: 13 }} placeholder="Ví dụ: H(m): 30-10 , Q(m3/h): 15-5..." value={head} onChange={e => setHead(e.target.value)}/>
                   </div>

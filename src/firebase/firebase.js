@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore'
 export { Timestamp }
 import {
-  getStorage, ref, uploadString, uploadBytes, getDownloadURL, deleteObject, listAll, getMetadata
+  getStorage, ref, uploadString, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject, listAll, getMetadata
 } from 'firebase/storage'
 import { sanitizeFirestoreId } from '../utils/excelParse'
 
@@ -154,13 +154,23 @@ export const deleteProduct = async (listId, productId) => {
 export const updateProduct = async (listId, productId, data) => {
   const { id: _id, ...rest } = data
   await updateDoc(doc(db, 'priceLists', listId, 'products', productId), rest)
-  // Tự động đồng bộ sang web_product_overrides để hiển thị ngay trên web
+  // Tự động đồng bộ sang web_product_overrides để hiển thị/ẩn ngay trên web
   try {
-    if (data.showOnWeb === false) {
-      await deleteDoc(doc(db, 'web_product_overrides', productId))
-    } else {
-      const sanitized = sanitizeWebProduct({ id: productId, listId, ...data })
-      await setDoc(doc(db, 'web_product_overrides', productId), { ...sanitized, updatedAt: Date.now() }, { merge: true })
+    const fullSnap = await getDoc(doc(db, 'priceLists', listId, 'products', productId))
+    if (fullSnap.exists()) {
+      const fullProd = { id: fullSnap.id, ...fullSnap.data() }
+      if (fullProd.showOnWeb === true) {
+        const sanitized = sanitizeWebProduct(fullProd, listId)
+        const payload = { ...sanitized, updatedAt: Date.now() }
+        if (!payload.webImages || payload.webImages.length === 0) {
+          delete payload.webImages
+        }
+        await setDoc(doc(db, 'web_product_overrides', productId), payload, { merge: true })
+      } else {
+        await setDoc(doc(db, 'web_product_overrides', productId), { id: productId, listId, showOnWeb: false, updatedAt: Date.now() }, { merge: true })
+      }
+    } else if (data.showOnWeb === false) {
+      await setDoc(doc(db, 'web_product_overrides', productId), { id: productId, listId, showOnWeb: false, updatedAt: Date.now() }, { merge: true })
     }
   } catch (err) {
     console.warn('Sync to web_product_overrides skipped:', err)
@@ -170,7 +180,10 @@ export const updateProduct = async (listId, productId, data) => {
 export const updateProductImages = async (listId, productId, images) => {
   await updateDoc(doc(db, 'priceLists', listId, 'products', productId), { images: images || [] })
   try {
-    await setDoc(doc(db, 'web_product_overrides', productId), { webImages: images || [], updatedAt: Date.now() }, { merge: true })
+    const fullSnap = await getDoc(doc(db, 'priceLists', listId, 'products', productId))
+    if (fullSnap.exists() && fullSnap.data().showOnWeb === true) {
+      await setDoc(doc(db, 'web_product_overrides', productId), { webImages: images || [], showOnWeb: true, updatedAt: Date.now() }, { merge: true })
+    }
   } catch {}
 }
 
@@ -209,15 +222,17 @@ export const sanitizeWebProduct = (p, listId, listName) => {
     group: p.group || '',
     category: p.category || '',
     featured: p.featured || false,
-    showOnWeb: p.showOnWeb !== false,
+    showOnWeb: p.showOnWeb === true,
     voltage: p.voltage || p.webSpecs?.voltage || '',
-    pipe: p.pipe || '',
+    pipe: p.pipe || (p.phiHocng ? String(p.phiHocng).trim() : '') || (p.webSpecs?.pipe || ''),
+    phiHocng: p.phiHocng || (p.pipe ? String(p.pipe).trim() : '') || '',
     webDesc: p.webDesc || p.desc || p.description || '',
     desc: p.desc || p.description || '',
     webSpecs: p.webSpecs || {
       power: p.powerKw ? `${p.powerKw} kW` : (p.powerHp ? `${p.powerHp} HP` : ''),
       specs: p.specs || (p.head || p.flow ? `H: ${p.head || ''}m - Q: ${p.flow || ''}m3/h` : ''),
-      voltage: p.voltage || ''
+      voltage: p.voltage || '',
+      pipe: p.pipe || (p.phiHocng ? String(p.phiHocng).trim() : '') || ''
     },
     specs: p.specs || (p.webSpecs?.specs ? p.webSpecs.specs : ''),
     productType: p.productType || 'pump', // 'pump' (Máy bơm) hoặc 'accessory' (Phụ kiện)
@@ -227,33 +242,41 @@ export const sanitizeWebProduct = (p, listId, listName) => {
 }
 
 export const mergeCatalogData = (baseProducts, liveProducts) => {
-  if (!Array.isArray(liveProducts) || liveProducts.length === 0) return baseProducts || []
-  if (!Array.isArray(baseProducts) || baseProducts.length === 0) return liveProducts
+  if (!Array.isArray(liveProducts) || liveProducts.length === 0) {
+    return (baseProducts || []).filter(p => p && p.showOnWeb === true && p.name)
+  }
+  if (!Array.isArray(baseProducts) || baseProducts.length === 0) {
+    return liveProducts.filter(p => p && p.showOnWeb === true && p.name)
+  }
 
   const baseMap = new Map(baseProducts.map(p => [p.id, p]))
   const liveMap = new Map(liveProducts.map(p => [p.id, p]))
 
-  // Ghép nối: Ưu tiên ảnh mới và thông tin mới từ Live
+  // Ghép nối: Ưu tiên ảnh mới và thông tin mới từ Live, bảo toàn tuyệt đối ảnh gốc nếu live rỗng
   const merged = baseProducts.map(bp => {
     const lp = liveMap.get(bp.id)
     if (!lp) return bp
     const validLiveImages = Array.isArray(lp.webImages) ? lp.webImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
-    const images = (validLiveImages.length > 0) ? validLiveImages : (bp.webImages || [])
+    const validBaseImages = Array.isArray(bp.webImages) ? bp.webImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
+    const images = (validLiveImages.length > 0) ? validLiveImages : validBaseImages
     return {
       ...bp,
       ...lp,
+      pipe: lp.pipe || lp.phiHocng || bp.pipe || bp.phiHocng || '',
+      phiHocng: lp.phiHocng || lp.pipe || bp.phiHocng || bp.pipe || '',
       webImages: images
     }
   })
 
-  // Bổ sung các sản phẩm mới tạo trên Live
+  // Bổ sung các sản phẩm mới tạo trên Live (bỏ qua doc hệ thống _meta)
   liveProducts.forEach(lp => {
-    if (!baseMap.has(lp.id)) {
+    if (lp.id !== '_meta' && !baseMap.has(lp.id)) {
       merged.push(lp)
     }
   })
 
-  return merged
+  // Chỉ giữ lại các sản phẩm được tích chọn Đăng Web (showOnWeb === true)
+  return merged.filter(p => p && p.showOnWeb === true && p.name)
 }
 
 // Lấy danh sách sản phẩm đăng lên Web Catalog công cộng siêu tốc & cập nhật thời gian thực
@@ -273,20 +296,22 @@ export const getWebCatalogProducts = async () => {
     console.warn('Lỗi đọc web_catalog.json:', e)
   }
 
-  // 2. Tải các thay đổi / ảnh thực tế mới nhất từ collection web_product_overrides
+  // 2. Tải các thay đổi / ảnh thực tế mới nhất từ collection web_product_overrides với timeout an toàn
   try {
-    const overridesSnap = await getDocs(collection(db, 'web_product_overrides'))
-    if (!overridesSnap.empty) {
-      const liveProducts = overridesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+    const overridesPromise = getDocs(collection(db, 'web_product_overrides'))
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500))
+    const overridesSnap = await Promise.race([overridesPromise, timeoutPromise])
+    if (overridesSnap && !overridesSnap.empty) {
+      const liveProducts = overridesSnap.docs.filter(d => d.id !== '_meta').map(d => ({ id: d.id, ...d.data() }))
       if (liveProducts.length > 0) {
         return mergeCatalogData(baseProducts, liveProducts)
       }
     }
   } catch (err) {
-    console.warn('Lỗi đọc web_product_overrides:', err)
+    // Nếu Firestore hết quota (resource-exhausted) hoặc timeout/offline -> trả ngay baseProducts tĩnh không làm chết trang
   }
 
-  return baseProducts
+  return (baseProducts || []).filter(p => p && p.showOnWeb === true && p.name)
 }
 
 // Lắng nghe thay đổi sản phẩm Web thời gian thực (đổi ảnh/giá là lập tức ăn ngay mà không cần tải lại trang)
@@ -295,6 +320,8 @@ export const subscribeWebCatalogProducts = (cb) => {
   let overrides = []
 
   const emitMerged = () => {
+    // Chỉ emit khi baseCatalog đã sẵn sàng để không làm mất ảnh gốc của sản phẩm
+    if (!Array.isArray(baseCatalog) || baseCatalog.length === 0) return
     const merged = mergeCatalogData(baseCatalog, overrides)
     if (merged.length > 0) {
       cb(merged)
@@ -313,30 +340,46 @@ export const subscribeWebCatalogProducts = (cb) => {
 
   const q = collection(db, 'web_product_overrides')
   return onSnapshot(q, (snap) => {
-    overrides = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    overrides = snap.docs.filter(d => d.id !== '_meta').map(d => ({ id: d.id, ...d.data() }))
     emitMerged()
-  }, (err) => console.warn('subscribeWebCatalog error:', err))
+  }, (err) => {
+    // Nuốt lỗi quota exceeded hoặc network error để không gây spam console đỏ
+  })
 }
 
 export const refreshWebCatalogSnapshot = async () => {
   try {
     const lists = await getPriceLists()
     const allWebProducts = []
+    const existingOverridesSnap = await getDocs(collection(db, 'web_product_overrides')).catch(() => null)
+    const existingOverridesMap = new Map()
+    if (existingOverridesSnap && !existingOverridesSnap.empty) {
+      existingOverridesSnap.docs.forEach(d => existingOverridesMap.set(d.id, d.data()))
+    }
     
     for (const l of lists) {
       const ps = await getProducts(l.id)
       for (const p of ps) {
-        const rawImages = (p.webImages && p.webImages.length > 0) ? p.webImages : (p.images || [])
-        const validImages = Array.isArray(rawImages) ? rawImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
-        
-        if (p.showOnWeb === true || validImages.length > 0 || p.featured) {
+        if (p.showOnWeb === true) {
           const sanitized = sanitizeWebProduct(p, l.id, l.name)
           allWebProducts.push(sanitized)
           // Lưu override từng sản phẩm vào web_product_overrides để đảm bảo không bao giờ bị giới hạn dung lượng
           try {
-            await setDoc(doc(db, 'web_product_overrides', p.id), { ...sanitized, updatedAt: Date.now() }, { merge: true })
+            const payload = { ...sanitized, updatedAt: Date.now() }
+            if (!payload.webImages || payload.webImages.length === 0) {
+              delete payload.webImages // Bảo toàn ảnh tĩnh từ base/catalog nếu bảng giá chưa gắn ảnh
+            }
+            await setDoc(doc(db, 'web_product_overrides', p.id), payload, { merge: true })
           } catch (e) {
             console.warn(`Lỗi lưu override cho ${p.id}:`, e)
+          }
+        } else {
+          // Nếu sản phẩm không được tích Đăng Web nhưng từng có trong web_product_overrides với showOnWeb !== false, đánh dấu ẩn ngay
+          const prevOverride = existingOverridesMap.get(p.id)
+          if (prevOverride && prevOverride.showOnWeb !== false) {
+            try {
+              await setDoc(doc(db, 'web_product_overrides', p.id), { id: p.id, listId: l.id, showOnWeb: false, updatedAt: Date.now() }, { merge: true })
+            } catch (e) {}
           }
         }
       }
@@ -1260,4 +1303,109 @@ export const subscribeWebAnalyticsLogs = (onUpdate, maxLogs = 50) => {
   }
 }
 
+// ── TECHNICAL DOSSIERS (Hồ sơ kỹ thuật) ─────────────────────────────────────────
+// Collection: technical_dossiers/{id}
+// { name, fileName, fileSize, fileType, storagePath, url, lineName, priceListId, note, uploadedBy, createdAt, updatedAt }
+
+export const subscribeTechnicalDossiers = (cb) => {
+  const q = query(collection(db, 'technical_dossiers'), orderBy('createdAt', 'desc'))
+  return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))), err => {
+    console.warn('subscribeTechnicalDossiers error:', err)
+  })
+}
+
+export const addTechnicalDossierLink = async ({ name, lineName, priceListId, note, linkUrl, uploadedBy }) => {
+  return await addDoc(collection(db, 'technical_dossiers'), {
+    name: name || 'Tài liệu kỹ thuật',
+    fileName: '',
+    fileSize: null,
+    fileType: 'link',
+    isExternalLink: true,
+    storagePath: null,
+    url: linkUrl,
+    lineName: lineName || '',
+    priceListId: priceListId || '',
+    note: note || '',
+    uploadedBy: uploadedBy || 'Admin',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export const uploadTechnicalDossier = async ({ file, name, lineName, priceListId, note, uploadedBy, onProgress }) => {
+  const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const storageRef = ref(storage, 'technical_dossiers/' + Date.now() + '_' + cleanName)
+  
+  if (onProgress) {
+    const uploadTask = uploadBytesResumable(storageRef, file, { contentType: file.type || 'application/octet-stream' })
+    return new Promise((resolve, reject) => {
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+          onProgress(Math.round(progress))
+        },
+        (error) => reject(error),
+        async () => {
+          try {
+            const url = await getDownloadURL(uploadTask.snapshot.ref)
+            const docRef = await addDoc(collection(db, 'technical_dossiers'), {
+              name: name || file.name,
+              fileName: file.name,
+              fileSize: file.size,
+              fileType: file.type || '',
+              isExternalLink: false,
+              storagePath: uploadTask.snapshot.ref.fullPath,
+              url,
+              lineName: lineName || '',
+              priceListId: priceListId || '',
+              note: note || '',
+              uploadedBy: uploadedBy || 'Admin',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            })
+            resolve({ id: docRef.id, url })
+          } catch (err) {
+            reject(err)
+          }
+        }
+      )
+    })
+  } else {
+    const snap = await uploadBytes(storageRef, file, { contentType: file.type || 'application/octet-stream' })
+    const url = await getDownloadURL(snap.ref)
+    const docRef = await addDoc(collection(db, 'technical_dossiers'), {
+      name: name || file.name,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type || '',
+      isExternalLink: false,
+      storagePath: snap.ref.fullPath,
+      url,
+      lineName: lineName || '',
+      priceListId: priceListId || '',
+      note: note || '',
+      uploadedBy: uploadedBy || 'Admin',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+    return { id: docRef.id, url }
+  }
+}
+
+export const updateTechnicalDossier = async (id, data) => {
+  await updateDoc(doc(db, 'technical_dossiers', id), {
+    ...data,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export const deleteTechnicalDossier = async (dossier) => {
+  if (dossier.storagePath) {
+    try { await deleteObject(ref(storage, dossier.storagePath)) } catch (e) {
+      console.warn('Storage delete error:', e)
+    }
+  }
+  await deleteDoc(doc(db, 'technical_dossiers', dossier.id))
+}
 

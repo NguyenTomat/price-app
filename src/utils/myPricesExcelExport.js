@@ -43,6 +43,36 @@ export function parsePowerAndSpecs(r) {
 }
 
 /**
+ * Định dạng họng xả đẹp mắt chuẩn kỹ thuật (DN50, Ø65 mm, Hút Ø42 / Xả Ø34 mm...)
+ */
+export function formatPipeStr(val) {
+  if (!val || typeof val !== 'string') return ''
+  const s = String(val).trim()
+  if (!s || s.toLowerCase() === 'vỏ nhôm' || s === '-' || s === '—') return '—'
+  
+  if (/^DN\s*\d+/i.test(s)) return s.toUpperCase().replace(/\s+/, '')
+  
+  if (/^[ØφΦ]\s*/i.test(s)) {
+    const clean = s.replace(/^[ØφΦ]\s*/i, '').trim()
+    return clean.includes('mm') || clean.includes('inch') || clean.includes('"') ? `Ø${clean}` : `Ø${clean} mm`
+  }
+  
+  const pairMatch = s.match(/^(\d+)\s*[-/]\s*(\d+)$/)
+  if (pairMatch) {
+    const p1 = pairMatch[1]
+    const p2 = pairMatch[2]
+    if (p1 === p2) return `Ø${p1} mm`
+    return `Hút Ø${p1} / Xả Ø${p2} mm`
+  }
+  
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    return `Ø${s} mm`
+  }
+  
+  return s
+}
+
+/**
  * Tải ảnh và chuyển thành Buffer / Uint8Array để ExcelJS nhúng vào file
  */
 async function fetchImageBuffer(urlOrBase64) {
@@ -118,14 +148,15 @@ export async function exportMyPricesExcel({
     }
   })
 
-  // Định nghĩa độ rộng 6 cột: A (Nhóm), B (Model), C (Công suất), D (Thông số H-Q), E (Giá), F (Hình ảnh bên phải)
+  // Định nghĩa độ rộng 7 cột: A (Nhóm), B (Model), C (Công suất), D (Thông số H-Q), E (Họng xả), F (Giá bán), G (Hình ảnh bên phải)
   ws.columns = [
-    { key: 'group', width: 24 },   // Cột A: NHÓM SẢN PHẨM
+    { key: 'group', width: 22 },   // Cột A: NHÓM SẢN PHẨM
     { key: 'name', width: 28 },    // Cột B: TÊN / MODEL
     { key: 'power', width: 14 },   // Cột C: CÔNG SUẤT (0.75 kW, 1.1 kW...)
     { key: 'specs', width: 34 },   // Cột D: THÔNG SỐ (H - Q)
-    { key: 'price', width: 20 },   // Cột E: GIÁ BÁN (VNĐ)
-    { key: 'image', width: 22 }    // Cột F: HÌNH ẢNH ĐẠI DIỆN
+    { key: 'pipe', width: 16 },    // Cột E: HỌNG XẢ (DN50, Ø65...)
+    { key: 'price', width: 20 },   // Cột F: GIÁ BÁN (VNĐ)
+    { key: 'image', width: 22 }    // Cột G: HÌNH ẢNH ĐẠI DIỆN
   ]
 
   // Bảng màu chuẩn thương hiệu T&T
@@ -166,9 +197,9 @@ export async function exportMyPricesExcel({
     wrapText: true
   }
 
-  // Khối bên phải: THÔNG TIN CÔNG TY T&T (C1:F3)
+  // Khối bên phải: THÔNG TIN CÔNG TY T&T (C1:G3)
   // Row 1: Tên công ty
-  ws.mergeCells('C1:F1')
+  ws.mergeCells('C1:G1')
   const compNameCell = ws.getCell('C1')
   compNameCell.value = 'CÔNG TY TNHH TM MÁY CÔNG NGHIỆP T&T'
   compNameCell.font = {
@@ -180,7 +211,7 @@ export async function exportMyPricesExcel({
   compNameCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 }
 
   // Row 2: Địa chỉ
-  ws.mergeCells('C2:F2')
+  ws.mergeCells('C2:G2')
   const addrCell = ws.getCell('C2')
   addrCell.value = 'Địa chỉ: Số 3 ngõ 61 đường Chùa Vẽ, TDP Thống Nhất, P. Dương Nội, TP Hà Nội'
   addrCell.font = {
@@ -202,7 +233,7 @@ export async function exportMyPricesExcel({
   }
   mstCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 }
 
-  ws.mergeCells('E3:F3')
+  ws.mergeCells('E3:G3')
   const bankCell = ws.getCell('E3')
   bankCell.value = 'STK: 860088688888 – MB Tây Hà Nội'
   bankCell.font = {
@@ -223,7 +254,7 @@ export async function exportMyPricesExcel({
   // ─────────────────────────────────────────────────────────────
   // 2. TIÊU ĐỀ BẢNG GIÁ (Row 5)
   // ─────────────────────────────────────────────────────────────
-  ws.mergeCells('A5:F5')
+  ws.mergeCells('A5:G5')
   const titleCell = ws.getCell('A5')
   
   let cleanTitle = String(listName || 'SẢN PHẨM')
@@ -253,12 +284,13 @@ export async function exportMyPricesExcel({
     'TÊN / MODEL',
     'CÔNG SUẤT',
     'THÔNG SỐ (H - Q)',
+    'HỌNG XẢ',
     'GIÁ BÁN (VNĐ)',
     'HÌNH ẢNH'
   ]
   headerRow.height = 28
 
-  for (let c = 1; c <= 6; c++) {
+  for (let c = 1; c <= 7; c++) {
     const cell = headerRow.getCell(c)
     cell.font = {
       name: 'Arial',
@@ -328,6 +360,7 @@ export async function exportMyPricesExcel({
     group.items.forEach((r, idxInGroup) => {
       const rowObj = ws.getRow(currentRow)
       const { power, specs } = parsePowerAndSpecs(r)
+      const pipeStr = formatPipeStr(r.phiHocng || r.pipe || r.webSpecs?.pipe || '') || '—'
 
       const priceNum = typeof r.myPrice === 'number'
         ? r.myPrice
@@ -338,6 +371,7 @@ export async function exportMyPricesExcel({
         r.name || '',
         power,
         specs,
+        pipeStr,
         priceNum,
         ''
       ]
@@ -368,18 +402,24 @@ export async function exportMyPricesExcel({
       cellD.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 }
       cellD.border = thinBorder
 
-      // Cột E: Giá bán (VNĐ)
+      // Cột E: Họng xả
       const cellE = rowObj.getCell(5)
-      cellE.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: NAVY_COLOR } }
-      cellE.alignment = { horizontal: 'right', vertical: 'middle' }
-      cellE.numFmt = '#,##0'
+      cellE.font = { name: 'Arial', size: 10, bold: true, color: { argb: TEXT_DARK } }
+      cellE.alignment = { horizontal: 'center', vertical: 'middle' }
       cellE.border = thinBorder
 
-      // Cột F: Hình ảnh đại diện
+      // Cột F: Giá bán (VNĐ)
       const cellF = rowObj.getCell(6)
-      cellF.font = { name: 'Arial', size: 9.5, color: { argb: 'FF94A3B8' } }
-      cellF.alignment = { horizontal: 'center', vertical: 'middle' }
+      cellF.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: NAVY_COLOR } }
+      cellF.alignment = { horizontal: 'right', vertical: 'middle' }
+      cellF.numFmt = '#,##0'
       cellF.border = thinBorder
+
+      // Cột G: Hình ảnh đại diện
+      const cellG = rowObj.getCell(7)
+      cellG.font = { name: 'Arial', size: 9.5, color: { argb: 'FF94A3B8' } }
+      cellG.alignment = { horizontal: 'center', vertical: 'middle' }
+      cellG.border = thinBorder
 
       // Zebra light striping
       if (idxInGroup % 2 === 1) {
@@ -387,6 +427,7 @@ export async function exportMyPricesExcel({
         cellC.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BG_ROW_ALT } }
         cellD.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BG_ROW_ALT } }
         cellE.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BG_ROW_ALT } }
+        cellF.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BG_ROW_ALT } }
       }
 
       currentRow++
@@ -399,9 +440,9 @@ export async function exportMyPricesExcel({
       mergedA.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true, indent: 1 }
     }
 
-    // Merge Cột F (Hình ảnh đại diện) cho toàn bộ nhóm và nhúng ảnh to
+    // Merge Cột G (Hình ảnh đại diện) cho toàn bộ nhóm và nhúng ảnh to
     if (numItems > 1) {
-      ws.mergeCells(startRow, 6, endRow, 6)
+      ws.mergeCells(startRow, 7, endRow, 7)
     }
 
     if (imgObj) {
@@ -415,29 +456,29 @@ export async function exportMyPricesExcel({
         const totalHeightPoints = numItems === 1 ? 65 : numItems * 28
         const imgPixelSize = Math.min(110, Math.max(60, Math.round(totalHeightPoints * 0.78)))
 
-        // Đặt ảnh vào giữa ô Col F (Col index 5)
+        // Đặt ảnh vào giữa ô Col G (Col index 6 in ExcelJS 0-based)
         const rowOffset = numItems === 1
           ? 0.08
           : (numItems - (imgPixelSize / 36)) / 2
 
         ws.addImage(imgId, {
-          tl: { col: 5.15, row: (startRow - 1) + Math.max(0.05, rowOffset) },
+          tl: { col: 6.15, row: (startRow - 1) + Math.max(0.05, rowOffset) },
           ext: { width: imgPixelSize, height: imgPixelSize },
           editAs: 'oneCell'
         })
       } catch (addImgErr) {
         console.warn('Lỗi chèn ảnh nhóm vào Excel:', addImgErr)
-        ws.getCell(startRow, 6).value = '📷'
+        ws.getCell(startRow, 7).value = '📷'
       }
     } else {
-      ws.getCell(startRow, 6).value = '—'
+      ws.getCell(startRow, 7).value = '—'
     }
   })
 
   // Nếu không có sản phẩm nào
   if (rows.length === 0) {
     const emptyRow = ws.getRow(currentRow)
-    ws.mergeCells(`A${currentRow}:F${currentRow}`)
+    ws.mergeCells(`A${currentRow}:G${currentRow}`)
     const emptyCell = emptyRow.getCell(1)
     emptyCell.value = 'Không có sản phẩm nào trong bảng giá'
     emptyCell.font = { name: 'Arial', size: 10.5, italic: true, color: { argb: 'FF64748B' } }
@@ -455,7 +496,7 @@ export async function exportMyPricesExcel({
   currentRow++
 
   // Tiêu đề Ghi chú
-  ws.mergeCells(`A${currentRow}:F${currentRow}`)
+  ws.mergeCells(`A${currentRow}:G${currentRow}`)
   const noteTitleCell = ws.getCell(`A${currentRow}`)
   noteTitleCell.value = '📌 GHI CHÚ & ĐIỀU KHOẢN THƯƠNG MẠI:'
   noteTitleCell.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: NAVY_COLOR } }
@@ -477,7 +518,7 @@ export async function exportMyPricesExcel({
   ]
 
   notesList.forEach(noteText => {
-    ws.mergeCells(`A${currentRow}:F${currentRow}`)
+    ws.mergeCells(`A${currentRow}:G${currentRow}`)
     const cell = ws.getCell(`A${currentRow}`)
     cell.value = noteText
     cell.font = { name: 'Arial', size: 9.5, italic: true, color: { argb: 'FF334155' } }
@@ -497,8 +538,8 @@ export async function exportMyPricesExcel({
   const monthStr = String(today.getMonth() + 1).padStart(2, '0')
   const yearStr = today.getFullYear()
 
-  ws.mergeCells(`D${currentRow}:F${currentRow}`)
-  const dateCell = ws.getCell(`D${currentRow}`)
+  ws.mergeCells(`E${currentRow}:G${currentRow}`)
+  const dateCell = ws.getCell(`E${currentRow}`)
   dateCell.value = `Hà Nội, ngày ${dayStr} tháng ${monthStr} năm ${yearStr}`
   dateCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF475569' } }
   dateCell.alignment = { horizontal: 'center', vertical: 'middle' }
@@ -506,14 +547,14 @@ export async function exportMyPricesExcel({
   currentRow++
 
   // Tiêu đề các khối chữ ký
-  ws.mergeCells(`A${currentRow}:C${currentRow}`)
+  ws.mergeCells(`A${currentRow}:D${currentRow}`)
   const signerLeftTitle = ws.getCell(`A${currentRow}`)
   signerLeftTitle.value = 'NGƯỜI LẬP BẢNG GIÁ'
   signerLeftTitle.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: NAVY_COLOR } }
   signerLeftTitle.alignment = { horizontal: 'center', vertical: 'middle' }
 
-  ws.mergeCells(`D${currentRow}:F${currentRow}`)
-  const signerRightTitle = ws.getCell(`D${currentRow}`)
+  ws.mergeCells(`E${currentRow}:G${currentRow}`)
+  const signerRightTitle = ws.getCell(`E${currentRow}`)
   signerRightTitle.value = 'ĐẠI DIỆN CÔNG TY T&T'
   signerRightTitle.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: NAVY_COLOR } }
   signerRightTitle.alignment = { horizontal: 'center', vertical: 'middle' }
@@ -521,14 +562,14 @@ export async function exportMyPricesExcel({
   currentRow++
 
   // Chú thích chữ ký
-  ws.mergeCells(`A${currentRow}:C${currentRow}`)
+  ws.mergeCells(`A${currentRow}:D${currentRow}`)
   const subLeft = ws.getCell(`A${currentRow}`)
   subLeft.value = '(Ký & ghi rõ họ tên)'
   subLeft.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF64748B' } }
   subLeft.alignment = { horizontal: 'center', vertical: 'middle' }
 
-  ws.mergeCells(`D${currentRow}:F${currentRow}`)
-  const subRight = ws.getCell(`D${currentRow}`)
+  ws.mergeCells(`E${currentRow}:G${currentRow}`)
+  const subRight = ws.getCell(`E${currentRow}`)
   subRight.value = '(Ký tên & đóng dấu)'
   subRight.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF64748B' } }
   subRight.alignment = { horizontal: 'center', vertical: 'middle' }
@@ -538,14 +579,14 @@ export async function exportMyPricesExcel({
   currentRow += 4
 
   // Tên người lập & thông tin Hotline công ty
-  ws.mergeCells(`A${currentRow}:C${currentRow}`)
+  ws.mergeCells(`A${currentRow}:D${currentRow}`)
   const nameLeft = ws.getCell(`A${currentRow}`)
   nameLeft.value = userName ? userName.toUpperCase() : 'NGUYỄN THỊ TUYẾT'
   nameLeft.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: TEXT_DARK } }
   nameLeft.alignment = { horizontal: 'center', vertical: 'middle' }
 
-  ws.mergeCells(`D${currentRow}:F${currentRow}`)
-  const nameRight = ws.getCell(`D${currentRow}`)
+  ws.mergeCells(`E${currentRow}:G${currentRow}`)
+  const nameRight = ws.getCell(`E${currentRow}`)
   nameRight.value = 'Hotline: 0984.273.806 – maybomtandt.com.vn'
   nameRight.font = { name: 'Arial', size: 10, bold: true, color: { argb: NAVY_COLOR } }
   nameRight.alignment = { horizontal: 'center', vertical: 'middle' }

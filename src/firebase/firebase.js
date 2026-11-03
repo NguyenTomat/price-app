@@ -299,7 +299,7 @@ export const getWebCatalogProducts = async () => {
   // 2. Tải các thay đổi / ảnh thực tế mới nhất từ collection web_product_overrides với timeout an toàn
   try {
     const overridesPromise = getDocs(collection(db, 'web_product_overrides'))
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500))
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
     const overridesSnap = await Promise.race([overridesPromise, timeoutPromise])
     if (overridesSnap && !overridesSnap.empty) {
       const liveProducts = overridesSnap.docs.filter(d => d.id !== '_meta').map(d => ({ id: d.id, ...d.data() }))
@@ -315,6 +315,27 @@ export const getWebCatalogProducts = async () => {
 }
 
 // Lắng nghe thay đổi sản phẩm Web thời gian thực (đổi ảnh/giá là lập tức ăn ngay mà không cần tải lại trang)
+// Lấy chi tiết 1 sản phẩm cho trang xem chi tiết web (dành cho truy cập trực tiếp qua link)
+export const getWebProductById = async (productId) => {
+  if (!productId) return null
+  try {
+    const overrideDoc = await getDoc(doc(db, 'web_product_overrides', productId))
+    if (overrideDoc.exists()) {
+      return { id: overrideDoc.id, ...overrideDoc.data() }
+    }
+    const pLists = await getDocs(collection(db, 'priceLists'))
+    for (const pl of pLists.docs) {
+      const pDoc = await getDoc(doc(db, 'priceLists', pl.id, 'products', productId))
+      if (pDoc.exists()) {
+        return { id: pDoc.id, listId: pl.id, ...pDoc.data() }
+      }
+    }
+  } catch (e) {
+    console.warn('Lỗi getWebProductById:', e)
+  }
+  return null
+}
+
 export const subscribeWebCatalogProducts = (cb) => {
   let baseCatalog = []
   let overrides = []

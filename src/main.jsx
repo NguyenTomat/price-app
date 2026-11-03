@@ -113,8 +113,11 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const APP_HASH_PREFIXES = ['#app', '#login', '#dashboard', '#prices', '#orders', '#cost', '#inventory', '#admin', '#bus', '#revenue', '#manage']
-const WEB_HASH_PREFIXES = ['#web', '#products', '#applications', '#brands', '#about', '#contact', '#policy', '#intro']
+const APP_HASH_PREFIXES = ['#app', '#login', '#dashboard', '#prices', '#orders', '#cost', '#inventory', '#admin', '#bus', '#revenue', '#manage', '#technical-dossiers']
+const WEB_HASH_PREFIXES = [
+  '#web', '#products', '#applications', '#brands', '#about', '#contact', '#policy', '#intro',
+  '#san-pham', '#product', '#dong', '#danh-muc', '#category', '#cat', '#ung-dung', '#thuong-hieu', '#gioi-thieu', '#lien-he', '#chinh-sach'
+]
 
 function isWebRoute(hash) {
   const hostname = typeof window !== 'undefined' ? window.location.hostname : ''

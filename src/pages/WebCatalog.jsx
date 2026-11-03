@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { getWebCatalogProducts, subscribeWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder, getProductDetail, logWebAnalyticsEvent } from '../firebase/firebase'
+import { getWebCatalogProducts, subscribeWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder, getProductDetail, getWebProductById, logWebAnalyticsEvent } from '../firebase/firebase'
+import { toSlug } from '../utils/slug'
 import { DEFAULT_HERO_SLIDES, normalizeHeroSlides } from './WebManagePage'
 import {
   ShieldCheck, Zap, Truck, Headphones, ShoppingBag, MessageSquare, Phone,
@@ -579,6 +580,63 @@ function CategoryProductSlider({ catName, catProducts, renderProductCard, onSele
       )}
     </section>
   )
+}
+
+// Tìm danh mục theo slug URL
+const findCategoryBySlug = (slug, categoriesList, productsList) => {
+  if (!slug) return null
+  const normSlug = toSlug(slug)
+  
+  // 1. Các định danh viết tắt / phổ biến
+  if (['hoa-tien', 'gieng-khoan', 'bom-hoa-tien', 'bom-gieng-khoan'].includes(normSlug)) return 'BƠM HỎA TIỄN'
+  if (['bien-tan', 'bom-bien-tan', 'inverter'].includes(normSlug)) return 'BƠM BIẾN TẦN'
+  if (['truc-dung', 'bom-truc-dung', 'cdlf'].includes(normSlug)) return 'BƠM TRỤC ĐỨNG'
+  if (['tang-ap', 'bom-tang-ap', 'booster'].includes(normSlug)) return 'BƠM TĂNG ÁP'
+  if (['ly-tam', 'bom-ly-tam', 'truc-ngang'].includes(normSlug)) return 'BƠM LY TÂM'
+  if (['thai-inox-mat-bich', 'bom-thai-inox-mat-bich', 'thai-inox', 'dwmt', 'bom-thai-inox'].includes(normSlug)) return 'bơm thải toàn bộ INOX có mặt bích'
+  if (['nuoc-thai', 'bom-nuoc-thai', 'hut-bun', 'thai', 'chim', 'ho-mong', 'bom-ho-mong', 'bom-bun', 'ktz', 'krs', 'bom-chim', 'bom-chim-nuoc-thai'].includes(normSlug)) return 'BƠM CHÌM NƯỚC THẢI'
+  if (['cong-nghiep', 'bom-cong-nghiep'].includes(normSlug)) return 'BƠM CÔNG NGHIỆP'
+  if (['dan-bom', 'cum-bom'].includes(normSlug)) return 'DÀN BƠM'
+
+  // 2. So khớp trực tiếp với danh mục cấu hình trong DB
+  if (Array.isArray(categoriesList)) {
+    for (const cat of categoriesList) {
+      if (cat.name && toSlug(cat.name) === normSlug) return cat.name
+    }
+  }
+
+  // 3. So khớp với tên dòng / nhóm sản phẩm thực tế
+  if (Array.isArray(productsList)) {
+    for (const p of productsList) {
+      if (p.group && toSlug(p.group) === normSlug) return p.group
+      if (p.category && toSlug(p.category) === normSlug) return p.category
+    }
+  }
+
+  return slug
+}
+
+// Trích xuất ID sản phẩm từ URL hash hoặc param (hỗ trợ cả slug--id, id thô, hoặc slug)
+const resolveProductFromParam = (rawParam, productsList) => {
+  if (!rawParam) return ''
+  const cleanParam = decodeURIComponent(rawParam).trim()
+  
+  if (cleanParam.includes('--')) {
+    const parts = cleanParam.split('--')
+    return parts[parts.length - 1]
+  }
+
+  if (Array.isArray(productsList) && productsList.length > 0) {
+    const matchedById = productsList.find(p => p.id === cleanParam)
+    if (matchedById) return matchedById.id
+
+    const matchedBySlug = productsList.find(p => {
+      return toSlug(p.name) === cleanParam || toSlug(p.code) === cleanParam
+    })
+    if (matchedBySlug) return matchedBySlug.id
+  }
+
+  return cleanParam
 }
 
 export default function WebCatalog() {
@@ -1655,41 +1713,51 @@ export default function WebCatalog() {
       const h = hash.split('?')[0]
       const isExplicitHome = h === '#web' || h === '#home' || h === '' || h === '#'
 
-      const queryProductId = !isExplicitHome ? (hashParams.get('product') || (!hash.startsWith('#web') ? searchParams.get('product') : null)) : null
-      let queryCat = !isExplicitHome ? (hashParams.get('cat') || hashParams.get('category') || (h.startsWith('#web/catalog') ? (searchParams.get('cat') || searchParams.get('category')) : null)) : null
+      // Parse Product Param (ID, Slug, hoặc Slug--ID)
+      let rawProductParam = null
+      if (!isExplicitHome) {
+        if (hashParams.get('product')) {
+          rawProductParam = hashParams.get('product')
+        } else if (!hash.startsWith('#web') && searchParams.get('product')) {
+          rawProductParam = searchParams.get('product')
+        } else if (h.startsWith('#web/product/')) {
+          rawProductParam = h.replace('#web/product/', '')
+        } else if (h.startsWith('#san-pham/')) {
+          rawProductParam = h.replace('#san-pham/', '')
+        } else if (h.startsWith('#product/')) {
+          rawProductParam = h.replace('#product/', '')
+        }
+      }
+
+      // Parse Category / Line Param (Tab Dòng / Danh mục)
+      let rawCatParam = null
+      if (!isExplicitHome) {
+        if (hashParams.get('cat') || hashParams.get('category')) {
+          rawCatParam = hashParams.get('cat') || hashParams.get('category')
+        } else if (h.startsWith('#web/catalog') && (searchParams.get('cat') || searchParams.get('category'))) {
+          rawCatParam = searchParams.get('cat') || searchParams.get('category')
+        } else if (h.startsWith('#dong/')) {
+          rawCatParam = h.replace('#dong/', '')
+        } else if (h.startsWith('#danh-muc/')) {
+          rawCatParam = h.replace('#danh-muc/', '')
+        } else if (h.startsWith('#web/dong/')) {
+          rawCatParam = h.replace('#web/dong/', '')
+        } else if (h.startsWith('#web/danh-muc/')) {
+          rawCatParam = h.replace('#web/danh-muc/', '')
+        } else if (h.startsWith('#category/')) {
+          rawCatParam = h.replace('#category/', '')
+        } else if (h.startsWith('#cat/')) {
+          rawCatParam = h.replace('#cat/', '')
+        }
+      }
+
       const querySearch = !isExplicitHome ? (hashParams.get('q') || hashParams.get('search') || (h.startsWith('#web/catalog') ? (searchParams.get('q') || searchParams.get('search')) : null)) : null
-      const queryBrand = !isExplicitHome ? (hashParams.get('brand') || (h.startsWith('#web/catalog') ? searchParams.get('brand') : null)) : null
-
-      // Check direct hash category e.g. #category/hoa-tien or #cat/bien-tan
-      if (!queryCat && !isExplicitHome) {
-        if (hash.startsWith('#category/') || hash.startsWith('#cat/')) {
-          queryCat = hash.replace(/^#(category|cat)\//, '').split('?')[0]
-        }
+      let queryBrand = !isExplicitHome ? (hashParams.get('brand') || (h.startsWith('#web/catalog') ? searchParams.get('brand') : null)) : null
+      if (!queryBrand && !isExplicitHome && (h.startsWith('#thuong-hieu/') || h.startsWith('#brand/'))) {
+        queryBrand = h.replace(/^#(thuong-hieu|brand)\//, '')
       }
 
-      // Map slug to human category names
-      if (queryCat) {
-        const slug = queryCat.toLowerCase().trim()
-        if (slug === 'hoa-tien' || slug === 'gieng-khoan' || slug === 'bom-hoa-tien' || slug === 'bom-gieng-khoan') {
-          queryCat = 'BƠM HỎA TIỄN'
-        } else if (slug === 'bien-tan' || slug === 'bom-bien-tan' || slug === 'inverter') {
-          queryCat = 'BƠM BIẾN TẦN'
-        } else if (slug === 'truc-dung' || slug === 'bom-truc-dung' || slug === 'cdlf') {
-          queryCat = 'BƠM TRỤC ĐỨNG'
-        } else if (slug === 'tang-ap' || slug === 'bom-tang-ap' || slug === 'booster') {
-          queryCat = 'BƠM TĂNG ÁP'
-        } else if (slug === 'ly-tam' || slug === 'bom-ly-tam' || slug === 'truc-ngang') {
-          queryCat = 'BƠM LY TÂM'
-        } else if (slug === 'thai-inox-mat-bich' || slug === 'bom-thai-inox-mat-bich' || slug === 'thai-inox' || slug === 'dwmt' || slug === 'bom-thai-inox') {
-          queryCat = 'bơm thải toàn bộ INOX có mặt bích'
-        } else if (slug === 'nuoc-thai' || slug === 'bom-nuoc-thai' || slug === 'hut-bun' || slug === 'thai' || slug === 'chim' || slug === 'ho-mong' || slug === 'bom-ho-mong' || slug === 'bom-bun' || slug === 'ktz' || slug === 'krs' || slug === 'bom-chim') {
-          queryCat = 'BƠM CHÌM NƯỚC THẢI'
-        } else if (slug === 'cong-nghiep' || slug === 'bom-cong-nghiep') {
-          queryCat = 'BƠM CÔNG NGHIỆP'
-        } else if (slug === 'dan-bom' || slug === 'cum-bom') {
-          queryCat = 'DÀN BƠM'
-        }
-      }
+      let queryCat = rawCatParam ? findCategoryBySlug(rawCatParam, dbCategories, products) : null
 
       const prevMode = currentViewModeRef.current
 
@@ -1982,7 +2050,7 @@ export default function WebCatalog() {
     })
   }, [detailProductId, currentProduct?.id])
 
-  // When a product detail is opened, fetch full product specs and images in background
+  // When a product detail is opened, fetch full product specs and images in background or fetch directly if missing
   useEffect(() => {
     if (!detailProductId) return
     let isCancelled = false
@@ -1993,9 +2061,35 @@ export default function WebCatalog() {
           setProducts(prev => prev.map(p => p.id === detailProductId ? { ...p, ...fullProd } : p))
         }
       }).catch(() => {})
+      const slug = toSlug(prod.name || prod.code || 'san-pham')
+      const targetHash = `#web/product/${slug}--${prod.id}`
+      if (window.location.hash === `#web/product/${prod.id}` || window.location.hash === `#san-pham/${prod.id}`) {
+        window.history.replaceState(null, '', targetHash)
+      }
+    } else if (!prod) {
+      setLoading(true)
+      getWebProductById(detailProductId).then(fullProd => {
+        if (!isCancelled && fullProd) {
+          setProducts(prev => {
+            if (prev.some(p => p.id === fullProd.id)) {
+              return prev.map(p => p.id === fullProd.id ? { ...p, ...fullProd } : p)
+            }
+            return [fullProd, ...prev]
+          })
+          const slug = toSlug(fullProd.name || fullProd.code || 'san-pham')
+          const targetHash = `#web/product/${slug}--${fullProd.id}`
+          if (window.location.hash === `#web/product/${fullProd.id}` || window.location.hash === `#san-pham/${fullProd.id}`) {
+            window.history.replaceState(null, '', targetHash)
+          }
+        }
+      }).catch(err => {
+        console.warn('Lỗi tải sản phẩm theo ID trực tiếp:', err)
+      }).finally(() => {
+        if (!isCancelled) setLoading(false)
+      })
     }
     return () => { isCancelled = true }
-  }, [detailProductId])
+  }, [detailProductId, products.length])
 
   // Helper to check if a product belongs to a category
   const isProductInCategory = useCallback((p, cat) => {
@@ -2514,8 +2608,10 @@ export default function WebCatalog() {
     }
   }
 
-  const navigateToCategory = (catName) => {
-    setSelectedCategory(catName || 'TẤT CẢ')
+  const navigateToCategory = (catName, brand = 'ALL') => {
+    const cat = catName || 'TẤT CẢ'
+    setSelectedCategory(cat)
+    setActiveBrand(brand)
     setFilterProductType('ALL')
     setSearchTerm('')
     setDebouncedSearchTerm('')
@@ -2523,9 +2619,20 @@ export default function WebCatalog() {
     setViewMode('catalog')
     setActiveTab('products')
     currentViewModeRef.current = 'catalog'
-    lastNonDetailPageHash.current = '#web/catalog'
-    if (window.location.hash !== '#web/catalog') {
-      window.location.hash = '#web/catalog'
+    
+    let targetHash = '#web/catalog'
+    if (cat !== 'TẤT CẢ') {
+      targetHash = `#dong/${toSlug(cat)}`
+      if (brand && brand !== 'ALL') {
+        targetHash += `?brand=${encodeURIComponent(toSlug(brand))}`
+      }
+    } else if (brand && brand !== 'ALL') {
+      targetHash = `#thuong-hieu/${toSlug(brand)}`
+    }
+
+    lastNonDetailPageHash.current = targetHash
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash
     }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
@@ -2537,16 +2644,19 @@ export default function WebCatalog() {
     setViewMode('catalog')
     setActiveTab('products')
     currentViewModeRef.current = 'catalog'
-    lastNonDetailPageHash.current = '#web/catalog'
-    if (window.location.hash !== '#web/catalog') {
-      window.location.hash = '#web/catalog'
+    const targetHash = brandName && brandName !== 'ALL' ? `#thuong-hieu/${toSlug(brandName)}` : '#web/catalog'
+    lastNonDetailPageHash.current = targetHash
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash
     }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
-  const navigateToProduct = (id) => {
+  const navigateToProduct = (productOrId) => {
+    let p = typeof productOrId === 'object' ? productOrId : products.find(x => x.id === productOrId)
+    const id = typeof productOrId === 'object' ? productOrId.id : productOrId
     const currentHash = window.location.hash || '#web'
-    if (!currentHash.startsWith('#web/product/')) {
+    if (!currentHash.startsWith('#web/product/') && !currentHash.startsWith('#san-pham/')) {
       lastNonDetailPageHash.current = currentHash
       lastViewModeRef.current = viewMode || 'catalog'
       lastCategoryRef.current = selectedCategory || 'TẤT CẢ'
@@ -2557,8 +2667,11 @@ export default function WebCatalog() {
     currentViewModeRef.current = 'product-detail'
     setActiveImageIndex(0)
     window.scrollTo({ top: 0, behavior: 'instant' })
-    if (window.location.hash !== `#web/product/${id}`) {
-      window.location.hash = `#web/product/${id}`
+
+    const slug = toSlug(p?.name || p?.code || 'san-pham')
+    const targetHash = `#web/product/${slug}--${id}`
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash
     }
   }
 
@@ -2566,7 +2679,7 @@ export default function WebCatalog() {
     isReturningFromDetail.current = true
     setDetailProductId('')
     const prevMode = lastViewModeRef.current || 'catalog'
-    const targetHash = lastNonDetailPageHash.current || (prevMode === 'home' ? '#web' : '#web/catalog')
+    const targetHash = lastNonDetailPageHash.current || (prevMode === 'home' ? '#web' : (selectedCategory && selectedCategory !== 'TẤT CẢ' ? `#dong/${toSlug(selectedCategory)}` : '#web/catalog'))
 
     setViewMode(prevMode)
     setActiveTab(prevMode === 'home' ? 'home' : 'products')
@@ -2596,7 +2709,7 @@ export default function WebCatalog() {
     setDebouncedSearchTerm('')
     currentViewModeRef.current = 'home'
     lastNonDetailPageHash.current = '#web'
-    if (window.location.hash !== '#web') {
+    if (window.location.hash !== '#web' && window.location.hash !== '') {
       window.location.hash = '#web'
     }
     window.scrollTo({ top: 0, behavior: 'instant' })
@@ -2607,9 +2720,10 @@ export default function WebCatalog() {
     setViewMode('catalog')
     setActiveTab('products')
     currentViewModeRef.current = 'catalog'
-    lastNonDetailPageHash.current = '#web/catalog'
-    if (window.location.hash !== '#web/catalog') {
-      window.location.hash = '#web/catalog'
+    const targetHash = (selectedCategory && selectedCategory !== 'TẤT CẢ') ? `#dong/${toSlug(selectedCategory)}` : '#web/catalog'
+    lastNonDetailPageHash.current = targetHash
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash
     }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
@@ -2639,9 +2753,9 @@ export default function WebCatalog() {
     setViewMode('applications')
     setActiveTab('applications')
     currentViewModeRef.current = 'applications'
-    lastNonDetailPageHash.current = '#web/applications'
-    if (window.location.hash !== '#web/applications') {
-      window.location.hash = '#web/applications'
+    lastNonDetailPageHash.current = '#ung-dung'
+    if (window.location.hash !== '#ung-dung') {
+      window.location.hash = '#ung-dung'
     }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
@@ -2651,9 +2765,9 @@ export default function WebCatalog() {
     setViewMode('brands')
     setActiveTab('brands')
     currentViewModeRef.current = 'brands'
-    lastNonDetailPageHash.current = '#web/brands'
-    if (window.location.hash !== '#web/brands') {
-      window.location.hash = '#web/brands'
+    lastNonDetailPageHash.current = '#thuong-hieu'
+    if (window.location.hash !== '#thuong-hieu') {
+      window.location.hash = '#thuong-hieu'
     }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
@@ -2663,9 +2777,9 @@ export default function WebCatalog() {
     setViewMode('intro')
     setActiveTab('intro')
     currentViewModeRef.current = 'intro'
-    lastNonDetailPageHash.current = '#web/intro'
-    if (window.location.hash !== '#web/intro') {
-      window.location.hash = '#web/intro'
+    lastNonDetailPageHash.current = '#gioi-thieu'
+    if (window.location.hash !== '#gioi-thieu') {
+      window.location.hash = '#gioi-thieu'
     }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
@@ -2675,9 +2789,9 @@ export default function WebCatalog() {
     setViewMode('contact')
     setActiveTab('contact')
     currentViewModeRef.current = 'contact'
-    lastNonDetailPageHash.current = '#web/contact'
-    if (window.location.hash !== '#web/contact') {
-      window.location.hash = '#web/contact'
+    lastNonDetailPageHash.current = '#lien-he'
+    if (window.location.hash !== '#lien-he') {
+      window.location.hash = '#lien-he'
     }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
@@ -2687,9 +2801,9 @@ export default function WebCatalog() {
     setViewMode('policy')
     setActiveTab('policy')
     currentViewModeRef.current = 'policy'
-    lastNonDetailPageHash.current = '#web/policy'
-    if (window.location.hash !== '#web/policy') {
-      window.location.hash = '#web/policy'
+    lastNonDetailPageHash.current = '#chinh-sach'
+    if (window.location.hash !== '#chinh-sach') {
+      window.location.hash = '#chinh-sach'
     }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
@@ -5843,7 +5957,7 @@ export default function WebCatalog() {
                     <h4 style={{ fontSize: 11, fontWeight: 800, color: '#082B4C', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.5px' }}>LOẠI MÁY BƠM</h4>
                     <select
                       value={selectedCategory}
-                      onChange={e => setSelectedCategory(e.target.value)}
+                      onChange={e => navigateToCategory(e.target.value)}
                       style={{ width: '100%', height: 44, padding: '0 12px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', background: '#FFFFFF', fontSize: 13.5, fontWeight: 600, color: '#102A43' }}
                     >
                       <option value="TẤT CẢ">Tất cả sản phẩm ({categoryTreeData.totalCount})</option>

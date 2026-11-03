@@ -1761,16 +1761,10 @@ export default function WebCatalog() {
 
       const prevMode = currentViewModeRef.current
 
-      if (!isExplicitHome && queryProductId) {
+      if (!isExplicitHome && rawProductParam) {
         currentViewModeRef.current = 'product-detail'
-        setDetailProductId(queryProductId)
-        setViewMode('product-detail')
-        setActiveImageIndex(0)
-        window.scrollTo({ top: 0, behavior: 'instant' })
-      } else if (!isExplicitHome && hash.startsWith('#web/product/')) {
-        currentViewModeRef.current = 'product-detail'
-        const id = hash.replace('#web/product/', '').split('?')[0]
-        setDetailProductId(id)
+        const resolvedId = resolveProductFromParam(rawProductParam, products)
+        setDetailProductId(resolvedId)
         setViewMode('product-detail')
         setActiveImageIndex(0)
         window.scrollTo({ top: 0, behavior: 'instant' })

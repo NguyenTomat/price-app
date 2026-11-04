@@ -327,6 +327,7 @@ export default function WebManagePage() {
   // Form states for modal
   const [showOnWeb, setShowOnWeb] = useState(false)
   const [webBrand, setWebBrand] = useState('UPTI PUMP')
+  const [webBrands, setWebBrands] = useState(['UPTI PUMP'])
   const [webGroup, setWebGroup] = useState('')
   const [power, setPower] = useState('')
   const [head, setHead] = useState('')
@@ -835,7 +836,9 @@ export default function WebManagePage() {
     setEditingProduct(p)
     setShowOnWeb(p.showOnWeb || false)
     setWebFeatured(p.featured === true)
-    setWebBrand(p.webBrand || 'UPTI PUMP')
+    const initBrands = Array.isArray(p.webBrands) && p.webBrands.length > 0 ? p.webBrands : (p.webBrand ? [p.webBrand] : ['UPTI PUMP'])
+    setWebBrands(initBrands)
+    setWebBrand(initBrands[0] || 'UPTI PUMP')
     setProductType(p.productType || 'pump')
     setWebGroup(p.group || '')
     setWebName(p.name || '')
@@ -1287,7 +1290,8 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
       const dataToUpdate = {
         showOnWeb,
         featured: webFeatured,
-        webBrand,
+        webBrands: webBrands && webBrands.length > 0 ? webBrands : [webBrand || 'UPTI PUMP'],
+        webBrand: (webBrands && webBrands[0]) || webBrand || 'UPTI PUMP',
         productType: productType || 'pump',
         name: webName,
         code: webCode,
@@ -1655,7 +1659,11 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                           </td>
                           <td>
                             {p.showOnWeb ? (
-                              <span className="badge badge-amber" style={{ fontSize: 10 }}>{p.webBrand || 'UPTI PUMP'}</span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                {(Array.isArray(p.webBrands) && p.webBrands.length > 0 ? p.webBrands : [p.webBrand || 'UPTI PUMP']).map((b, bi) => (
+                                  <span key={bi} className="badge badge-amber" style={{ fontSize: 10, padding: '2px 6px' }}>{b}</span>
+                                ))}
+                              </div>
                             ) : (
                               <span style={{ color: 'var(--text3)', fontSize: 11 }}>—</span>
                             )}
@@ -3639,14 +3647,58 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                   ⭐ Nổi bật trang chủ
                 </label>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 'bold' }}>Hãng:</span>
-                  <select className="select" value={webBrand} onChange={e => setWebBrand(e.target.value)} style={{ padding: '4px 8px', fontSize: 12, width: 'auto' }}>
-                    <option value="UPTI PUMP">UPTI PUMP (Đài Loan)</option>
-                    <option value="SELANNI">SELANNI (Ý)</option>
-                    <option value="BERATI">BERATI (Ý)</option>
-                    <option value="MASTRA">MASTRA (Trung Quốc)</option>
-                  </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface2)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 'bold' }}>Hãng phân phối (có thể chọn cùng lúc 2 hãng trở lên):</span>
+                    <span style={{ fontSize: 11, color: '#0878D9', fontWeight: 700 }}>
+                      Đang chọn ({webBrands.length}): {webBrands.join(', ')}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {[
+                      { id: 'UPTI PUMP', label: 'UPTI PUMP (Đài Loan)' },
+                      { id: 'SELANNI', label: 'SELANNI (Ý)' },
+                      { id: 'BERATI', label: 'BERATI (Ý)' },
+                      { id: 'MASTRA', label: 'MASTRA (TQ)' },
+                      { id: 'PENTAX', label: 'PENTAX (Ý)' },
+                      { id: 'HOWAKI', label: 'HOWAKI (Việt Nam)' }
+                    ].map(b => {
+                      const isSel = webBrands.includes(b.id);
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => {
+                            setWebBrands(prev => {
+                              let next;
+                              if (prev.includes(b.id)) {
+                                if (prev.length <= 1) return prev; // giữ ít nhất 1 hãng
+                                next = prev.filter(x => x !== b.id);
+                              } else {
+                                next = [...prev, b.id];
+                              }
+                              setWebBrand(next[0] || 'UPTI PUMP');
+                              return next;
+                            });
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: isSel ? 700 : 500,
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            border: isSel ? '2px solid #0878D9' : '1px solid var(--border)',
+                            background: isSel ? '#EFF6FF' : 'var(--surface)',
+                            color: isSel ? '#0878D9' : 'var(--text)',
+                            boxShadow: isSel ? '0 1px 4px rgba(8,120,217,0.15)' : 'none',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {isSel ? '✓ ' : '+ '} {b.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 

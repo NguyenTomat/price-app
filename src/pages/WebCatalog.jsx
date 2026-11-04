@@ -45,8 +45,45 @@ const BRAND_METADATA = {
     desc: 'Thương hiệu máy bơm chìm, bơm hỏa tiễn công nghệ cao nhập khẩu chính hãng.',
     badgeBg: '#fef2f2',
     badgeColor: '#991b1b'
+  },
+  'PENTAX': {
+    name: 'PENTAX',
+    origin: 'Italia (Ý)',
+    logo: './logo_pentax.png',
+    desc: 'Thương hiệu máy bơm nước hàng đầu từ Ý, tiêu chuẩn Châu Âu vượt trội, độ bền bỉ cao cho dân dụng và công nghiệp.',
+    badgeBg: '#eff6ff',
+    badgeColor: '#1d4ed8'
+  },
+  'HOWAKI': {
+    name: 'HOWAKI',
+    origin: 'Việt Nam',
+    logo: './logo_howaki.png',
+    desc: 'Thương hiệu máy bơm nước công nghệ cao sản xuất tại Việt Nam, hiệu suất ổn định, tối ưu chi phí và linh kiện sẵn có.',
+    badgeBg: '#f0fdf4',
+    badgeColor: '#15803d'
   }
 }
+
+// Helper lấy danh sách thương hiệu của 1 sản phẩm (hỗ trợ sản phẩm thuộc 2 hoặc nhiều hãng)
+export const getProductBrands = (p) => {
+  if (!p) return ['UPTI PUMP'];
+  if (Array.isArray(p.webBrands) && p.webBrands.length > 0) {
+    const list = p.webBrands.map(b => String(b).trim()).filter(Boolean);
+    if (list.length > 0) return list;
+  }
+  if (p.webBrand && String(p.webBrand).trim()) {
+    return [String(p.webBrand).trim()];
+  }
+  if (p.brand && String(p.brand).trim()) {
+    return [String(p.brand).trim()];
+  }
+  return ['UPTI PUMP'];
+};
+
+// Helper hiển thị chuỗi tên các thương hiệu
+export const getProductBrandsDisplay = (p) => {
+  return getProductBrands(p).join(' · ');
+};
 
 // Helper lấy logo màu của hãng
 const getBrandLogo = (brandName) => {
@@ -56,6 +93,8 @@ const getBrandLogo = (brandName) => {
   if (bn.includes('SELANNI')) return './logo_selanni.png';
   if (bn.includes('BERATI')) return './logo_berati.png';
   if (bn.includes('MASTRA')) return './logo_mastra.png';
+  if (bn.includes('PENTAX')) return './logo_pentax.png';
+  if (bn.includes('HOWAKI')) return './logo_howaki.png';
   if (BRAND_METADATA[bn]?.logo) return BRAND_METADATA[bn].logo;
   return null;
 };
@@ -73,6 +112,8 @@ const POPULAR_SEARCH_KEYWORDS = [
   'SELANNI',
   'MASTRA',
   'BERATI',
+  'PENTAX',
+  'HOWAKI',
   '380V',
   '220V'
 ];
@@ -958,12 +999,12 @@ export default function WebCatalog() {
   const uniqueBrands = useMemo(() => {
     const brandsSet = new Set();
     products.forEach(p => {
-      if (p.webBrand && p.showOnWeb) {
-        brandsSet.add(p.webBrand.toUpperCase().trim());
+      if (p.showOnWeb) {
+        getProductBrands(p).forEach(b => brandsSet.add(b.toUpperCase().trim()));
       }
     });
     if (brandsSet.size === 0) {
-      return ['UPTI PUMP', 'SELANNI', 'BERATI', 'MASTRA'];
+      return ['UPTI PUMP', 'SELANNI', 'BERATI', 'MASTRA', 'PENTAX', 'HOWAKI'];
     }
     return Array.from(brandsSet);
   }, [products]);
@@ -971,7 +1012,7 @@ export default function WebCatalog() {
   // Lấy danh sách sản phẩm nổi bật ngoài trang chủ: Đa dạng mỗi dòng 1 con đại diện + ưu tiên sản phẩm ghim thủ công
   const homeFeaturedProducts = useMemo(() => {
     // 1. Lọc sản phẩm hiển thị trên Web và theo Tab thương hiệu đang chọn
-    const eligible = (products || []).filter(p => p && p.showOnWeb && (homeFeaturedTab === 'ALL' || (p.webBrand || '').toUpperCase() === homeFeaturedTab.toUpperCase()))
+    const eligible = (products || []).filter(p => p && p.showOnWeb && (homeFeaturedTab === 'ALL' || getProductBrands(p).some(b => b.toUpperCase() === homeFeaturedTab.toUpperCase())))
     if (eligible.length === 0) return []
 
     // 2. Lấy sản phẩm được ghim nổi bật thủ công (p.featured === true)
@@ -2156,10 +2197,12 @@ export default function WebCatalog() {
 
       const brandCounts = {};
       matched.forEach(p => {
-        const b = (p.webBrand || p.brand || '').trim();
-        if (b) {
-          brandCounts[b] = (brandCounts[b] || 0) + 1;
-        }
+        getProductBrands(p).forEach(b => {
+          const bTrim = b.trim();
+          if (bTrim) {
+            brandCounts[bTrim] = (brandCounts[bTrim] || 0) + 1;
+          }
+        });
       });
 
       const subBrands = Object.entries(brandCounts)
@@ -2199,7 +2242,7 @@ export default function WebCatalog() {
         const groupNorm = normalizeSearchStr(p.group || '');
         const nameNorm = normalizeSearchStr(p.name || '');
         const codeNorm = normalizeSearchStr(p.code || '');
-        const brandNorm = normalizeSearchStr(p.webBrand || '');
+        const brandNorm = normalizeSearchStr(getProductBrands(p).join(' '));
         const specsNorm = normalizeSearchStr([
           p.webSpecs?.power, p.powerKw, p.powerHp,
           p.webSpecs?.voltage, p.voltage,
@@ -2245,7 +2288,7 @@ export default function WebCatalog() {
     } else {
       // 2. CATEGORY & BRAND FILTERING (When not searching)
       if (activeBrand !== 'ALL') {
-        result = result.filter(p => (p.webBrand || '').toUpperCase() === activeBrand.toUpperCase())
+        result = result.filter(p => getProductBrands(p).some(b => b.toUpperCase() === activeBrand.toUpperCase()))
       }
 
       if (selectedCategory && selectedCategory !== 'TẤT CẢ') {
@@ -4515,7 +4558,9 @@ export default function WebCatalog() {
                   { key: 'UPTI PUMP', label: 'UPTI' },
                   { key: 'SELANNI', label: 'SELANNI' },
                   { key: 'BERATI', label: 'BERATI' },
-                  { key: 'MASTRA', label: 'MASTRA' }
+                  { key: 'MASTRA', label: 'MASTRA' },
+                  { key: 'PENTAX', label: 'PENTAX' },
+                  { key: 'HOWAKI', label: 'HOWAKI' }
                 ].map(tab => (
                   <button
                     key={tab.key}
@@ -4787,7 +4832,7 @@ export default function WebCatalog() {
                   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                   gap: 16
                 }} className="brand-logos-grid">
-                  {['SELANNI', 'UPTI PUMP', 'BERATI', 'MASTRA'].map((brandName, idx) => (
+                  {['SELANNI', 'UPTI PUMP', 'BERATI', 'MASTRA', 'PENTAX', 'HOWAKI'].map((brandName, idx) => (
                     <div
                       key={idx}
                       onClick={() => navigateToBrand(brandName)}
@@ -4826,15 +4871,17 @@ export default function WebCatalog() {
                         else if (normalized.includes('upti')) src = './logo_upti.png';
                         else if (normalized.includes('berati')) src = './logo_berati.png';
                         else if (normalized.includes('mastra')) src = './logo_mastra.png';
+                        else if (normalized.includes('pentax')) src = './logo_pentax.png';
+                        else if (normalized.includes('howaki')) src = './logo_howaki.png';
 
                         if (src) {
-                          const isSelanni = brandName === 'SELANNI';
+                          const isLarge = brandName === 'SELANNI' || brandName === 'PENTAX' || brandName === 'HOWAKI';
                           return (
                             <img 
                               src={src} 
                               alt={brandName} 
                               style={{ 
-                                height: isSelanni ? '40px' : '28px', 
+                                height: isLarge ? '38px' : '28px', 
                                 width: 'auto', 
                                 objectFit: 'contain', 
                                 filter: 'grayscale(100%)',
@@ -6297,6 +6344,24 @@ export default function WebCatalog() {
                 desc: 'MASTRA là thương hiệu hàng đầu từ Trung Quốc nổi tiếng toàn cầu về máy bơm hỏa tiễn thả chìm giếng khoan sâu, cấp nước sạch cho vùng cao, trang trại nông nghiệp quy mô lớn và các nhà máy khai thác nguồn nước ngầm.',
                 categories: ['Bơm hỏa tiễn 3 inch, 4 inch, 6 inch', 'Bơm chìm giếng khoan sâu Inox', 'Bơm hút nước đồi dốc', 'Động cơ thả chìm giải nhiệt dầu'],
                 highlights: ['Cột áp đẩy cao lên tới 300m', 'Guồng bơm Inox chống gỉ sét', 'Hiệu suất đẩy xa vượt bậc']
+              },
+              {
+                name: 'PENTAX',
+                logo: './logo_pentax.png',
+                origin: 'Nhập khẩu nguyên chiếc Italia (Ý)',
+                badge: 'TIÊU CHUẨN CHÂU ÂU - CÔNG NGHỆ CAO',
+                desc: 'PENTAX là thương hiệu máy bơm nước lừng danh sản xuất tại Italia (Ý) với hơn 30 năm uy tín toàn cầu. Sản phẩm đạt tiêu chuẩn chất lượng nghiêm ngặt Châu Âu CE, vận hành cực kỳ êm ái, vật liệu cao cấp chống ăn mòn và đa dạng dải công suất cho dân dụng, tòa nhà cao tầng và các nhà máy công nghiệp.',
+                categories: ['Bơm ly tâm công nghiệp', 'Bơm trục đứng đa tầng cánh', 'Bơm chìm nước thải gang', 'Bơm tự mồi dân dụng cao cấp'],
+                highlights: ['100% Tiêu chuẩn Châu Âu CE', 'Động cơ dây đồng siêu bền', 'Bảo hành chính hãng 12-24 tháng']
+              },
+              {
+                name: 'HOWAKI',
+                logo: './logo_howaki.png',
+                origin: 'Thương hiệu Việt Nam chất lượng cao',
+                badge: 'BỀN BỈ - TIẾT KIỆM - TỐI ƯU CHI PHÍ',
+                desc: 'HOWAKI là thương hiệu máy bơm nước uy tín sản xuất tại Việt Nam theo tiêu chuẩn công nghệ tiên tiến, thiết kế tối ưu riêng cho đặc thù nguồn nước và khí hậu Việt Nam. Sản phẩm có giá thành cực kỳ kinh tế, vận hành bền bỉ, tiết kiệm điện năng và phụ tùng linh kiện luôn sẵn có để bảo hành, sửa chữa tức thì.',
+                categories: ['Bơm tăng áp thông minh', 'Bơm đẩy cao dân dụng', 'Bơm ly tâm lưu lượng lớn', 'Bơm chìm hút ngập úng & bùn cát'],
+                highlights: ['Phù hợp đặc thù nguồn nước VN', 'Linh kiện sẵn có dễ thay thế', 'Bảo hành chu đáo toàn quốc']
               }
             ].map((brand, bIdx) => (
               <div
@@ -7424,9 +7489,14 @@ export default function WebCatalog() {
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <span style={{ fontSize: 11.5, fontWeight: 800, color: '#0878D9', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                      {currentProduct.group || 'MÁY BƠM NƯỚC'} &bull; {currentProduct.webBrand || 'UPTI PUMP'}
+                      {currentProduct.group || 'MÁY BƠM NƯỚC'} &bull; {getProductBrandsDisplay(currentProduct)}
                     </span>
-                    {brandInfo.logo && <img src={brandInfo.logo} alt={brandInfo.name} style={{ height: 28, objectFit: 'contain' }} />}
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {getProductBrands(currentProduct).map((b, bi) => {
+                        const bLogo = getBrandLogo(b);
+                        return bLogo ? <img key={bi} src={bLogo} alt={b} style={{ height: 26, maxWidth: 80, objectFit: 'contain' }} /> : null;
+                      })}
+                    </div>
                   </div>
 
                   <h1 style={{ fontSize: 'clamp(19px, 2.2vw, 24px)', fontWeight: 850, color: '#082B4C', textTransform: 'uppercase', margin: '0 0 8px 0', lineHeight: 1.25 }}>
@@ -7897,7 +7967,7 @@ export default function WebCatalog() {
             </div>
 
             <p style={{ fontSize: 12.5, lineHeight: 1.6, color: '#94A3B8', margin: 0 }}>
-              Công ty TNHH Máy Bơm T&amp;T chuyên nhập khẩu và phân phối trực tiếp các dòng máy bơm nước công nghiệp &amp; dân dụng: UPTI PUMP, SELANNI, MASTRA, BERATI.
+              Công ty TNHH Máy Bơm T&amp;T chuyên nhập khẩu và phân phối trực tiếp các dòng máy bơm nước công nghiệp &amp; dân dụng: UPTI PUMP, SELANNI, BERATI, MASTRA, PENTAX, HOWAKI.
             </p>
 
             <div style={{ fontSize: 12, color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>

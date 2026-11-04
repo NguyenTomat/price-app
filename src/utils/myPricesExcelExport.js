@@ -272,8 +272,22 @@ export async function exportMyPricesExcel({
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
   ws.getRow(5).height = 30
 
-  // Row 6: Dòng trống phân cách
-  ws.getRow(6).height = 10
+  // Row 6: Dòng lưu ý nếu có hoặc dòng trống
+  if (note && String(note).trim()) {
+    ws.mergeCells('A6:G6')
+    const noteCell = ws.getCell('A6')
+    noteCell.value = `* Lưu ý: ${String(note).trim()}`
+    noteCell.font = {
+      name: 'Arial',
+      size: 10,
+      italic: true,
+      color: { argb: 'FF92400E' }
+    }
+    noteCell.alignment = { horizontal: 'center', vertical: 'middle' }
+    ws.getRow(6).height = 20
+  } else {
+    ws.getRow(6).height = 10
+  }
 
   // ─────────────────────────────────────────────────────────────
   // 3. TIÊU ĐỀ CỘT (Row 7)

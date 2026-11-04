@@ -28,6 +28,21 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
   const [stockFilter, setStockFilter] = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [isEditingNote, setIsEditingNote] = useState(false)
+  const [noteDraft, setNoteDraft] = useState('')
+
+  const handleSaveNote = async () => {
+    if (!selectedList?.id) return
+    const trimmed = noteDraft.trim()
+    try {
+      await updatePriceList(selectedList.id, { note: trimmed })
+      setSelectedList(l => ({ ...l, note: trimmed }))
+      setIsEditingNote(false)
+      toast('Đã cập nhật lưu ý bảng giá!', 'success')
+    } catch (err) {
+      toast('Lỗi cập nhật: ' + err.message, 'error')
+    }
+  }
   const [addForm, setAddForm] = useState({ name: '', group: '', spec1: '', spec2: '', phiHocng: '', price: '' })
   const [addSaving, setAddSaving] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -1181,6 +1196,27 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                 )}
               </div>
 
+              {/* Lưu ý bảng giá trên Mobile */}
+              {selectedList.note && (
+                <div style={{
+                  margin: '8px 12px 4px 12px',
+                  padding: '8px 10px',
+                  background: '#FFFBEB',
+                  border: '1px solid #FCD34D',
+                  borderRadius: 6,
+                  fontSize: 11.5,
+                  color: '#92400E',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 6
+                }}>
+                  <span>📌</span>
+                  <div style={{ flex: 1, lineHeight: 1.4 }}>
+                    <strong style={{ color: '#78350F' }}>Lưu ý: </strong>{selectedList.note}
+                  </div>
+                </div>
+              )}
+
               {/* Toolbar search & filter */}
               <div className="pl-mobile-controls-row">
                 <div className="search-wrap" style={{ flex: 1 }}>
@@ -1478,6 +1514,76 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                       🔗 Mở Web Catalog
                     </button>
                   </div>
+
+                  {/* Banner Lưu ý trên cùng của bảng giá */}
+                  {(selectedList.note || isAdmin) && (
+                    <div style={{
+                      margin: '10px 0 12px 0',
+                      padding: '10px 14px',
+                      background: selectedList.note ? '#FFFBEB' : '#F8FAFC',
+                      border: selectedList.note ? '1.5px solid #FCD34D' : '1px dashed #CBD5E1',
+                      borderRadius: 8,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      transition: 'all 0.2s ease'
+                    }}>
+                      <span style={{ fontSize: 16, lineHeight: 1 }}>📌</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {isEditingNote ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <textarea
+                              className="input"
+                              rows={2}
+                              value={noteDraft}
+                              onChange={e => setNoteDraft(e.target.value)}
+                              placeholder="Nhập lưu ý hiển thị trên cùng của bảng giá (VD: Giá chưa VAT, bảo hành 12 tháng...)"
+                              style={{ fontSize: 12.5, width: '100%', resize: 'vertical', padding: '6px 10px' }}
+                              autoFocus
+                            />
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button className="btn sm primary" onClick={handleSaveNote}>✓ Lưu ghi chú</button>
+                              <button className="btn sm" onClick={() => setIsEditingNote(false)}>Hủy</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <div style={{ fontSize: 13, color: selectedList.note ? '#92400E' : '#64748B', lineHeight: 1.5 }}>
+                              {selectedList.note ? (
+                                <>
+                                  <strong style={{ color: '#78350F' }}>Lưu ý: </strong>
+                                  <span>{selectedList.note}</span>
+                                </>
+                              ) : (
+                                <span style={{ fontStyle: 'italic', fontSize: 12 }}>Chưa có lưu ý cho bảng giá này (Bấm nút bên phải để thêm)</span>
+                              )}
+                            </div>
+                            {isAdmin && (
+                              <button
+                                onClick={() => { setIsEditingNote(true); setNoteDraft(selectedList.note || '') }}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: 12,
+                                  color: '#2563EB',
+                                  fontWeight: 600,
+                                  padding: '2px 8px',
+                                  borderRadius: 4,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}
+                                title="Chỉnh sửa lưu ý bảng giá"
+                              >
+                                ✏️ {selectedList.note ? 'Sửa lưu ý' : '+ Thêm lưu ý'}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="pl-header-toolbar">
                     <div className="search-wrap" style={{ width: 220 }}>

@@ -204,6 +204,7 @@ export default function MyPricesPage() {
 
       await exportMyPricesExcel({
         listName: selectedList.name,
+        note: selectedList.note || '',
         rows: rowsToExport,
         includeVat,
         discPct: discN,
@@ -477,6 +478,23 @@ export default function MyPricesPage() {
 
             {/* Step 3 */}
             <div className="card">
+              {selectedList && selectedList.note && (
+                <div style={{
+                  margin: '0 0 14px 0',
+                  padding: '8px 12px',
+                  background: '#FFFBEB',
+                  border: '1px solid #FCD34D',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  color: '#92400E',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <span>📌</span>
+                  <div><strong style={{ color: '#78350F' }}>Lưu ý bảng giá:</strong> {selectedList.note}</div>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
                 <h3 style={{ flex: 1 }}>3. Bảng giá của bạn ({filtered.length} sản phẩm)</h3>
                 <div className="search-wrap" style={{ width: 190 }}>

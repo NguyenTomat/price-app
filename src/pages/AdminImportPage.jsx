@@ -8,6 +8,7 @@ export default function AdminImportPage() {
   const toast = useToast()
   const [listName, setListName]   = useState('')
   const [category, setCategory]   = useState('')
+  const [note, setNote]           = useState('')
   const [preview, setPreview]     = useState([])   // [{name, group, spec1, spec2, price, images, order}]
   const [fileName, setFileName]   = useState('')
   const [uploading, setUploading] = useState(false)
@@ -77,10 +78,10 @@ export default function AdminImportPage() {
     if (!preview.length)   { toast('Chưa có sản phẩm để import', 'error'); return }
     setUploading(true)
     try {
-      const docRef = await createPriceList({ name: listName.trim(), category: category.trim() })
+      const docRef = await createPriceList({ name: listName.trim(), category: category.trim(), note: note.trim() })
       await saveProducts(docRef.id, preview)
       toast(`Import thành công ${preview.length} sản phẩm vào "${listName}"`, 'success')
-      setPreview([]); setListName(''); setCategory(''); setFileName('')
+      setPreview([]); setListName(''); setCategory(''); setNote(''); setFileName('')
     } catch (err) {
       toast('Lỗi import: ' + err.message, 'error')
     } finally {
@@ -112,6 +113,17 @@ export default function AdminImportPage() {
               <input className="input" value={category} onChange={e => setCategory(e.target.value)}
                 placeholder="VD: Bơm nước, Điện công nghiệp..."/>
             </div>
+          </div>
+          <div className="field" style={{ marginTop: 10 }}>
+            <label className="field-label">Lưu ý bảng giá (hiển thị trên cùng của bảng giá)</label>
+            <textarea
+              className="input"
+              rows={2}
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="VD: Giá chưa bao gồm VAT 10%, bảo hành chính hãng 12 tháng..."
+              style={{ resize: 'vertical', minHeight: 54, fontSize: 13, lineHeight: 1.5 }}
+            />
           </div>
           <div style={{ marginTop: 4 }}>
             <label className="field-label">File Excel</label>

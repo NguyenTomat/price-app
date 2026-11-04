@@ -71,11 +71,13 @@ export const getProductBrands = (p) => {
     const list = p.webBrands.map(b => String(b).trim()).filter(Boolean);
     if (list.length > 0) return list;
   }
-  if (p.webBrand && String(p.webBrand).trim()) {
-    return [String(p.webBrand).trim()];
-  }
-  if (p.brand && String(p.brand).trim()) {
-    return [String(p.brand).trim()];
+  const checkStr = p.webBrand || p.brand || '';
+  if (checkStr && typeof checkStr === 'string') {
+    if (checkStr.includes('·') || checkStr.includes(',') || checkStr.includes(';')) {
+      const parts = checkStr.split(/[·,;]/).map(b => b.trim()).filter(Boolean);
+      if (parts.length > 0) return parts;
+    }
+    return [checkStr.trim()];
   }
   return ['UPTI PUMP'];
 };
@@ -686,7 +688,7 @@ export default function WebCatalog() {
       ['tt_web_products_cache_v1', 'tt_web_products_cache_v2', 'tt_web_products_cache_v3', 'tt_web_products_cache_v4'].forEach(k => {
         try { localStorage.removeItem(k); } catch {}
       })
-      const cached = localStorage.getItem('tt_web_products_cache_v5')
+      const cached = localStorage.getItem('tt_web_products_cache_v10')
       if (cached) {
         const parsed = JSON.parse(cached)
         if (Array.isArray(parsed) && parsed.length > 0) return parsed
@@ -696,7 +698,7 @@ export default function WebCatalog() {
   })
   const [loading, setLoading] = useState(() => {
     try {
-      const cached = localStorage.getItem('tt_web_products_cache_v5')
+      const cached = localStorage.getItem('tt_web_products_cache_v10')
       if (cached) {
         const parsed = JSON.parse(cached)
         if (Array.isArray(parsed) && parsed.length > 0) return false
@@ -1914,8 +1916,8 @@ export default function WebCatalog() {
 
   // Load products with LocalStorage cache and real-time Firestore sync
   useEffect(() => {
-    const CACHE_KEY = 'tt_web_products_cache_v8'
-    const CACHE_TIME_KEY = 'tt_web_products_cache_time_v8'
+    const CACHE_KEY = 'tt_web_products_cache_v10'
+    const CACHE_TIME_KEY = 'tt_web_products_cache_time_v10'
 
     const fetchCategories = async () => {
       try {
@@ -1943,7 +1945,7 @@ export default function WebCatalog() {
               name: p.name,
               code: p.code,
               price: p.price,
-              webBrand: p.webBrand,
+              webBrand: getProductBrands(p).join(' · '), webBrands: getProductBrands(p),
               group: p.group,
               category: p.category,
               featured: p.featured || false,
@@ -1997,7 +1999,7 @@ export default function WebCatalog() {
             name: p.name,
             code: p.code,
             price: p.price,
-            webBrand: p.webBrand,
+            webBrand: getProductBrands(p).join(' · '), webBrands: getProductBrands(p),
             group: p.group,
             category: p.category,
             featured: p.featured || false,

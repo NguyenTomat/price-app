@@ -207,6 +207,15 @@ export const sanitizeWebProduct = (p, listId, listName) => {
   if (Array.isArray(rawImages)) {
     webImages = rawImages.filter(img => typeof img === 'string' && img.trim().length > 0)
   }
+  let webBrands = []
+  if (Array.isArray(p.webBrands) && p.webBrands.length > 0) {
+    webBrands = p.webBrands.map(b => String(b).trim()).filter(Boolean)
+  } else if (p.webBrand) {
+    webBrands = String(p.webBrand).split(/[·,;]/).map(b => b.trim()).filter(Boolean)
+  } else if (p.brand) {
+    webBrands = String(p.brand).split(/[·,;]/).map(b => b.trim()).filter(Boolean)
+  }
+  if (webBrands.length === 0) webBrands = ['UPTI PUMP']
   return {
     id: p.id || '',
     name: p.name || '',
@@ -218,7 +227,8 @@ export const sanitizeWebProduct = (p, listId, listName) => {
     price: p.price || 0,
     listId: listId || p.listId || '',
     listName: listName || p.listName || '',
-    webBrand: p.webBrand || p.brand || '',
+    webBrand: webBrands.join(' · '),
+    webBrands: webBrands,
     group: p.group || '',
     category: p.category || '',
     featured: p.featured || false,
@@ -259,9 +269,15 @@ export const mergeCatalogData = (baseProducts, liveProducts) => {
     const validLiveImages = Array.isArray(lp.webImages) ? lp.webImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
     const validBaseImages = Array.isArray(bp.webImages) ? bp.webImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
     const images = (validLiveImages.length > 0) ? validLiveImages : validBaseImages
+    const liveBrands = Array.isArray(lp.webBrands) && lp.webBrands.length > 0 ? lp.webBrands : (lp.webBrand ? String(lp.webBrand).split(/[·,;]/).map(b => b.trim()).filter(Boolean) : null)
+    const baseBrands = Array.isArray(bp.webBrands) && bp.webBrands.length > 0 ? bp.webBrands : (bp.webBrand ? String(bp.webBrand).split(/[·,;]/).map(b => b.trim()).filter(Boolean) : null)
+    const finalBrands = (liveBrands && liveBrands.length > 0) ? liveBrands : ((baseBrands && baseBrands.length > 0) ? baseBrands : ['UPTI PUMP'])
+
     return {
       ...bp,
       ...lp,
+      webBrands: finalBrands,
+      webBrand: finalBrands.join(' · '),
       pipe: lp.pipe || lp.phiHocng || bp.pipe || bp.phiHocng || '',
       phiHocng: lp.phiHocng || lp.pipe || bp.phiHocng || bp.pipe || '',
       webImages: images

@@ -836,7 +836,15 @@ export default function WebManagePage() {
     setEditingProduct(p)
     setShowOnWeb(p.showOnWeb || false)
     setWebFeatured(p.featured === true)
-    const initBrands = Array.isArray(p.webBrands) && p.webBrands.length > 0 ? p.webBrands : (p.webBrand ? [p.webBrand] : ['UPTI PUMP'])
+    let initBrands = []
+    if (Array.isArray(p.webBrands) && p.webBrands.length > 0) {
+      initBrands = p.webBrands.map(b => String(b).trim()).filter(Boolean)
+    } else if (p.webBrand) {
+      initBrands = String(p.webBrand).split(/[·,;]/).map(b => b.trim()).filter(Boolean)
+    } else if (p.brand) {
+      initBrands = String(p.brand).split(/[·,;]/).map(b => b.trim()).filter(Boolean)
+    }
+    if (initBrands.length === 0) initBrands = ['UPTI PUMP']
     setWebBrands(initBrands)
     setWebBrand(initBrands[0] || 'UPTI PUMP')
     setProductType(p.productType || 'pump')
@@ -1287,11 +1295,12 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
         img => typeof img === 'string' && img.trim().length > 0
       )
 
+      const selectedBrands = (webBrands && webBrands.length > 0) ? webBrands : [webBrand || 'UPTI PUMP'];
       const dataToUpdate = {
         showOnWeb,
         featured: webFeatured,
-        webBrands: webBrands && webBrands.length > 0 ? webBrands : [webBrand || 'UPTI PUMP'],
-        webBrand: (webBrands && webBrands[0]) || webBrand || 'UPTI PUMP',
+        webBrands: selectedBrands,
+        webBrand: selectedBrands.join(' · '),
         productType: productType || 'pump',
         name: webName,
         code: webCode,
@@ -1309,6 +1318,16 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
         }
       }
       await updateProduct(selectedListId, editingProduct.id, dataToUpdate)
+      try {
+        await setDoc(doc(db, 'web_product_overrides', editingProduct.id), {
+          ...dataToUpdate,
+          id: editingProduct.id,
+          listId: selectedListId,
+          updatedAt: Date.now()
+        }, { merge: true })
+      } catch (errOverride) {
+        console.warn('Sync direct override error:', errOverride)
+      }
       setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...dataToUpdate } : p))
       setEditingProduct(null)
       toast('Đã cập nhật thông tin Web cho sản phẩm!', 'success')

@@ -799,12 +799,95 @@ export const saveWebHeroSlides = async (slides) => {
 }
 
 // ── WEB ORDERS ──────────────────────────────────────────────────────────────
-export const createWebOrder = (data) =>
-  addDoc(collection(db, 'webOrders'), {
+const EMAILJS_SERVICE_ID = 'service_ko6ymrv'
+const EMAILJS_TEMPLATE_ID = 'template_mim8tpd'
+const EMAILJS_PUBLIC_KEY = '5Ks1r-DEc9zyKsELI'
+
+export const sendOrderNotificationEmail = async (orderData) => {
+  try {
+    // 1. Quét danh sách người dùng được cấp quyền (Admin hoặc có canManageWeb)
+    const authorizedEmails = new Set()
+    authorizedEmails.add('tunbebong1126@gmail.com')
+
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'))
+      usersSnap.docs.forEach((docSnap) => {
+        const u = docSnap.data()
+        const email = (u?.email || '').trim().toLowerCase()
+        if (email && (u?.canManageWeb === true || u?.role === 'web_manager' || email === 'tunbebong1126@gmail.com')) {
+          authorizedEmails.add(email)
+        }
+      })
+    } catch (permErr) {
+      // Người dùng trên web chưa đăng nhập không có quyền đọc collection users
+      // Fallback an toàn gửi trực tiếp tới email chính tunbebong1126@gmail.com
+    }
+
+    const recipients = Array.from(authorizedEmails)
+    if (recipients.length === 0) return
+
+    // 2. Định dạng thông tin đơn hàng
+    const fmtMoney = (n) => (n != null && !isNaN(n) ? Number(n).toLocaleString('vi-VN') + ' ₫' : '—')
+
+    let itemsText = 'Không có (Yêu cầu chuyên viên gọi lại tư vấn)'
+    if (Array.isArray(orderData.items) && orderData.items.length > 0) {
+      itemsText = orderData.items
+        .map((it, idx) => {
+          const name = it.name || it.code || 'Sản phẩm'
+          const brand = it.brand ? ` [${it.brand}]` : ''
+          const qty = it.quantity || 1
+          const price = fmtMoney(it.price)
+          const subtotal = fmtMoney((it.price || 0) * qty)
+          return `${idx + 1}. ${name}${brand}\n   Số lượng: ${qty} | Đơn giá: ${price} | Thành tiền: ${subtotal}`
+        })
+        .join('\n\n')
+    }
+
+    const totalText = orderData.totalAmount ? fmtMoney(orderData.totalAmount) : 'Chưa có giá cụ thể'
+    const nowStr = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
+
+    // 3. Gửi email tới từng tài khoản được cấp quyền
+    const sendPromises = recipients.map((targetEmail) =>
+      fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id: EMAILJS_SERVICE_ID,
+          template_id: EMAILJS_TEMPLATE_ID,
+          user_id: EMAILJS_PUBLIC_KEY,
+          template_params: {
+            to_email: targetEmail,
+            customer_name: orderData.customerName || 'Khách hàng',
+            customer_phone: orderData.customerPhone || 'Chưa cung cấp',
+            customer_address: orderData.customerAddress || 'Chưa cung cấp',
+            order_type: orderData.orderType === 'callback' ? 'Yêu cầu gọi lại tư vấn (Trang chủ)' : 'Báo giá & Đặt mua',
+            order_items: itemsText,
+            total_amount: totalText,
+            order_note: orderData.orderNote || 'Không có',
+            created_time: nowStr,
+          },
+        }),
+      }).catch((e) => console.warn(`Gửi email thông báo tới ${targetEmail} thất bại:`, e))
+    )
+
+    await Promise.allSettled(sendPromises)
+  } catch (err) {
+    console.warn('Lỗi xử lý gửi email thông báo đơn hàng:', err)
+  }
+}
+
+export const createWebOrder = async (data) => {
+  const docRef = await addDoc(collection(db, 'webOrders'), {
     ...data,
     status: 'pending',
     createdAt: serverTimestamp()
   })
+
+  // Tự động bắn email thông báo cho các tài khoản có Role
+  sendOrderNotificationEmail(data).catch((e) => console.warn('sendOrderNotificationEmail error:', e))
+
+  return docRef
+}
 
 export const subscribeWebOrders = (cb) => {
   const q = query(collection(db, 'webOrders'), orderBy('createdAt', 'desc'))

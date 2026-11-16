@@ -35,16 +35,7 @@ export default function LoginPage({ onLogin }) {
       <div style={{ width: '100%', maxWidth: 380 }}>
         {/* Logo / Header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            width: 56, height: 56, background: 'var(--accent)',
-            borderRadius: 14, margin: '0 auto 14px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="3"/>
-              <path d="M3 9h18M9 21V9"/>
-            </svg>
-          </div>
+          <img src="./icons/icon-192.png" alt="Máy Bơm T&T" style={{ width: 68, height: 68, objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
           <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Bảng Giá T&T</h1>
           <p style={{ color: 'var(--text2)', fontSize: 13 }}>Hệ thống quản lý bảng giá sản phẩm</p>
         </div>

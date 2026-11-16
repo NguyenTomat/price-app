@@ -17,7 +17,7 @@ export default function AdminUsersPage() {
   const [loading,  setLoading]  = useState(true)
   const [showAdd,  setShowAdd]  = useState(false)
   const [saving,   setSaving]   = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', pass: '', role: 'user' })
+  const [form, setForm] = useState({ name: '', email: '', pass: '', role: 'user', canManageWeb: false })
 
   const setF = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -49,10 +49,11 @@ export default function AdminUsersPage() {
       await adminCreateUser(email.trim(), pass.trim(), {
         displayName: name.trim(),
         role,
+        canManageWeb: !!form.canManageWeb,
       })
       toast(`✓ Đã tạo tài khoản: ${email}`, 'success')
       setShowAdd(false)
-      setForm({ name: '', email: '', pass: '', role: 'user' })
+      setForm({ name: '', email: '', pass: '', role: 'user', canManageWeb: false })
       loadUsers()
     } catch (err) {
       toast(FIREBASE_ERRORS[err.code] || 'Lỗi: ' + err.message, 'error')
@@ -69,6 +70,17 @@ export default function AdminUsersPage() {
       toast(`Đã đổi quyền ${u.displayName || u.email} → ${next}`, 'success')
     } catch (e) {
       toast('Lỗi đổi quyền: ' + e.message, 'error')
+    }
+  }
+
+  const toggleWebRole = async (u) => {
+    const next = !u.canManageWeb
+    try {
+      await setDoc(doc(db, 'users', u.id), { canManageWeb: next }, { merge: true })
+      setUsers(us => us.map(x => x.id === u.id ? { ...x, canManageWeb: next } : x))
+      toast(`Đã ${next ? 'cấp quyền' : 'thu hồi quyền'} nhận đơn & thông báo Web cho ${u.displayName || u.email}`, 'success')
+    } catch (e) {
+      toast('Lỗi cập nhật quyền: ' + e.message, 'error')
     }
   }
 
@@ -111,6 +123,19 @@ export default function AdminUsersPage() {
                 </select>
               </div>
             </div>
+            <div style={{ marginTop: 6, marginBottom: 14, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={!!form.canManageWeb}
+                  onChange={e => setF('canManageWeb', e.target.checked)}
+                />
+                <span style={{ fontSize: 13, fontWeight: 600 }}>🌐 Nhận thông báo & Quản lý đơn hàng Web</span>
+              </label>
+              <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 4, marginLeft: 22 }}>
+                Khi bật, tài khoản này sẽ thấy menu Quản lý Web, nghe chuông báo ting ting và nhận thông báo khi có khách đặt hàng.
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
               <button className="btn" onClick={() => setShowAdd(false)}>Hủy</button>
               <button className="btn primary" onClick={handleCreate} disabled={saving}>
@@ -145,6 +170,7 @@ export default function AdminUsersPage() {
                     <th>Tên</th>
                     <th>Email</th>
                     <th>Vai trò</th>
+                    <th style={{ textAlign: 'center' }}>Đơn Web & Chuông báo</th>
                     <th>Ngày tạo</th>
                     <th style={{ textAlign: 'center' }}>Thao tác</th>
                   </tr>
@@ -158,6 +184,34 @@ export default function AdminUsersPage() {
                         <span className={`badge ${u.role === 'admin' ? 'badge-amber' : 'badge-blue'}`}>
                           {u.role === 'admin' ? '👑 Admin' : '👤 Người dùng'}
                         </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {(u.email || '').toLowerCase() === 'tunbebong1126@gmail.com' ? (
+                          <span className="badge badge-amber" title="Chủ sở hữu hệ thống">
+                            👑 Chủ sở hữu (Mặc định)
+                          </span>
+                        ) : (
+                          <button
+                            className="btn sm"
+                            onClick={() => toggleWebRole(u)}
+                            style={{
+                              fontSize: 11.5,
+                              padding: '3px 10px',
+                              borderRadius: 6,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              background: u.canManageWeb ? '#ecfdf5' : '#f1f5f9',
+                              color: u.canManageWeb ? '#059669' : '#64748b',
+                              border: u.canManageWeb ? '1px solid #a7f3d0' : '1px solid #cbd5e1',
+                            }}
+                            title={u.canManageWeb ? 'Click để tắt nhận đơn web' : 'Click để cấp quyền nhận đơn web'}
+                          >
+                            {u.canManageWeb ? '🔔 Đã cấp quyền' : '🔕 Không có quyền'}
+                          </button>
+                        )}
                       </td>
                       <td className="text-muted text-sm">
                         {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '—'}

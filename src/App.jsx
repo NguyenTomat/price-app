@@ -21,6 +21,7 @@ import UpdateBanner from './components/UpdateBanner'
 import PwaUpdateBanner from './components/PwaUpdateBanner'
 import PwaInstallPrompt from './components/PwaInstallPrompt'
 import WebManagePage from './pages/WebManagePage'
+import WebOrderNotifier from './components/WebOrderNotifier'
 import { getPriceLists, getProducts } from './firebase/firebase'
 import './index.css'
 
@@ -33,6 +34,13 @@ function AppContent() {
   const [allProducts, setAllProducts] = useState([])
   // extra = product to auto-open from spotlight
   const [spotlightTarget, setSpotlightTarget] = useState(null)
+  const [pendingWebOrdersCount, setPendingWebOrdersCount] = useState(0)
+  const [webManageTab, setWebManageTab] = useState('products')
+
+  const handleOpenWebOrder = useCallback((order) => {
+    setWebManageTab('orders')
+    setPage('web-manage')
+  }, [])
 
   // Lưu trang hiện tại vào localStorage để không bị nhảy về dashboard khi reload/memory sleep trên điện thoại
   useEffect(() => {
@@ -102,16 +110,26 @@ function AppContent() {
     'technical-dossiers': <TechnicalDossiersPage/>,
     'revenue':      <RevenuePage/>,
     'bus':          <BusPage/>,
-    'web-manage':   <WebManagePage/>,
+    'web-manage':   <WebManagePage initialTab={webManageTab} onTabChange={setWebManageTab} />,
     'admin-import': <AdminImportPage/>,
     'admin-users':  <AdminUsersPage/>,
   }
 
   return (
     <>
-      <Layout page={page} setPage={setPage} onSpotlight={() => setSpotlightOpen(true)}>
+      <Layout
+        page={page}
+        setPage={setPage}
+        pendingWebOrdersCount={pendingWebOrdersCount}
+        onSpotlight={() => setSpotlightOpen(true)}
+      >
         {pageMap[page] || <DashboardPage setPage={setPage}/>}
       </Layout>
+
+      <WebOrderNotifier
+        onOpenOrder={handleOpenWebOrder}
+        onUpdatePendingCount={setPendingWebOrdersCount}
+      />
 
       {spotlightOpen && (
         <Spotlight

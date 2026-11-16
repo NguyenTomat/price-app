@@ -16,8 +16,8 @@ const BOTTOM_NAV = [
   { key: 'inventory', label: 'Kho', icon: '📦' },
 ]
 
-export default function Layout({ page, setPage, children, onSpotlight }) {
-  const { user, profile, isAdmin } = useAuth()
+export default function Layout({ page, setPage, children, onSpotlight, pendingWebOrdersCount = 0 }) {
+  const { user, profile, isAdmin, canManageWeb } = useAuth()
   const { dark, toggle } = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -49,8 +49,13 @@ export default function Layout({ page, setPage, children, onSpotlight }) {
     { key: 'catalog',      label: 'Catalog',            icon: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z' },
     { key: 'technical-dossiers', label: 'Hồ sơ kỹ thuật', icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8' },
     { key: 'bus',          label: 'Nhà xe',            icon: 'M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-1.1 0-2 .9-2 2v6c0 .6.4 1 1 1h2m3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M6 17a3 3 0 1 0 6 0a3 3 0 1 0-6 0M2 10h11M7 5V3' },
-    ...(currentEmail === 'tunbebong1126@gmail.com' ? [
-      { key: 'web-manage',   label: 'Quản lý Web 🌐',   icon: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm1-13h-2v6h2zm0 8h-2v2h2z' }
+    ...(canManageWeb ? [
+      {
+        key: 'web-manage',
+        label: 'Quản lý Web 🌐',
+        icon: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm1-13h-2v6h2zm0 8h-2v2h2z',
+        badge: pendingWebOrdersCount > 0 ? pendingWebOrdersCount : null,
+      }
     ] : []),
     ...(isAdmin ? [
       { key: 'admin-users',  label: 'Quản lý user',    icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
@@ -72,9 +77,12 @@ export default function Layout({ page, setPage, children, onSpotlight }) {
       )}
 
       <aside className={`sidebar ${isMobile && menuOpen ? 'open' : ''}`}>
-        <div className="sidebar-logo">
-          <div>📊 Bảng Giá T&T</div>
-          <div className="sub">Quản lý giá sản phẩm</div>
+        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="./icons/icon-192.png" alt="T&T" style={{ width: 34, height: 34, objectFit: 'contain' }} />
+          <div>
+            <div style={{ fontWeight: 800 }}>Bảng Giá T&T</div>
+            <div className="sub">Quản lý giá sản phẩm</div>
+          </div>
         </div>
 
         <div style={{ padding: '10px 10px 4px' }}>
@@ -100,9 +108,31 @@ export default function Layout({ page, setPage, children, onSpotlight }) {
               key={item.key}
               className={`nav-item ${page === item.key ? 'active' : ''}`}
               onClick={() => goTo(item.key)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
-              <Icon d={item.icon}/>
-              {item.label}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                <Icon d={item.icon}/>
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+              </div>
+              {item.badge != null && (
+                <span
+                  style={{
+                    background: '#ef4444',
+                    color: '#ffffff',
+                    fontSize: 10.5,
+                    fontWeight: 800,
+                    padding: '1.5px 6.5px',
+                    borderRadius: 10,
+                    marginLeft: 6,
+                    minWidth: 18,
+                    textAlign: 'center',
+                    boxShadow: '0 0 6px rgba(239, 68, 68, 0.6)',
+                  }}
+                  title={`${item.badge} đơn mới cần xử lý`}
+                >
+                  {item.badge}
+                </span>
+              )}
             </div>
           ))}
         </nav>

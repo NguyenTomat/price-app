@@ -117,6 +117,7 @@ async function fetchImageBuffer(urlOrBase64) {
  */
 export async function exportMyPricesExcel({
   listName = 'UPTI PUMP',
+  note = '',
   rows = [],
   includeVat = false,
   discPct = 0,

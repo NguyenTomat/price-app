@@ -682,6 +682,90 @@ const resolveProductFromParam = (rawParam, productsList) => {
   return cleanParam
 }
 
+function CartCheckoutForm({ isSubmitting, onSubmit }) {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [address, setAddress] = useState('')
+  const [note, setNote] = useState('')
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onSubmit({
+      customerName: name,
+      customerPhone: phone,
+      customerAddress: address,
+      orderNote: note,
+    })
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ borderTop: '1px solid #f1f5f9', paddingTop: 20 }}>
+      <h4 style={{ margin: '0 0 16px 0', fontSize: 13, fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <FileText size={15} color="#0878D9" /> THÔNG TIN YÊU CẦU BÁO GIÁ
+      </h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>HỌ VÀ TÊN KHÁCH HÀNG *</label>
+          <input 
+            type="text" required
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Ví dụ: Nguyễn Văn A"
+            style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 12.5, outline: 'none' }}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>SỐ ĐIỆN THOẠI NHẬN HÀNG *</label>
+          <input 
+            type="tel" required
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder="Ví dụ: 0963xxxxxx"
+            style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 12.5, outline: 'none' }}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>ĐỊA CHỈ NHẬN HÀNG CHI TIẾT *</label>
+          <textarea 
+            required rows={2}
+            value={address}
+            onChange={e => setAddress(e.target.value)}
+            placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố..."
+            style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 12.5, outline: 'none', resize: 'vertical' }}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>GHI CHÚ ĐƠN HÀNG</label>
+          <input 
+            type="text"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Ví dụ: Giao giờ hành chính, cần xuất VAT,..."
+            style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 12.5, outline: 'none' }}
+          />
+        </div>
+
+        <button 
+          type="submit"
+          disabled={isSubmitting}
+          style={{
+            width: '100%', padding: 14, background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+            color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700,
+            marginTop: 10, cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            boxShadow: '0 4px 14px rgba(37,99,235,0.2)', transition: 'all 0.2s',
+            textTransform: 'uppercase'
+          }}
+        >
+          {isSubmitting ? 'ĐANG GỬI YÊU CẦU...' : (
+             <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+               <MessageSquare size={15} color="#FFFFFF" /> GỬI YÊU CẦU BÁO GIÁ
+             </span>
+          )}
+        </button>
+      </div>
+    </form>
+  )
+}
 export default function WebCatalog() {
   const [products, setProducts] = useState(() => {
     try {
@@ -1804,95 +1888,107 @@ export default function WebCatalog() {
 
       const prevMode = currentViewModeRef.current
 
+      // 1. Phân luồng nếu là xem chi tiết sản phẩm
       if (!isExplicitHome && rawProductParam) {
-        currentViewModeRef.current = 'product-detail'
+        currentViewModeRef.current = "product-detail"
         const resolvedId = resolveProductFromParam(rawProductParam, products)
         setDetailProductId(resolvedId)
-        setViewMode('product-detail')
+        setViewMode("product-detail")
         setActiveImageIndex(0)
-        window.scrollTo({ top: 0, behavior: 'instant' })
-      } else {
-        const wasInDetail = currentViewModeRef.current === 'product-detail' || isReturningFromDetail.current || !!detailProductId
-        setDetailProductId('')
-
-        if (wasInDetail) {
-          isReturningFromDetail.current = false
-          const savedScroll = lastScrollPos.current || 0
-          const prevMode = lastViewModeRef.current || 'catalog'
-          const savedCategory = lastCategoryRef.current || 'TẤT CẢ'
-
-          setViewMode(prevMode)
-          setActiveTab(prevMode === 'home' ? 'home' : 'products')
-          currentViewModeRef.current = prevMode
-          if (prevMode === 'catalog') {
-            setSelectedCategory(savedCategory)
-          }
-
-          window.scrollTo({ top: savedScroll, behavior: 'instant' })
-          requestAnimationFrame(() => {
-            window.scrollTo({ top: savedScroll, behavior: 'instant' })
-            setTimeout(() => {
-              window.scrollTo({ top: savedScroll, behavior: 'instant' })
-            }, 60)
-          })
-          return
-        }
-
-        let newMode = 'home'
-
-        if (!isExplicitHome && (h === '#web/catalog' || h === '#products' || h === '#web/products' || h.startsWith('#category/') || h.startsWith('#cat/') || queryCat || querySearch || queryBrand)) {
-          newMode = 'catalog'
-          setViewMode('catalog')
-          setActiveTab('products')
-          if (queryCat) {
-            setSelectedCategory(queryCat)
-            setSearchTerm('')
-          }
-          if (querySearch) {
-            setSearchTerm(querySearch)
-          }
-          if (queryBrand) {
-            setActiveBrand(queryBrand.toUpperCase())
-          }
-        } else if (!isExplicitHome && (h === '#web/applications' || h === '#applications')) {
-          newMode = 'applications'
-          setViewMode('applications')
-          setActiveTab('applications')
-        } else if (!isExplicitHome && (h === '#web/brands' || h === '#brands')) {
-          newMode = 'brands'
-          setViewMode('brands')
-          setActiveTab('brands')
-        } else if (!isExplicitHome && (h === '#web/intro' || h === '#about' || h === '#web/about')) {
-          newMode = 'intro'
-          setViewMode('intro')
-          setActiveTab('intro')
-        } else if (!isExplicitHome && (h === '#web/contact' || h === '#contact')) {
-          newMode = 'contact'
-          setViewMode('contact')
-          setActiveTab('contact')
-        } else if (!isExplicitHome && (h === '#web/policy' || h === '#policy')) {
-          newMode = 'policy'
-          setViewMode('policy')
-          setActiveTab('policy')
-        } else if (!isExplicitHome && (h === '#web/calculator')) {
-          newMode = 'calculator'
-          setViewMode('calculator')
-          setActiveTab('calculator')
-        } else if (lastViewModeRef.current === 'catalog') {
-          newMode = 'catalog'
-          setViewMode('catalog')
-          setActiveTab('products')
-          if (lastCategoryRef.current) {
-            setSelectedCategory(lastCategoryRef.current)
-          }
-        } else {
-          newMode = 'home'
-          setViewMode('home')
-          setActiveTab('home')
-        }
-        currentViewModeRef.current = newMode
-        window.scrollTo({ top: 0, behavior: 'instant' })
+        window.scrollTo({ top: 0, behavior: "instant" })
+        return
       }
+
+      // Xóa ID sản phẩm chi tiết khi chuyển sang các tab khác
+      setDetailProductId("")
+
+      // 2. Nếu bấm nút Quay lại từ trang chi tiết sản phẩm
+      if (isReturningFromDetail.current) {
+        isReturningFromDetail.current = false
+        const savedScroll = lastScrollPos.current || 0
+        const prevMode = lastViewModeRef.current || "catalog"
+        const savedCategory = lastCategoryRef.current || "TẤT CẢ"
+
+        setViewMode(prevMode)
+        setActiveTab(prevMode === "home" ? "home" : "products")
+        currentViewModeRef.current = prevMode
+        if (prevMode === "catalog") {
+          setSelectedCategory(savedCategory)
+        }
+
+        window.scrollTo({ top: savedScroll, behavior: "instant" })
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: savedScroll, behavior: "instant" })
+          setTimeout(() => {
+            window.scrollTo({ top: savedScroll, behavior: "instant" })
+          }, 60)
+        })
+        return
+      }
+
+      // 3. Phân luồng chính xác theo Hash URL của từng Tab (hỗ trợ cả slug tiếng Việt & tiếng Anh)
+      let newMode = "home"
+
+      if (!isExplicitHome && (h === "#thuong-hieu" || h === "#brands" || h === "#web/brands" || h.startsWith("#web/brands")) || (h.startsWith("#thuong-hieu/") && !queryBrand)) {
+        newMode = "brands"
+        setViewMode("brands")
+        setActiveTab("brands")
+        currentViewModeRef.current = "brands"
+        lastNonDetailPageHash.current = "#thuong-hieu"
+      } else if (!isExplicitHome && (h === "#ung-dung" || h === "#applications" || h === "#web/applications" || h.startsWith("#ung-dung") || h.startsWith("#web/applications"))) {
+        newMode = "applications"
+        setViewMode("applications")
+        setActiveTab("applications")
+        currentViewModeRef.current = "applications"
+        lastNonDetailPageHash.current = "#ung-dung"
+      } else if (!isExplicitHome && (h === "#gioi-thieu" || h === "#ve-tt" || h === "#about" || h === "#web/about" || h === "#intro" || h === "#web/intro" || h.startsWith("#gioi-thieu") || h.startsWith("#ve-tt"))) {
+        newMode = "intro"
+        setViewMode("intro")
+        setActiveTab("intro")
+        currentViewModeRef.current = "intro"
+        lastNonDetailPageHash.current = "#gioi-thieu"
+      } else if (!isExplicitHome && (h === "#lien-he" || h === "#contact" || h === "#web/contact" || h.startsWith("#lien-he") || h.startsWith("#web/contact"))) {
+        newMode = "contact"
+        setViewMode("contact")
+        setActiveTab("contact")
+        currentViewModeRef.current = "contact"
+        lastNonDetailPageHash.current = "#lien-he"
+      } else if (!isExplicitHome && (h === "#chinh-sach" || h === "#policy" || h === "#web/policy" || h.startsWith("#chinh-sach") || h.startsWith("#web/policy"))) {
+        newMode = "policy"
+        setViewMode("policy")
+        setActiveTab("policy")
+        currentViewModeRef.current = "policy"
+        lastNonDetailPageHash.current = "#chinh-sach"
+      } else if (!isExplicitHome && (h === "#web/calculator" || h === "#may-tinh" || h === "#tinh-toan" || h === "#calculator")) {
+        newMode = "calculator"
+        setViewMode("calculator")
+        setActiveTab("calculator")
+        currentViewModeRef.current = "calculator"
+      } else if (!isExplicitHome && (h === "#web/catalog" || h === "#san-pham" || h === "#products" || h === "#web/products" || h.startsWith("#dong/") || h.startsWith("#danh-muc/") || h.startsWith("#category/") || h.startsWith("#cat/") || h.startsWith("#web/dong/") || h.startsWith("#web/danh-muc/") || queryCat || querySearch || queryBrand)) {
+        newMode = "catalog"
+        setViewMode("catalog")
+        setActiveTab("products")
+        currentViewModeRef.current = "catalog"
+        lastNonDetailPageHash.current = h
+        if (queryCat) {
+          setSelectedCategory(queryCat)
+          setSearchTerm("")
+        }
+        if (querySearch) {
+          setSearchTerm(querySearch)
+        }
+        if (queryBrand) {
+          setActiveBrand(queryBrand.toUpperCase())
+        }
+      } else {
+        newMode = "home"
+        setViewMode("home")
+        setActiveTab("home")
+        currentViewModeRef.current = "home"
+        lastNonDetailPageHash.current = "#web"
+      }
+
+      window.scrollTo({ top: 0, behavior: "instant" })
     }
 
     window.addEventListener('hashchange', handleHashChange)
@@ -2599,9 +2695,13 @@ export default function WebCatalog() {
     })
   }
 
-  const handleCheckoutSubmit = async (e) => {
-    e.preventDefault()
-    if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
+  const handleCheckoutSubmit = async (formData) => {
+    const cName = (formData?.customerName || '').trim()
+    const cPhone = (formData?.customerPhone || '').trim()
+    const cAddress = (formData?.customerAddress || '').trim()
+    const cNote = (formData?.orderNote || '').trim()
+
+    if (!cName || !cPhone || !cAddress) {
       alert('Vui lòng điền đầy đủ Họ tên, Số điện thoại và Địa chỉ giao nhận hàng!')
       return
     }
@@ -2622,10 +2722,10 @@ export default function WebCatalog() {
       }))
 
       await createWebOrder({
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
-        customerAddress: customerAddress.trim(),
-        orderNote: orderNote.trim(),
+        customerName: cName,
+        customerPhone: cPhone,
+        customerAddress: cAddress,
+        orderNote: cNote,
         items: orderItems,
         totalAmount,
         status: 'pending'
@@ -2633,10 +2733,6 @@ export default function WebCatalog() {
 
       // Clear states
       setCart([])
-      setCustomerName('')
-      setCustomerPhone('')
-      setCustomerAddress('')
-      setOrderNote('')
       setShowCartDrawer(false)
       setShowOrderSuccess(true)
     } catch (err) {
@@ -9993,72 +10089,8 @@ export default function WebCatalog() {
                 </div>
               </div>
 
-              {/* Checkout Form */}
-              <form onSubmit={handleCheckoutSubmit} style={{ borderTop: '1px solid #f1f5f9', paddingTop: 20 }}>
-                <h4 style={{ margin: '0 0 16px 0', fontSize: 13, fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FileText size={15} color="#0878D9" /> THÔNG TIN YÊU CẦU BÁO GIÁ
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>HỌ VÀ TÊN KHÁCH HÀNG *</label>
-                    <input 
-                      type="text" required
-                      value={customerName}
-                      onChange={e => setCustomerName(e.target.value)}
-                      placeholder="Ví dụ: Nguyễn Văn A"
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 12.5, outline: 'none' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>SỐ ĐIỆN THOẠI NHẬN HÀNG *</label>
-                    <input 
-                      type="tel" required
-                      value={customerPhone}
-                      onChange={e => setCustomerPhone(e.target.value)}
-                      placeholder="Ví dụ: 0963xxxxxx"
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 12.5, outline: 'none' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>ĐỊA CHỈ NHẬN HÀNG CHI TIẾT *</label>
-                    <textarea 
-                      required rows={2}
-                      value={customerAddress}
-                      onChange={e => setCustomerAddress(e.target.value)}
-                      placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố..."
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 12.5, outline: 'none', resize: 'vertical' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>GHI CHÚ ĐƠN HÀNG</label>
-                    <input 
-                      type="text"
-                      value={orderNote}
-                      onChange={e => setOrderNote(e.target.value)}
-                      placeholder="Ví dụ: Giao giờ hành chính, cần xuất VAT,..."
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 12.5, outline: 'none' }}
-                    />
-                  </div>
-
-                  <button 
-                    type="submit"
-                    disabled={isSubmittingOrder}
-                    style={{
-                      width: '100%', padding: 14, background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                      color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                      marginTop: 10, cursor: isSubmittingOrder ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 4px 14px rgba(37,99,235,0.2)', transition: 'all 0.2s',
-                      textTransform: 'uppercase'
-                    }}
-                  >
-                    {isSubmittingOrder ? 'ĐANG GỬI YÊU CẦU...' : (
-                       <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                         <MessageSquare size={15} color="#FFFFFF" /> GỬI YÊU CẦU BÁO GIÁ
-                       </span>
-                    )}
-                  </button>
-                </div>
-              </form>
+              {/* Isolated Checkout Form Component (Zero Lag) */}
+              <CartCheckoutForm isSubmitting={isSubmittingOrder} onSubmit={handleCheckoutSubmit} />
             </div>
           )}
         </div>

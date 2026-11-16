@@ -291,7 +291,7 @@ export const normalizeHeroSlides = (raw) => {
   return DEFAULT_HERO_SLIDES;
 };
 
-export default function WebManagePage() {
+export default function WebManagePage({ initialTab = 'products', onTabChange }) {
   const toast = useToast()
   const { user } = useAuth()
   const isMasterAdmin = (user?.email || '').trim().toLowerCase() === 'tunbebong1126@gmail.com'
@@ -346,7 +346,13 @@ export default function WebManagePage() {
   const [filterProductType, setFilterProductType] = useState('all') // 'all' | 'pump' | 'accessory' | 'featured'
 
   // Web Admin tabs: 'products' | 'orders' | 'hero_slides' | 'cloud_storage'
-  const [activeAdminTab, setActiveAdminTab] = useState('products')
+  const [activeAdminTab, setActiveAdminTab] = useState(initialTab || 'products')
+
+  useEffect(() => {
+    if (initialTab && initialTab !== activeAdminTab) {
+      setActiveAdminTab(initialTab)
+    }
+  }, [initialTab])
   const [orders, setOrders] = useState([])
   const [orderFilter, setOrderFilter] = useState('all') // 'all' | 'pending' | 'contacted' | 'done' | 'cancelled'
   const [orderSearch, setOrderSearch] = useState('')
@@ -668,17 +674,7 @@ export default function WebManagePage() {
     const unsub = subscribeWebOrders((data) => {
       setOrders(data)
       
-      // If not the initial load and new orders arrived
-      if (!isFirstLoad.current && data.length > 0) {
-        // Find if there is a new order (status === 'pending') that we didn't have before
-        const newOrder = data[0]
-        if (newOrder && newOrder.status === 'pending') {
-          // Play sound
-          playNotificationSound()
-          // Show popup alert
-          setNewOrderAlert(newOrder)
-        }
-      }
+      // Global WebOrderNotifier handles sound chime and floating alerts
       
       if (isFirstLoad.current) {
         isFirstLoad.current = false

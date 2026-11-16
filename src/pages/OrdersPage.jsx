@@ -7,6 +7,7 @@ import { exportQuoteExcel } from '../utils/quoteExport'
 import { parseMoney } from '../utils/moneyFormat'
 import MoneyInput from '../components/MoneyInput'
 import MobileTableWrap from '../components/MobileTableWrap'
+import ZaloQuoteModal from '../components/ZaloQuoteModal'
 
 const fmt  = n => (n != null && !isNaN(Number(n))) ? Number(n).toLocaleString('vi-VN') + ' ₫' : '—'
 const fmtN = n => (n != null && !isNaN(Number(n))) ? Number(n).toLocaleString('vi-VN') : '0'
@@ -33,6 +34,7 @@ const emptyLine = (costItem = null, listProduct = null) => ({
 // ── Chi tiết đơn ────────────────────────────────────────────────────────────
 function OrderDetailModal({ order, onClose, onEdit }) {
   const toast = useToast()
+  const [showZaloQuote, setShowZaloQuote] = useState(false)
   const st = STATUS[order.status] || { label: order.status, cls: '' }
   const shipping          = order.shipping ?? 0
   const vatAmount         = order.vatAmount ?? 0
@@ -220,15 +222,48 @@ function OrderDetailModal({ order, onClose, onEdit }) {
           </div>
         </div>
         <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <button type="button" className="btn sm" onClick={handleExportQuoteFromDetail}>
-            📥 Xuất báo giá Excel
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn sm" onClick={handleExportQuoteFromDetail}>
+              📥 Xuất báo giá Excel
+            </button>
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => setShowZaloQuote(true)}
+              style={{ background: '#0284c7', color: '#fff', borderColor: '#0284c7', fontWeight: 600 }}
+              title="Tạo ảnh báo giá chuẩn gửi Zalo trong 3 giây"
+            >
+              ⚡ Báo giá Zalo (Ảnh)
+            </button>
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn ghost sm" onClick={() => onEdit(order)}>✏️ Chỉnh sửa</button>
             <button className="btn sm" onClick={onClose}>Đóng</button>
           </div>
         </div>
       </div>
+
+      {showZaloQuote && (
+        <ZaloQuoteModal
+          isOpen={showZaloQuote}
+          onClose={() => setShowZaloQuote(false)}
+          initialData={{
+            customerName: order.userName || 'Khách hàng',
+            customerPhone: order.contactPhone || '',
+            customerTier: 'ĐẠI LÝ CẤP 1',
+            items: (order.items || []).map((it, idx) => ({
+              id: it.id || Date.now() + idx,
+              name: it.name || 'Máy bơm nước T&T',
+              model: it.specs?.split('\n')[0] || it.name || '',
+              specs: it.specs || '',
+              qty: it.qty || 1,
+              price: it.sellPrice ?? it.myPrice ?? it.price ?? 0,
+            })),
+            discount: 0,
+            vatMode: order.includeVat || order.vatPct > 0 ? '8' : 'none',
+          }}
+        />
+      )}
     </div>
 
   )
@@ -946,6 +981,7 @@ function CreateOrderPanel({ onCreated, onCancel }) {
   const [showQuick, setShowQuick]           = useState(false)
   const [userProfit, setUserProfit]         = useState('')
   const [saving, setSaving]                 = useState(false)
+  const [zaloQuoteData, setZaloQuoteData]   = useState(null)
 
   useEffect(() => {
     const unsub = subscribeCostPrices(setCostPrices)
@@ -1080,6 +1116,32 @@ function CreateOrderPanel({ onCreated, onCancel }) {
     } catch (e) {
       toast('Lỗi xuất Excel: ' + e.message, 'error')
     }
+  }
+
+  const handleOpenZaloQuote = () => {
+    const valid = orderCalc.itemCalcs.filter(x =>
+      x.line.name.trim() && parseMoney(x.line.sellPrice) > 0
+    )
+    if (!valid.length) {
+      toast('Nhập tên và giá bán cho ít nhất 1 sản phẩm trước khi tạo báo giá', 'warning')
+      return
+    }
+    const quoteItems = valid.map(({ line }, idx) => ({
+      id: line.key || Date.now() + idx,
+      name: line.name.trim(),
+      model: (line.specs || '').split('\n')[0] || line.name.trim(),
+      specs: (line.specs || '').trim(),
+      qty: line.qty || 1,
+      price: parseMoney(line.sellPrice),
+    }))
+    setZaloQuoteData({
+      customerName: customerName.trim() || 'Khách hàng',
+      customerPhone: contactPhone.trim() || '',
+      customerTier: 'ĐẠI LÝ CẤP 1',
+      items: quoteItems,
+      discount: 0,
+      vatMode: includeVat ? '8' : 'none',
+    })
   }
 
   const handleCreate = async () => {
@@ -1379,11 +1441,28 @@ function CreateOrderPanel({ onCreated, onCancel }) {
             <button type="button" className="btn primary" onClick={handleCreate} disabled={saving}>
               {saving ? <><span className="spinner" style={{ width: 14, height: 14 }}/> Đang lưu...</> : `✓ Tạo đơn hàng`}
             </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={handleOpenZaloQuote}
+              style={{ background: '#0284c7', color: '#fff', borderColor: '#0284c7', fontWeight: 700 }}
+              title="Tạo ảnh báo giá chuẩn gửi Zalo trong 3 giây"
+            >
+              ⚡ Báo giá Zalo (Ảnh)
+            </button>
             <button type="button" className="btn" onClick={handleExportQuote}>📥 Xuất báo giá Excel</button>
             <button type="button" className="btn ghost" onClick={onCancel}>Hủy</button>
           </div>
         </aside>
       </div>
+
+      {zaloQuoteData && (
+        <ZaloQuoteModal
+          isOpen={!!zaloQuoteData}
+          onClose={() => setZaloQuoteData(null)}
+          initialData={zaloQuoteData}
+        />
+      )}
     </div>
   )
 }

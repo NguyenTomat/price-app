@@ -270,7 +270,6 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
   useEffect(() => {
     if (!selectedList) return
     setLoadingList(true)
-    setProducts([])
     const unsub = subscribeProducts(selectedList.id, (prods) => {
       setProducts(prods)
       setLoadingList(false)
@@ -499,7 +498,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
 
   return (
     <div
-      className="price-lists-layout"
+      className="price-lists-layout" style={{ background: 'var(--bg)' }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -509,8 +508,8 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
         .pl-workspace-sidebar {
           width: 196px;
           min-width: 196px;
-          border-right: 1px solid #EAECF0;
-          background: #FFFFFF;
+          border-right: 1px solid var(--border);
+          background: var(--surface);
           overflow-y: auto;
           display: flex;
           flex-direction: column;
@@ -518,12 +517,12 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
         }
         .pl-sidebar-header {
           padding: 12px 10px 8px;
-          border-bottom: 1px solid #F1F5F9;
+          border-bottom: 1px solid var(--border);
         }
         .pl-sidebar-title {
           font-size: 11px;
           font-weight: 700;
-          color: #667085;
+          color: var(--text3);
           text-transform: uppercase;
           letter-spacing: 0.05em;
           margin-bottom: 8px;
@@ -535,16 +534,16 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           height: 30px;
           padding: 4px 8px;
           font-size: 12px;
-          border: 1px solid #E2E8F0;
+          border: 1px solid var(--border);
           border-radius: 6px;
-          background: #F8FAFC;
-          color: #101828;
+          background: var(--surface2);
+          color: var(--text);
           outline: none;
           transition: border-color 0.15s, background 0.15s;
         }
         .pl-sidebar-search:focus {
-          border-color: #2563EB;
-          background: #FFFFFF;
+          border-color: var(--accent);
+          background: var(--surface);
         }
         .pl-sidebar-list {
           flex: 1;
@@ -560,7 +559,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           cursor: pointer;
           font-size: 12.5px;
           font-weight: 500;
-          color: #334155;
+          color: var(--text2);
           transition: all 0.12s ease;
           position: relative;
           display: flex;
@@ -569,14 +568,14 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           border-left: 2.5px solid transparent;
         }
         .pl-nav-item:hover {
-          background: #F8FAFC;
-          color: #0F172A;
+          background: var(--surface2);
+          color: var(--text);
         }
         .pl-nav-item.active {
-          background: #EFF6FF;
-          color: #1D4ED8;
+          background: var(--accent-s);
+          color: var(--accent);
           font-weight: 600;
-          border-left-color: #2563EB;
+          border-left-color: var(--accent);
         }
         .pl-nav-item .pl-item-row {
           display: flex;
@@ -609,7 +608,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           border: none;
           cursor: pointer;
           border-radius: 4px;
-          color: #667085;
+          color: var(--text3);
           transition: opacity 0.15s, background 0.15s;
           flex-shrink: 0;
         }
@@ -618,20 +617,20 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
         }
         .pl-nav-item .pl-edit-btn:hover {
           opacity: 1;
-          background: #E2E8F0;
-          color: #0F172A;
+          background: var(--surface3);
+          color: var(--text);
         }
         .pl-nav-item .pl-cat-tag {
           font-size: 10.5px;
-          color: #64748B;
+          color: var(--text3);
           padding-left: 19px;
           font-weight: 400;
         }
 
         /* Main Content Header & Toolbar Hierarchy */
         .pl-header-container {
-          background: #FFFFFF;
-          border-bottom: 1px solid #EAECF0;
+          background: var(--surface);
+          border-bottom: 1px solid var(--border);
           padding: 12px 20px 10px;
           display: flex;
           flex-direction: column;
@@ -647,7 +646,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
         .pl-header-title {
           font-size: 18px;
           font-weight: 650;
-          color: #101828;
+          color: var(--text);
           margin: 0;
           letter-spacing: -0.01em;
         }
@@ -656,7 +655,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           align-items: center;
           gap: 8px;
           font-size: 12px;
-          color: #667085;
+          color: var(--text3);
           margin-top: 2px;
         }
         .pl-header-toolbar {
@@ -674,12 +673,12 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           display: inline-flex;
           align-items: center;
           padding: 0 10px;
-          background: #F1F5F9;
-          border: 1px solid #E2E8F0;
+          background: var(--surface2);
+          border: 1px solid var(--border);
           border-radius: 6px;
           font-size: 12px;
           font-weight: 600;
-          color: #475467;
+          color: var(--text2);
           white-space: nowrap;
         }
         .pl-primary-btn {
@@ -708,9 +707,9 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           align-items: center;
           justify-content: center;
           background: transparent;
-          border: 1px solid #E2E8F0;
+          border: 1px solid var(--border);
           border-radius: 6px;
-          color: #667085;
+          color: var(--text3);
           cursor: pointer;
           transition: all 0.12s;
         }
@@ -724,7 +723,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
         .pl-table-container {
           flex: 1;
           overflow: auto;
-          background: #FFFFFF;
+          background: var(--surface);
         }
         .pl-table {
           width: 100%;
@@ -736,41 +735,41 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           position: sticky;
           top: 0;
           z-index: 10;
-          background: #F8FAFC;
-          border-bottom: 1px solid #EAECF0;
+          background: var(--surface2);
+          border-bottom: 1px solid var(--border);
           padding: 8px 14px;
           font-size: 11px;
           font-weight: 650;
-          color: #667085;
+          color: var(--text3);
           text-transform: uppercase;
           letter-spacing: 0.04em;
           white-space: nowrap;
         }
         .pl-table tbody tr {
-          border-bottom: 1px solid #F1F5F9;
+          border-bottom: 1px solid var(--border);
           height: 44px;
-          background: #FFFFFF;
+          background: var(--surface);
           cursor: pointer;
           transition: background-color 0.12s ease;
         }
         .pl-table tbody tr:hover {
-          background-color: #F8FAFC;
+          background-color: var(--surface2);
         }
         .pl-table tbody td {
           padding: 8px 14px;
           vertical-align: middle;
         }
         .pl-table tbody tr.pl-group-divider {
-          background: #F8FAFC !important;
+          background: var(--surface2) !important;
           cursor: default;
           height: 34px;
-          border-top: 1px solid #E2E8F0;
-          border-bottom: 1px solid #E2E8F0;
+          border-top: 1px solid var(--border);
+          border-bottom: 1px solid var(--border);
         }
         .pl-group-text {
           font-size: 11.5px;
           font-weight: 700;
-          color: #334155;
+          color: var(--text);
           text-transform: uppercase;
           letter-spacing: 0.03em;
           display: flex;
@@ -782,21 +781,21 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           font-size: 13.5px;
           font-weight: 550;
           line-height: 20px;
-          color: #1D2939;
+          color: var(--text);
           letter-spacing: 0.05px;
           transition: color 0.12s ease;
         }
         .pl-table tbody tr:hover .pl-model-name {
-          color: #1D4ED8;
+          color: var(--accent);
         }
         .pl-spec-text {
           font-size: 12px;
-          color: #475467;
+          color: var(--text2);
         }
         .pl-price-val {
           font-size: 13px;
           font-weight: 650;
-          color: #101828;
+          color: var(--text);
           font-variant-numeric: tabular-nums;
           text-align: right;
         }
@@ -806,11 +805,11 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           gap: 3px;
           padding: 2px 6px;
           border-radius: 4px;
-          background: #F1F5F9;
-          border: 1px solid #E2E8F0;
+          background: var(--surface2);
+          border: 1px solid var(--border);
           font-size: 11px;
           font-weight: 600;
-          color: #475467;
+          color: var(--text2);
         }
         .pl-row-del-btn {
           opacity: 0.35;
@@ -835,15 +834,15 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           flex: 1;
           display: flex;
           flex-direction: column;
-          background: #F8FAFC;
+          background: var(--bg);
           overflow-y: auto;
           min-width: 0;
           width: 100%;
         }
         .pl-mobile-selector-header {
-          background: #FFFFFF;
+          background: var(--surface);
           padding: 16px 16px 14px;
-          border-bottom: 1px solid #EAECF0;
+          border-bottom: 1px solid var(--border);
           position: sticky;
           top: 0;
           z-index: 10;
@@ -855,8 +854,8 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           gap: 8px;
         }
         .pl-mobile-selector-item {
-          background: #FFFFFF;
-          border: 1px solid #E2E8F0;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 10px;
           padding: 14px 14px;
           display: flex;
@@ -865,16 +864,17 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           cursor: pointer;
           box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
           transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+          color: var(--text);
         }
         .pl-mobile-selector-item:active {
           transform: scale(0.985);
-          background: #F8FAFC;
+          background: var(--surface2);
         }
 
         /* Mobile Detail View */
         .pl-mobile-detail-header {
-          background: #FFFFFF;
-          border-bottom: 1px solid #EAECF0;
+          background: var(--surface);
+          border-bottom: 1px solid var(--border);
           padding: 10px 14px;
           position: sticky;
           top: 0;
@@ -892,9 +892,9 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           width: 36px;
           height: 36px;
           border-radius: 8px;
-          background: #F1F5F9;
-          border: 1px solid #E2E8F0;
-          color: #1E293B;
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          color: var(--text);
           font-size: 18px;
           font-weight: 700;
           display: flex;
@@ -905,7 +905,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           padding: 0;
         }
         .pl-mobile-back-btn:active {
-          background: #E2E8F0;
+          background: var(--surface3);
         }
         .pl-mobile-title-wrap {
           flex: 1;
@@ -914,7 +914,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
         .pl-mobile-header-title {
           font-size: 16px;
           font-weight: 700;
-          color: #101828;
+          color: var(--text);
           line-height: 1.3;
           margin: 0;
           white-space: nowrap;
@@ -923,7 +923,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
         }
         .pl-mobile-header-sub {
           font-size: 11.5px;
-          color: #64748B;
+          color: var(--text3);
           margin-top: 2px;
           display: flex;
           align-items: center;
@@ -970,13 +970,13 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           gap: 8px;
           flex: 1;
           overflow-y: auto;
-          background: #F8FAFC;
+          background: var(--bg);
         }
         .pl-mobile-group {
           padding: 8px 6px 4px;
           font-size: 11.5px;
           font-weight: 700;
-          color: #475467;
+          color: var(--text3);
           text-transform: uppercase;
           letter-spacing: 0.04em;
           display: flex;
@@ -984,8 +984,8 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           gap: 6px;
         }
         .pl-mobile-card {
-          background: #FFFFFF;
-          border: 1px solid #E2E8F0;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 8px;
           padding: 12px 14px;
           display: flex;
@@ -995,8 +995,8 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           cursor: pointer;
         }
         .pl-mobile-card:active {
-          background: #F8FAFC;
-          border-color: #CBD5E1;
+          background: var(--surface2);
+          border-color: var(--border2);
         }
         .pl-mobile-card-top {
           display: flex;
@@ -1007,13 +1007,13 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
         .pl-mobile-name {
           font-size: 13.5px;
           font-weight: 600;
-          color: #1D2939;
+          color: var(--text);
           line-height: 1.35;
           word-break: break-word;
         }
         .pl-mobile-specs {
           font-size: 12px;
-          color: #64748B;
+          color: var(--text2);
           display: flex;
           flex-wrap: wrap;
           align-items: center;
@@ -1021,7 +1021,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           line-height: 1.4;
         }
         .pl-mobile-specs .spec-dot {
-          color: #CBD5E1;
+          color: var(--border2);
           font-weight: bold;
         }
         .pl-mobile-card-bottom {
@@ -1030,12 +1030,12 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           align-items: center;
           margin-top: 4px;
           padding-top: 6px;
-          border-top: 1px dashed #F1F5F9;
+          border-top: 1px dashed var(--border);
         }
         .pl-mobile-price {
           font-size: 14px;
           font-weight: 700;
-          color: #101828;
+          color: var(--text);
           font-variant-numeric: tabular-nums;
           margin-left: auto;
         }
@@ -1067,6 +1067,21 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           background: #FEF2F2;
           color: #DC2626;
           border: 1px solid #FECACA;
+        }
+        [data-theme="dark"] .pl-stock-badge.stock-good {
+          background: rgba(16, 185, 129, 0.15);
+          color: #34d399;
+          border-color: rgba(16, 185, 129, 0.3);
+        }
+        [data-theme="dark"] .pl-stock-badge.stock-warn {
+          background: rgba(245, 158, 11, 0.15);
+          color: #fbbf24;
+          border-color: rgba(245, 158, 11, 0.3);
+        }
+        [data-theme="dark"] .pl-stock-badge.stock-empty {
+          background: rgba(239, 68, 68, 0.15);
+          color: #f87171;
+          border-color: rgba(239, 68, 68, 0.3);
         }
         .pl-stock-badge.stock-none {
           background: transparent;
@@ -1293,7 +1308,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
 
             {/* Add product form */}
             {isAdmin && showAddForm && (
-              <div style={{ padding: '12px 14px', borderBottom: '1px solid #EAECF0', background: '#F8FAFC' }}>
+              <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 8 }}>
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label className="field-label" style={{ fontSize: 11.5 }}>Tên / Mã sản phẩm *</label>
@@ -1477,12 +1492,12 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
           </div>
 
           {/* Desktop Main Content Area */}
-          <div className="price-lists-main">
+          <div className="price-lists-main" style={{ background: 'var(--bg)' }}>
             {!selectedList ? (
               <div className="empty" style={{ margin: 'auto', textAlign: 'center', padding: '60px 20px' }}>
                 <div style={{ fontSize: 40, marginBottom: 10 }}>📊</div>
-                <div style={{ fontWeight: 600, fontSize: 15, color: '#101828', marginBottom: 4 }}>Chọn một bảng giá để xem</div>
-                <div style={{ fontSize: 13, color: '#667085' }}>Chọn từ danh sách bảng giá ở thanh bên trái</div>
+                <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>Chọn một bảng giá để xem</div>
+                <div style={{ fontSize: 13, color: 'var(--text3)' }}>Chọn từ danh sách bảng giá ở thanh bên trái</div>
               </div>
             ) : (
               <>
@@ -1503,9 +1518,9 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
                       onClick={() => window.open('https://bang-gia-tandt.web.app/#web', '_blank')}
                       style={{
                         height: 32,
-                        background: '#F8FAFC',
-                        color: '#2563EB',
-                        border: '1px solid #E2E8F0',
+                        background: 'var(--surface2)',
+                        color: 'var(--accent)',
+                        border: '1px solid var(--border)',
                         fontWeight: 600,
                         fontSize: 12,
                         borderRadius: 6
@@ -1668,7 +1683,7 @@ export default function PriceListsPage({ spotlightTarget, clearSpotlightTarget }
 
                 {/* Add product form */}
                 {isAdmin && showAddForm && (
-                  <div style={{ padding: '12px 20px', borderBottom: '1px solid #EAECF0', background: '#F8FAFC' }}>
+                  <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 10 }}>
                       <div className="field" style={{ marginBottom: 0, gridColumn: '1 / span 2' }}>
                         <label className="field-label" style={{ fontSize: 11.5 }}>Tên / Mã sản phẩm *</label>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import html2canvas from 'html2canvas'
 import { docTienBangChu } from '../utils/numberToVietnameseWords'
-import headerFullImg from '../assets/quote/header_full.png'
+import headerCleanImg from '../assets/quote/header_clean.png'
 import commitmentsBarImg from '../assets/quote/commitments_bar.png'
 import footerWaveImg from '../assets/quote/footer_wave.png'
 import qrBoxExactImg from '../assets/quote/qr_box_exact.png'
@@ -15,6 +15,9 @@ const fmtVND = (n) => {
 export default function ZaloQuoteModal({ isOpen, onClose, initialData = {} }) {
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
+  const [sellerName, setSellerName] = useState(() => localStorage.getItem('zalo_seller_name') || '')
+  const [sellerHotline, setSellerHotline] = useState(() => localStorage.getItem('zalo_seller_hotline') || '0984.273.806')
+  const [sellerWebsite, setSellerWebsite] = useState(() => localStorage.getItem('zalo_seller_website') || 'maybomnuocnhapkhautt.com.vn')
   const [items, setItems] = useState([])
   const [discount, setDiscount] = useState(0)
   const [vatMode, setVatMode] = useState('none')
@@ -24,6 +27,19 @@ export default function ZaloQuoteModal({ isOpen, onClose, initialData = {} }) {
 
   const cardRef = useRef(null)
   const previewScrollRef = useRef(null)
+
+  const handleSellerNameChange = (val) => {
+    setSellerName(val)
+    try { localStorage.setItem('zalo_seller_name', val) } catch {}
+  }
+  const handleSellerHotlineChange = (val) => {
+    setSellerHotline(val)
+    try { localStorage.setItem('zalo_seller_hotline', val) } catch {}
+  }
+  const handleSellerWebsiteChange = (val) => {
+    setSellerWebsite(val)
+    try { localStorage.setItem('zalo_seller_website', val) } catch {}
+  }
 
   useEffect(() => {
     if (!isOpen) return
@@ -370,11 +386,54 @@ export default function ZaloQuoteModal({ isOpen, onClose, initialData = {} }) {
             </div>
           </div>
 
+          {/* Seller Hotline & Name */}
+          <div style={{ borderTop: '1px solid #1e293b', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              2. Hotline &amp; Website trên ảnh
+            </span>
+            <div>
+              <label style={{ display: 'block', color: '#94a3b8', fontSize: 11, marginBottom: 3 }}>
+                Hotline trên ảnh <span style={{ color: '#64748b', fontSize: 10 }}>(Xóa số để trống trên ảnh)</span>:
+              </label>
+              <input
+                type="text"
+                value={sellerHotline}
+                onChange={(e) => handleSellerHotlineChange(e.target.value)}
+                placeholder="Ví dụ: 0984.273.806 hoặc xóa để trống"
+                style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: 8, padding: '7px 10px', color: '#fff', fontSize: 12, boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: '#94a3b8', fontSize: 11, marginBottom: 3 }}>
+                Website trên ảnh <span style={{ color: '#64748b', fontSize: 10 }}>(Xóa để trống trên ảnh)</span>:
+              </label>
+              <input
+                type="text"
+                value={sellerWebsite}
+                onChange={(e) => handleSellerWebsiteChange(e.target.value)}
+                placeholder="Ví dụ: maybomnuocnhapkhautt.com.vn hoặc để trống"
+                style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: 8, padding: '7px 10px', color: '#fff', fontSize: 12, boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: '#94a3b8', fontSize: 11, marginBottom: 3 }}>
+                Tên người báo giá <span style={{ color: '#64748b', fontSize: 10 }}>(Tùy chọn, để trống nếu không cần)</span>:
+              </label>
+              <input
+                type="text"
+                value={sellerName}
+                onChange={(e) => handleSellerNameChange(e.target.value)}
+                placeholder="Ví dụ: NV: Tuấn Anh (để trống nếu không dùng)"
+                style={{ width: '100%', background: '#020617', border: '1px solid #334155', borderRadius: 8, padding: '7px 10px', color: '#fff', fontSize: 12, boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
+
           {/* Items */}
           <div style={{ borderTop: '1px solid #1e293b', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                2. Danh sách máy bơm ({activeItems.length}/{items.length} món)
+                3. Danh sách máy bơm ({activeItems.length}/{items.length} món)
               </span>
               <button
                 type="button"
@@ -551,9 +610,73 @@ export default function ZaloQuoteModal({ isOpen, onClose, initialData = {} }) {
               MozOsxFontSmoothing: 'grayscale',
             }}
           >
-            {/* 1. TOP HEADER IMAGE (Includes logo, 4 pumps, ribbon, company details, water splash divider) */}
-            <div style={{ width: '100%', flexShrink: 0 }}>
-              <img src={headerFullImg} alt="MÁY BƠM NƯỚC T&T" style={{ width: '100%', height: 'auto', display: 'block' }} />
+            {/* 1. TOP HEADER (Includes original sharp graphic with 'ĐẠI LÝ CẤP 1' removed & customizable hotline) */}
+            <div style={{ width: '100%', position: 'relative', flexShrink: 0, overflow: 'hidden' }}>
+              <img src={headerCleanImg} alt="MÁY BƠM NƯỚC T&T" style={{ width: '100%', height: 'auto', display: 'block' }} />
+
+              {/* Optional Seller Name (appears in uppercase where 'ĐẠI LÝ CẤP 1' used to be; if empty, stays blank) */}
+              {sellerName && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 191,
+                    top: 88,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    color: '#0d3b66',
+                    lineHeight: 1,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.03em',
+                    fontFamily: "'Be Vietnam Pro', sans-serif",
+                    pointerEvents: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {sellerName}
+                </div>
+              )}
+
+              {/* Dynamic Hotline digits: appears after 'Hotline: '. If empty, leaves area blank! */}
+              {sellerHotline && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 261,
+                    top: 114,
+                    fontSize: 12.5,
+                    fontWeight: 800,
+                    color: '#0d3b66',
+                    lineHeight: 1,
+                    letterSpacing: '0.02em',
+                    fontFamily: "'Be Vietnam Pro', sans-serif",
+                    pointerEvents: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {sellerHotline}
+                </div>
+              )}
+
+              {/* Dynamic Website: appears after globe icon. If empty, leaves area blank! */}
+              {sellerWebsite && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 198,
+                    top: 137,
+                    fontSize: 9.8,
+                    fontWeight: 600,
+                    color: '#334155',
+                    lineHeight: 1,
+                    letterSpacing: '0.01em',
+                    fontFamily: "'Be Vietnam Pro', sans-serif",
+                    pointerEvents: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {sellerWebsite}
+                </div>
+              )}
             </div>
 
             {/* 2. CUSTOMER INFO STRIPE */}

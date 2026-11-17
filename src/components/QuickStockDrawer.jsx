@@ -171,7 +171,7 @@ export default function QuickStockDrawer({ isOpen, onClose }) {
           width: 520px;
           max-width: 100vw;
           height: 100%;
-          background: #FFFFFF;
+          background: var(--surface);
           display: flex;
           flex-direction: column;
           border-left: 1.5px solid #CBD5E1;
@@ -189,12 +189,12 @@ export default function QuickStockDrawer({ isOpen, onClose }) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: #F8FAFC;
+          background: var(--surface2);
         }
         .qsd-title {
           font-size: 16px;
           font-weight: 700;
-          color: #101828;
+          color: var(--text);
           display: flex;
           align-items: center;
           gap: 8px;
@@ -221,7 +221,7 @@ export default function QuickStockDrawer({ isOpen, onClose }) {
           display: flex;
           flex-direction: column;
           gap: 10px;
-          background: #FFFFFF;
+          background: var(--surface);
         }
         .qsd-input-wrap {
           position: relative;
@@ -257,7 +257,7 @@ export default function QuickStockDrawer({ isOpen, onClose }) {
           width: 22px;
           height: 22px;
           font-size: 11px;
-          color: #475467;
+          color: var(--text2);
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -279,15 +279,15 @@ export default function QuickStockDrawer({ isOpen, onClose }) {
           border-radius: 20px;
           font-size: 12px;
           font-weight: 500;
-          border: 1px solid #E2E8F0;
-          background: #FFFFFF;
-          color: #475467;
+          border: 1px solid var(--border);
+          background: var(--surface);
+          color: var(--text2);
           cursor: pointer;
           white-space: nowrap;
           transition: all 0.12s;
         }
         .qsd-pill:hover {
-          background: #F1F5F9;
+          background: var(--surface2);
           border-color: #CBD5E1;
         }
         .qsd-pill.active {
@@ -300,11 +300,11 @@ export default function QuickStockDrawer({ isOpen, onClose }) {
           flex: 1;
           overflow-y: auto;
           padding: 12px 16px;
-          background: #F8FAFC;
+          background: var(--surface2);
         }
         .qsd-card {
-          background: #FFFFFF;
-          border: 1px solid #E2E8F0;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 8px;
           padding: 12px 14px;
           margin-bottom: 10px;
@@ -328,7 +328,7 @@ export default function QuickStockDrawer({ isOpen, onClose }) {
           font-size: 13.5px;
           font-weight: 700;
           color: #0F172A;
-          background: #F1F5F9;
+          background: var(--surface2);
           padding: 2px 8px;
           border-radius: 4px;
           display: inline-flex;
@@ -377,7 +377,7 @@ export default function QuickStockDrawer({ isOpen, onClose }) {
           justify-content: space-between;
           margin-top: 4px;
           padding-top: 6px;
-          border-top: 1px solid #F1F5F9;
+          border-top: 1px solid var(--border);
           font-size: 12px;
           color: #64748B;
         }
@@ -391,7 +391,7 @@ export default function QuickStockDrawer({ isOpen, onClose }) {
           height: 24px;
           border: 1px solid #CBD5E1;
           border-radius: 4px;
-          background: #FFFFFF;
+          background: var(--surface);
           font-size: 13px;
           font-weight: 700;
           color: #334155;

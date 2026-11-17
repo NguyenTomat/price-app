@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { getDashboardStats, subscribeOrders, subscribeExpenses, addExpense, deleteExpense } from '../firebase/firebase'
+import { getDashboardStats, subscribeOrders, subscribeExpenses, addExpense, deleteExpense, subscribeCompanyUsers } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import MobileTableWrap from '../components/MobileTableWrap'
+import UserAvatar from '../components/UserAvatar'
 
 const fmt = n => n != null && !isNaN(n)
   ? Number(n).toLocaleString('vi-VN') + ' ₫'
@@ -26,6 +27,7 @@ const STATUS_LABELS = {
 export default function DashboardPage({ setPage }) {
   const { user, profile, isAdmin } = useAuth()
   const toast = useToast()
+  const [companyUsers, setCompanyUsers] = useState([])
   const [stats, setStats] = useState(null)
   const [recentOrders, setRecentOrders] = useState([])
   const [allOrders, setAllOrders] = useState([])
@@ -57,6 +59,13 @@ export default function DashboardPage({ setPage }) {
     }, { uid: user.uid })
     return unsub
   }, [user.uid])
+
+  useEffect(() => {
+    const unsub = subscribeCompanyUsers(setCompanyUsers)
+    return unsub
+  }, [])
+
+  const usersById = useMemo(() => new Map(companyUsers.map(u => [u.id, u])), [companyUsers])
 
   useEffect(() => {
     if (isAdmin && user?.uid) {
@@ -225,7 +234,7 @@ export default function DashboardPage({ setPage }) {
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: '#F7F8FA' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: 'var(--bg)' }}>
 
       {/* Embedded Styles for Easter Egg & Modern Dashboard */}
       <style>{`
@@ -534,10 +543,10 @@ export default function DashboardPage({ setPage }) {
           bottom: 24px;
           right: 24px;
           z-index: 10000;
-          background: #FFFFFF;
-          border: 1px solid #E7EAF0;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 10px;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.25);
           padding: 10px 16px;
           display: flex;
           align-items: center;
@@ -545,6 +554,7 @@ export default function DashboardPage({ setPage }) {
           animation: toastSlideUp 2.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           pointer-events: none;
           min-width: 240px;
+          color: var(--text);
         }
         @keyframes toastSlideUp {
           0% { transform: translateY(16px); opacity: 0; }
@@ -556,6 +566,7 @@ export default function DashboardPage({ setPage }) {
           flex: 1;
           overflow-y: auto;
           padding: 20px 24px;
+          background: var(--bg);
         }
         .dash-max-container {
           max-width: 1420px;
@@ -567,8 +578,8 @@ export default function DashboardPage({ setPage }) {
         }
         .kpi-unified-strip {
           display: grid;
-          background: #FFFFFF;
-          border: 1px solid #E7EAF0;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 8px;
           box-shadow: 0 1px 2px rgba(0,0,0,0.02);
           overflow: hidden;
@@ -580,15 +591,19 @@ export default function DashboardPage({ setPage }) {
           justify-content: space-between;
           min-height: 84px;
           box-sizing: border-box;
-          transition: background-color 0.1s ease;
+          transition: background-color 0.15s ease;
+          background: var(--surface);
+        }
+        .kpi-segment:hover {
+          background-color: var(--surface2) !important;
         }
         .kpi-segment:not(:last-child) {
-          border-right: 1px solid #F1F5F9;
+          border-right: 1px solid var(--border);
         }
         .kpi-segment-label {
           font-size: 11px;
           font-weight: 600;
-          color: #667085;
+          color: var(--text2);
           text-transform: uppercase;
           letter-spacing: 0.05em;
           margin-bottom: 4px;
@@ -599,18 +614,19 @@ export default function DashboardPage({ setPage }) {
           line-height: 1.1;
           letter-spacing: -0.02em;
           font-variant-numeric: tabular-nums;
+          color: var(--text);
         }
         .kpi-segment-sub {
           font-size: 11.5px;
-          color: #667085;
+          color: var(--text3);
           margin-top: 4px;
           display: flex;
           align-items: center;
           gap: 5px;
         }
         .status-inline-strip {
-          background: #FFFFFF;
-          border: 1px solid #E7EAF0;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 8px;
           padding: 8px 16px;
           display: flex;
@@ -627,7 +643,7 @@ export default function DashboardPage({ setPage }) {
           align-items: center;
           gap: 6px;
           font-size: 12px;
-          color: #344054;
+          color: var(--text2);
           font-weight: 500;
         }
         .status-dot {
@@ -636,8 +652,8 @@ export default function DashboardPage({ setPage }) {
           border-radius: 50%;
         }
         .analytics-2col-card {
-          background: #FFFFFF;
-          border: 1px solid #E7EAF0;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 8px;
           padding: 16px 20px;
           box-shadow: 0 1px 2px rgba(0,0,0,0.02);
@@ -667,8 +683,8 @@ export default function DashboardPage({ setPage }) {
           width: 250px;
           box-sizing: border-box;
           padding: 12px 14px;
-          background: #F8FAFC;
-          border: 1px solid #E7EAF0;
+          background: var(--surface2);
+          border: 1px solid var(--border);
           border-radius: 8px;
           display: flex;
           flex-direction: column;
@@ -676,8 +692,8 @@ export default function DashboardPage({ setPage }) {
           gap: 8px;
         }
         .table-surface-card {
-          background: #FFFFFF;
-          border: 1px solid #E7EAF0;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 8px;
           box-shadow: 0 1px 2px rgba(0,0,0,0.02);
           overflow: hidden;
@@ -688,23 +704,23 @@ export default function DashboardPage({ setPage }) {
           font-size: 12.5px;
         }
         .erp-data-table thead th {
-          background: #F8FAFC;
-          border-bottom: 1px solid #E7EAF0;
+          background: var(--surface2);
+          border-bottom: 1px solid var(--border);
           padding: 8px 14px;
           font-size: 10.5px;
           font-weight: 650;
-          color: #667085;
+          color: var(--text3);
           text-align: left;
           text-transform: uppercase;
           letter-spacing: 0.04em;
         }
         .erp-data-table tbody tr {
-          border-bottom: 1px solid #F1F5F9;
+          border-bottom: 1px solid var(--border);
           height: 44px;
           transition: background-color 0.1s ease;
         }
         .erp-data-table tbody tr:hover {
-          background-color: #F8FAFC;
+          background-color: var(--surface2);
         }
         .erp-data-table tbody td {
           padding: 8px 14px;
@@ -727,7 +743,7 @@ export default function DashboardPage({ setPage }) {
           }
           .kpi-segment:not(:last-child) {
             border-right: none !important;
-            border-bottom: 1px solid #F1F5F9;
+            border-bottom: 1px solid var(--border);
           }
           .status-inline-strip {
             gap: 8px;
@@ -741,16 +757,25 @@ export default function DashboardPage({ setPage }) {
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '10px 24px',
-        minHeight: 52,
-        background: '#FFFFFF',
-        borderBottom: '1px solid #E7EAF0'
+        minHeight: 56,
+        background: 'var(--surface)',
+        borderBottom: '1px solid var(--border)'
       }}>
-        <div>
-          <h2 style={{ fontSize: 18, fontWeight: 650, color: '#101828', margin: 0, letterSpacing: '-0.01em' }}>
-            {greeting}, {profile?.displayName?.split(' ').pop() || 'bạn'} 👋
-          </h2>
-          <div style={{ fontSize: 12, color: '#667085', marginTop: 1 }}>
-            Hệ thống quản lý giá & kinh doanh · {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <UserAvatar
+            user={{ ...profile, ...user }}
+            size={40}
+            showStatus={true}
+            onClick={() => setPage('account')}
+            style={{ cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+          />
+          <div>
+            <h2 style={{ fontSize: 17.5, fontWeight: 700, color: 'var(--text)', margin: 0, letterSpacing: '-0.01em' }}>
+              {greeting}, {profile?.displayName || 'bạn'}
+            </h2>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+              Hệ thống quản lý giá &amp; kinh doanh · {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </div>
           </div>
         </div>
 
@@ -809,10 +834,10 @@ export default function DashboardPage({ setPage }) {
               <div className="via-punchline-card">
                 <div style={{ fontSize: 20 }}>💰</div>
                 <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#101828' }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>
                     VÍA TÀI LỘC ĐÃ VỀ!
                   </div>
-                  <div style={{ fontSize: 11, color: '#667085', marginTop: 1 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>
                     Chúc tháng này đơn về đều ✨
                   </div>
                 </div>
@@ -892,34 +917,32 @@ export default function DashboardPage({ setPage }) {
               className="kpi-segment"
               onClick={() => setPage('orders')}
               style={{ cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               <div>
                 <div className="kpi-segment-label">
                   <span>ĐƠN BÁN</span>
                 </div>
-                <div className="kpi-segment-val" style={{ color: '#101828' }}>
+                <div className="kpi-segment-val" style={{ color: 'var(--text)' }}>
                   {loading ? '—' : (stats?.orders ?? '—')}
                 </div>
               </div>
               <div className="kpi-segment-sub">
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B' }} />
-                <span><strong style={{ color: '#B45309' }}>{stats?.ordersByStatus?.pending ?? 0}</strong> đơn chờ xác nhận</span>
+                <span><strong style={{ color: '#F59E0B' }}>{stats?.ordersByStatus?.pending ?? 0}</strong> đơn chờ xác nhận</span>
               </div>
             </div>
 
             {/* Segment 2: DOANH THU THÁNG NÀY (Hero Metric) */}
             {isAdmin && (
-              <div className="kpi-segment" style={{ background: '#FAFAFC' }}>
+              <div className="kpi-segment" style={{ background: 'var(--surface)' }}>
                 <div>
                   <div className="kpi-segment-label">
-                    <span style={{ color: '#101828', fontWeight: 650 }}>DOANH THU THÁNG NÀY</span>
+                    <span style={{ color: 'var(--text)', fontWeight: 650 }}>DOANH THU THÁNG NÀY</span>
                   </div>
                   <div
                     className="kpi-segment-val"
                     style={{
-                      color: loading ? '#101828' : (currentMonthRevenue < 0 ? '#EF4444' : '#16A34A')
+                      color: loading ? 'var(--text)' : (currentMonthRevenue < 0 ? '#EF4444' : '#10B981')
                     }}
                   >
                     {loading ? '—' : fmtRevenueLong(currentMonthRevenue)}
@@ -927,7 +950,7 @@ export default function DashboardPage({ setPage }) {
                 </div>
                 <div className="kpi-segment-sub">
                   <span style={{
-                    color: prevMonthRevenue === 0 ? '#667085' : (isGrowthNoChange ? '#667085' : (isGrowthPositive ? '#16A34A' : '#EF4444')),
+                    color: prevMonthRevenue === 0 ? 'var(--text3)' : (isGrowthNoChange ? 'var(--text3)' : (isGrowthPositive ? '#10B981' : '#EF4444')),
                     fontWeight: 650
                   }}>
                     {growthPctStr}
@@ -941,8 +964,6 @@ export default function DashboardPage({ setPage }) {
               className="kpi-segment"
               onClick={() => setPage('inventory')}
               style={{ cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               <div>
                 <div className="kpi-segment-label">
@@ -950,13 +971,13 @@ export default function DashboardPage({ setPage }) {
                 </div>
                 <div
                   className="kpi-segment-val"
-                  style={{ color: (stats?.lowStock > 0 ? '#EF4444' : '#16A34A') }}
+                  style={{ color: (stats?.lowStock > 0 ? '#EF4444' : '#10B981') }}
                 >
                   {loading ? '—' : (stats?.lowStock ?? '—')}
                 </div>
               </div>
               <div className="kpi-segment-sub">
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: stats?.lowStock > 0 ? '#EF4444' : '#16A34A' }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: stats?.lowStock > 0 ? '#EF4444' : '#10B981' }} />
                 <span>{stats?.lowStock > 0 ? `${stats.lowStock} mặt hàng cần nhập thêm` : 'Tất cả mức tồn an toàn'}</span>
               </div>
             </div>
@@ -965,28 +986,28 @@ export default function DashboardPage({ setPage }) {
           {/* 2. ORDER STATUS (Sleek Horizontal Status Bar) */}
           {stats?.ordersByStatus && (
             <div className="status-inline-strip">
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 TRẠNG THÁI ĐƠN
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                 <div className="status-inline-item">
                   <span className="status-dot" style={{ background: '#F59E0B' }} />
-                  <span>Chờ xác nhận: <strong>{stats.ordersByStatus.pending ?? 0}</strong></span>
+                  <span>Chờ xác nhận: <strong style={{ color: 'var(--text)' }}>{stats.ordersByStatus.pending ?? 0}</strong></span>
                 </div>
-                <span style={{ color: '#E2E8F0' }}>·</span>
+                <span style={{ color: 'var(--border2)' }}>·</span>
                 <div className="status-inline-item">
-                  <span className="status-dot" style={{ background: '#2563EB' }} />
-                  <span>Đã xác nhận: <strong>{stats.ordersByStatus.confirmed ?? 0}</strong></span>
+                  <span className="status-dot" style={{ background: '#3B82F6' }} />
+                  <span>Đã xác nhận: <strong style={{ color: 'var(--text)' }}>{stats.ordersByStatus.confirmed ?? 0}</strong></span>
                 </div>
-                <span style={{ color: '#E2E8F0' }}>·</span>
+                <span style={{ color: 'var(--border2)' }}>·</span>
                 <div className="status-inline-item">
-                  <span className="status-dot" style={{ background: '#16A34A' }} />
-                  <span>Đã giao: <strong>{stats.ordersByStatus.delivered ?? 0}</strong></span>
+                  <span className="status-dot" style={{ background: '#10B981' }} />
+                  <span>Đã giao: <strong style={{ color: 'var(--text)' }}>{stats.ordersByStatus.delivered ?? 0}</strong></span>
                 </div>
-                <span style={{ color: '#E2E8F0' }}>·</span>
+                <span style={{ color: 'var(--border2)' }}>·</span>
                 <div className="status-inline-item">
                   <span className="status-dot" style={{ background: '#94A3B8' }} />
-                  <span>Đã hủy: <strong>{stats.ordersByStatus.cancelled ?? 0}</strong></span>
+                  <span>Đã hủy: <strong style={{ color: 'var(--text)' }}>{stats.ordersByStatus.cancelled ?? 0}</strong></span>
                 </div>
               </div>
             </div>
@@ -998,10 +1019,10 @@ export default function DashboardPage({ setPage }) {
               {/* Top Bar */}
               <div className="analytics-topbar">
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <h3 style={{ fontSize: 14.5, fontWeight: 650, color: '#101828', margin: 0 }}>
+                  <h3 style={{ fontSize: 14.5, fontWeight: 650, color: 'var(--text)', margin: 0 }}>
                     LỢI NHUẬN THỰC TẾ (LÃI - PHÍ)
                   </h3>
-                  <span style={{ fontSize: 11, color: '#667085', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     6 THÁNG
                   </span>
                 </div>
@@ -1011,17 +1032,17 @@ export default function DashboardPage({ setPage }) {
                   className="btn sm"
                   onClick={() => setShowExpenseModal(true)}
                   style={{
-                    background: '#FFFFFF',
-                    border: '1px solid #E7EAF0',
-                    color: '#344054',
+                    background: 'var(--surface2)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text)',
                     fontSize: 11.5,
                     fontWeight: 600,
                     padding: '3px 10px',
                     borderRadius: 6,
                     cursor: 'pointer'
                   }}
-                  onMouseOver={el => { el.currentTarget.style.color = '#2563EB'; el.currentTarget.style.borderColor = '#2563EB'; }}
-                  onMouseOut={el => { el.currentTarget.style.color = '#344054'; el.currentTarget.style.borderColor = '#E7EAF0'; }}
+                  onMouseOver={el => { el.currentTarget.style.color = 'var(--accent)'; el.currentTarget.style.borderColor = 'var(--accent)'; }}
+                  onMouseOut={el => { el.currentTarget.style.color = 'var(--text)'; el.currentTarget.style.borderColor = 'var(--border)'; }}
                 >
                   💸 Quản lý chi phí
                 </button>
@@ -1029,222 +1050,293 @@ export default function DashboardPage({ setPage }) {
 
               {/* 2-Column Split */}
               <div className="analytics-split-layout">
-                {/* Left Pane: SVG Chart */}
+                {/* Left Pane: SVG Chart (Silky-Smooth Curved Spline with Fluid Gradient) */}
                 <div className="chart-left-pane">
-                  <svg width="100%" height="100%" viewBox="0 0 700 200" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-                    <defs>
-                      <linearGradient id="chartFillGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2563EB" stopOpacity="0.08" />
-                        <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
+                  {(() => {
+                    const revenues = monthlyRevenues.map(r => r.revenue)
+                    const rawMax = Math.max(...revenues, 0)
+                    const rawMin = Math.min(...revenues, 0)
+                    
+                    const domainPadding = Math.max((rawMax - rawMin) * 0.2, 1000000)
+                    const domainMax = rawMax + domainPadding
+                    const domainMin = rawMin - domainPadding * 0.5
+                    const domainRange = domainMax - domainMin || 1
 
-                    {(() => {
-                      const revenues = monthlyRevenues.map(r => r.revenue)
-                      const rawMax = Math.max(...revenues, 0)
-                      const rawMin = Math.min(...revenues, 0)
-                      
-                      const domainPadding = Math.max((rawMax - rawMin) * 0.15, 1000000)
-                      const domainMax = rawMax + domainPadding
-                      const domainMin = rawMin - domainPadding
-                      const domainRange = domainMax - domainMin || 1
+                    const topY = 25
+                    const bottomY = 160
+                    const heightY = bottomY - topY
 
-                      const topY = 20
-                      const bottomY = 165
-                      const heightY = bottomY - topY
+                    const getY = (val) => bottomY - ((val - domainMin) / domainRange) * heightY
+                    const zeroY = getY(0)
 
-                      const getY = (val) => bottomY - ((val - domainMin) / domainRange) * heightY
-                      const zeroY = getY(0)
+                    const leftX = 55
+                    const rightX = 665
+                    const stepX = (rightX - leftX) / 5
 
-                      const leftX = 55
-                      const rightX = 665
-                      const stepX = (rightX - leftX) / 5
+                    const pts = monthlyRevenues.map((r, i) => ({
+                      x: leftX + i * stepX,
+                      y: getY(r.revenue),
+                      rev: r.revenue,
+                      label: r.label,
+                      fullLabel: r.fullLabel,
+                    }))
 
-                      const pts = monthlyRevenues.map((r, i) => ({
-                        x: leftX + i * stepX,
-                        y: getY(r.revenue),
-                        rev: r.revenue,
-                        label: r.label
-                      }))
+                    // Cubic Bézier spline smooth curve
+                    let curveD = `M ${pts[0].x} ${pts[0].y}`
+                    for (let i = 0; i < pts.length - 1; i++) {
+                      const p0 = pts[i === 0 ? 0 : i - 1]
+                      const p1 = pts[i]
+                      const p2 = pts[i + 1]
+                      const p3 = pts[i + 2] || p2
+                      const cp1x = p1.x + (p2.x - p0.x) / 5.2
+                      const cp1y = p1.y + (p2.y - p0.y) / 5.2
+                      const cp2x = p2.x - (p3.x - p1.x) / 5.2
+                      const cp2y = p2.y - (p3.y - p1.y) / 5.2
+                      curveD += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
+                    }
 
-                      const pathD = pts.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ')
+                    const areaD = `${curveD} L ${pts[pts.length - 1].x} ${bottomY} L ${pts[0].x} ${bottomY} Z`
 
-                      return (
+                    return (
+                      <svg width="100%" height="100%" viewBox="0 0 710 205" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                        <defs>
+                          <linearGradient id="chartGradientFluid" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#2563EB" stopOpacity="0.25" />
+                            <stop offset="60%" stopColor="#2563EB" stopOpacity="0.06" />
+                            <stop offset="100%" stopColor="#2563EB" stopOpacity="0.00" />
+                          </linearGradient>
+                          <filter id="chartGlowLine" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="0" dy="3" stdDeviation="3.5" floodColor="#2563eb" floodOpacity="0.3" />
+                          </filter>
+                        </defs>
+
                         <g>
                           {/* Top subtle gridline */}
-                          <line x1="45" y1={topY + 10} x2={rightX + 15} y2={topY + 10} stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3 3" />
-                          <text x="38" y={topY + 14} textAnchor="end" fontSize="9.5" fontWeight="600" fill="#94A3B8">
+                          <line x1={leftX - 10} y1={topY + 10} x2={rightX + 15} y2={topY + 10} stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
+                          <text x={leftX - 16} y={topY + 14} textAnchor="end" fontSize="10" fontWeight="600" fill="var(--text3)">
                             {fmtShort(domainMax * 0.85)}
                           </text>
 
                           {/* Zero baseline */}
-                          <line x1="45" y1={zeroY} x2={rightX + 15} y2={zeroY} stroke="#CBD5E1" strokeWidth="1" strokeDasharray="3 3" />
-                          <text x="38" y={zeroY + 3.5} textAnchor="end" fontSize="9.5" fontWeight="650" fill="#64748B">
+                          <line x1={leftX - 10} y1={zeroY} x2={rightX + 15} y2={zeroY} stroke="var(--border)" strokeWidth="1.2" strokeDasharray="4 4" opacity="0.85" />
+                          <text x={leftX - 16} y={zeroY + 3.5} textAnchor="end" fontSize="10" fontWeight="700" fill="var(--text2)">
                             0 ₫
                           </text>
 
                           {/* Area under curve */}
-                          <path
-                            d={`${pathD} L ${pts[5].x} ${bottomY} L ${pts[0].x} ${bottomY} Z`}
-                            fill="url(#chartFillGrad)"
-                          />
+                          <path d={areaD} fill="url(#chartGradientFluid)" />
 
-                          {/* Main line */}
-                          <path d={pathD} fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          {/* Smooth curved spline line */}
+                          <path d={curveD} fill="none" stroke="#3B82F6" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" filter="url(#chartGlowLine)" />
 
                           {/* Points and Tooltips */}
                           {pts.map((p, i) => {
-                            const isCurrent = i === 5
+                            const isCurrent = i === pts.length - 1
                             const isHovered = hoveredIdx === i
                             const showTooltip = isHovered || (hoveredIdx === null && isCurrent)
 
                             return (
                               <g key={i}>
-                                <line x1={p.x} y1={p.y} x2={p.x} y2={bottomY} stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 2" opacity={showTooltip ? 0.8 : 0.25} />
-
-                                <circle
-                                  cx={p.x}
-                                  cy={p.y}
-                                  r={isCurrent ? 4.5 : 3}
-                                  fill={isCurrent ? '#2563EB' : '#FFFFFF'}
+                                {/* Vertical guideline on hover/current */}
+                                <line
+                                  x1={p.x}
+                                  y1={p.y}
+                                  x2={p.x}
+                                  y2={bottomY}
                                   stroke="#2563EB"
-                                  strokeWidth={isCurrent ? 2 : 1.8}
+                                  strokeWidth={showTooltip ? 1.5 : 1}
+                                  strokeDasharray={showTooltip ? 'none' : '2 3'}
+                                  opacity={showTooltip ? 0.45 : 0.15}
                                 />
 
+                                {/* Halo circle for active point */}
+                                {(isCurrent || isHovered) && (
+                                  <circle cx={p.x} cy={p.y} r="10" fill="rgba(37, 99, 235, 0.18)" />
+                                )}
+
+                                {/* Point dot */}
                                 <circle
                                   cx={p.x}
                                   cy={p.y}
-                                  r="24"
+                                  r={isCurrent || isHovered ? 5 : 3.8}
+                                  fill={isCurrent ? '#3B82F6' : 'var(--surface)'}
+                                  stroke="#2563EB"
+                                  strokeWidth={isCurrent ? 2.5 : 2}
+                                />
+
+                                {/* Invisible mouse trigger */}
+                                <circle
+                                  cx={p.x}
+                                  cy={p.y}
+                                  r="28"
                                   fill="transparent"
                                   style={{ cursor: 'pointer' }}
                                   onMouseEnter={() => setHoveredIdx(i)}
                                   onMouseLeave={() => setHoveredIdx(null)}
                                 />
 
+                                {/* Modern floating tooltip */}
                                 {showTooltip && (
-                                  <g>
+                                  <g style={{ pointerEvents: 'none' }}>
                                     <rect
-                                      x={isCurrent ? p.x - 90 : (i === 0 ? p.x - 6 : p.x - 48)}
-                                      y={p.y - 28}
-                                      width="96"
-                                      height="20"
-                                      rx="4"
-                                      fill="#101828"
+                                      x={isCurrent ? p.x - 105 : (i === 0 ? p.x - 6 : p.x - 55)}
+                                      y={p.y - 32}
+                                      width="110"
+                                      height="24"
+                                      rx="6"
+                                      fill="var(--surface2)"
+                                      stroke="var(--border2)"
+                                      strokeWidth="1"
                                     />
                                     <text
-                                      x={isCurrent ? p.x - 42 : (i === 0 ? p.x + 42 : p.x)}
-                                      y={p.y - 14}
+                                      x={isCurrent ? p.x - 50 : (i === 0 ? p.x + 49 : p.x)}
+                                      y={p.y - 16}
                                       textAnchor="middle"
-                                      fill="#FFFFFF"
-                                      fontSize="10"
-                                      fontWeight="650"
+                                      fill="#38bdf8"
+                                      fontSize="11"
+                                      fontWeight="700"
                                     >
                                       {fmtRevenueLong(p.rev)}
                                     </text>
                                   </g>
                                 )}
 
-                                <text x={p.x} y={bottomY + 18} textAnchor="middle" fill={isCurrent ? '#101828' : '#667085'} fontSize="11" fontWeight={isCurrent ? '700' : '600'}>
-                                  {p.label}
-                                </text>
+                                {/* X-axis Label */}
+                                {isCurrent ? (
+                                  <g>
+                                    <rect
+                                      x={p.x - 16}
+                                      y={bottomY + 8}
+                                      width="32"
+                                      height="19"
+                                      rx="9"
+                                      fill="var(--primary)"
+                                    />
+                                    <text
+                                      x={p.x}
+                                      y={bottomY + 21}
+                                      textAnchor="middle"
+                                      fill="#ffffff"
+                                      fontSize="11"
+                                      fontWeight="700"
+                                    >
+                                      {p.label}
+                                    </text>
+                                  </g>
+                                ) : (
+                                  <text
+                                    x={p.x}
+                                    y={bottomY + 21}
+                                    textAnchor="middle"
+                                    fill="var(--text2)"
+                                    fontSize="11"
+                                    fontWeight="600"
+                                  >
+                                    {p.label}
+                                  </text>
+                                )}
                               </g>
                             )
                           })}
                         </g>
-                      )
-                    })()}
-                  </svg>
+                      </svg>
+                    )
+                  })()}
                 </div>
 
-                {/* Right Pane: Compact MoM Summary Box */}
-                <div className="mom-right-pane">
-                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#667085', letterSpacing: '0.05em', textTransform: 'uppercase', borderBottom: '1px solid #E7EAF0', paddingBottom: 5 }}>
+                {/* Right Pane: FinTech MoM Summary Box */}
+                <div
+                  className="mom-right-pane"
+                  style={{
+                    background: 'var(--surface2)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    padding: '14px 16px',
+                  }}
+                >
+                  <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text2)', letterSpacing: '0.04em', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>
                     SO SÁNH THÁNG
                   </div>
 
                   <div>
-                    <div style={{ fontSize: 10.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase' }}>
                       THÁNG NÀY ({months[5]?.label})
                     </div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: currentMonthRevenue < 0 ? '#EF4444' : '#101828', marginTop: 1 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: currentMonthRevenue < 0 ? '#EF4444' : 'var(--text)', marginTop: 2 }}>
                       {fmtRevenueLong(currentMonthRevenue)}
                     </div>
-                    <div style={{ fontSize: 10.5, color: '#667085', marginTop: 1 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
                       Lãi dòng: {fmtShort(monthlyRevenues[5]?.orderProfit ?? 0)} · Phí: {fmtShort(monthlyRevenues[5]?.expenseAmount ?? 0)}
                     </div>
                   </div>
 
-                  <div style={{ borderTop: '1px solid #E7EAF0', paddingTop: 6 }}>
-                    <div style={{ fontSize: 10.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase' }}>
                       THÁNG TRƯỚC ({months[4]?.label})
                     </div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#344054', marginTop: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>
                       {fmtRevenueLong(prevMonthRevenue)}
                     </div>
-                    <div style={{ fontSize: 10.5, color: '#667085', marginTop: 1 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
                       Lãi dòng: {fmtShort(monthlyRevenues[4]?.orderProfit ?? 0)} · Phí: {fmtShort(monthlyRevenues[4]?.expenseAmount ?? 0)}
                     </div>
                   </div>
 
-                  <div style={{ borderTop: '1px solid #E7EAF0', paddingTop: 6 }}>
-                    <div style={{
-                      fontSize: 10.5,
-                      fontWeight: 700,
-                      color: prevMonthRevenue === 0 ? '#667085' : (isGrowthNoChange ? '#667085' : (isGrowthPositive ? '#16A34A' : '#EF4444')),
-                      textTransform: 'uppercase'
-                    }}>
-                      {prevMonthRevenue === 0 ? 'SO SÁNH' : (isGrowthNoChange ? 'KHÔNG ĐỔI' : (isGrowthPositive ? 'TĂNG' : 'GIẢM'))}
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          background: prevMonthRevenue === 0 ? 'var(--surface)' : (isGrowthPositive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)'),
+                          color: prevMonthRevenue === 0 ? 'var(--text2)' : (isGrowthPositive ? '#10b981' : '#ef4444'),
+                        }}
+                      >
+                        {prevMonthRevenue === 0 ? '—' : (isGrowthPositive ? '▲ TĂNG' : '▼ GIẢM')} {prevMonthRevenue > 0 && !isGrowthNoChange ? growthPctStr.split(' ')[0] : ''}
+                      </span>
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: isGrowthPositive ? '#10b981' : '#ef4444' }}>
+                        {prevMonthRevenue === 0 ? '—' : `${diffAmount >= 0 ? '+' : ''}${fmtRevenueLong(diffAmount)}`}
+                      </span>
                     </div>
-                    <div style={{
-                      fontSize: 13.5,
-                      fontWeight: 700,
-                      color: prevMonthRevenue === 0 ? '#667085' : (isGrowthNoChange ? '#667085' : (isGrowthPositive ? '#16A34A' : '#EF4444')),
-                      marginTop: 1
-                    }}>
-                      {prevMonthRevenue === 0 ? '—' : `${diffAmount >= 0 ? '+' : ''}${fmtRevenueLong(diffAmount)}`}
-                    </div>
-                    {prevMonthRevenue > 0 && !isGrowthNoChange && (
-                      <div style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: isGrowthPositive ? '#16A34A' : '#EF4444',
-                        marginTop: 1
-                      }}>
-                        {growthPctStr.split(' ')[0]}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* 4. RECENT ORDERS TABLE */}
-          <div className="table-surface-card">
+          {/* 4. RECENT ORDERS TABLE (Private to Current User) */}
+          <div className="table-surface-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '12px 18px',
-              borderBottom: '1px solid #E7EAF0'
+              padding: '14px 18px',
+              borderBottom: '1px solid var(--border)'
             }}>
-              <h3 style={{ fontSize: 14, fontWeight: 650, color: '#101828', margin: 0 }}>
-                Đơn hàng gần đây
-              </h3>
+              <div>
+                <h3 style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
+                  Đơn hàng gần đây của bạn
+                </h3>
+                <div style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 2 }}>
+                  Theo dõi đơn bán và trạng thái giao hàng cá nhân
+                </div>
+              </div>
               <button
                 className="btn ghost sm"
                 onClick={() => setPage('orders')}
-                style={{ fontSize: 12, fontWeight: 600, color: '#2563EB', padding: '2px 6px' }}
+                style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)', padding: '2px 8px' }}
               >
-                Xem tất cả →
+                Xem tất cả đơn →
               </button>
             </div>
 
             {recentOrders.length === 0 ? (
-              <div className="empty" style={{ padding: '28px 0', textAlign: 'center', color: '#667085' }}>
+              <div className="empty" style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text2)' }}>
                 <div style={{ fontSize: 24, marginBottom: 4 }}>🛒</div>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Chưa có đơn hàng nào</div>
-                <div style={{ fontSize: 12, color: '#98A2B3', marginTop: 2 }}>Đơn bán mới sẽ xuất hiện tại đây</div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>Đơn bán mới của bạn sẽ xuất hiện tại đây</div>
               </div>
             ) : (
               <MobileTableWrap>
@@ -1262,17 +1354,37 @@ export default function DashboardPage({ setPage }) {
                     {recentOrders.map(o => {
                       const st = STATUS_LABELS[o.status] || { label: o.status, cls: '' }
                       const dotColor = o.status === 'delivered' ? '#16A34A' : o.status === 'pending' ? '#F59E0B' : o.status === 'confirmed' ? '#2563EB' : '#94A3B8'
+                      const customerInitial = (o.userName || 'K').charAt(0).toUpperCase()
                       return (
                         <tr key={o.id}>
-                          <td style={{ fontWeight: 600, color: '#101828' }}>
-                            {o.userName || o.uid?.slice(0, 8) || '—'}
+                          <td style={{ fontWeight: 650, color: 'var(--text)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                              <div
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: '50%',
+                                  background: 'rgba(59, 130, 246, 0.12)',
+                                  color: 'var(--primary)',
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {customerInitial}
+                              </div>
+                              <span>{o.userName || '—'}</span>
+                            </div>
                           </td>
-                          <td style={{ color: '#667085' }}>
-                            <span style={{ fontWeight: 500, color: '#344054' }}>{o.items?.length ?? 0} mặt hàng</span>
+                          <td style={{ color: 'var(--text2)' }}>
+                            <span style={{ fontWeight: 600, color: 'var(--text)' }}>{o.items?.length ?? 0} mặt hàng</span>
                             {o.items?.[0] ? ` · ${o.items[0].name}` : ''}
                             {o.items?.length > 1 ? ` +${o.items.length - 1}` : ''}
                           </td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#101828', fontVariantNumeric: 'tabular-nums' }}>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
                             {fmt(o.total)}
                           </td>
                           <td>
@@ -1282,16 +1394,16 @@ export default function DashboardPage({ setPage }) {
                               gap: 5,
                               fontSize: 11,
                               fontWeight: 600,
-                              padding: '2px 7px',
+                              padding: '2px 8px',
                               borderRadius: '100px',
-                              background: '#F1F5F9',
-                              color: '#344054'
+                              background: 'var(--surface2)',
+                              color: 'var(--text)'
                             }}>
                               <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor }} />
                               {st.label}
                             </span>
                           </td>
-                          <td style={{ color: '#667085', fontSize: 12 }}>
+                          <td style={{ color: 'var(--text2)', fontSize: 12 }}>
                             {o.createdAt?.toDate?.()
                               ? o.createdAt.toDate().toLocaleDateString('vi-VN')
                               : '—'}
@@ -1305,20 +1417,84 @@ export default function DashboardPage({ setPage }) {
             )}
           </div>
 
+          {/* TEAM MEMBERS STRIP */}
+          {companyUsers.length > 0 && (
+            <div className="table-surface-card" style={{ padding: '16px 20px', background: 'var(--surface)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
+                    Đội ngũ nhân sự ({companyUsers.length} thành viên)
+                  </h3>
+                </div>
+                {isAdmin && (
+                  <button
+                    className="btn ghost sm"
+                    onClick={() => setPage('admin-users')}
+                    style={{ fontSize: 11.5, color: 'var(--primary)', padding: '2px 8px' }}
+                  >
+                    Quản lý thành viên →
+                  </button>
+                )}
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+                  gap: 12,
+                }}
+              >
+                {companyUsers.map((u) => (
+                  <div
+                    key={u.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      background: 'var(--surface2)',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    <UserAvatar user={u} size={36} showStatus={true} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 12.5,
+                          color: 'var(--text)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {u.displayName || u.email?.split('@')[0]}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {u.phone ? `📞 ${u.phone}` : (u.jobTitle || (u.role === 'admin' ? 'Quản trị viên' : 'Kinh doanh'))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 5. QUICK ACTIONS TOOLBAR */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
             <button className="btn primary sm" onClick={() => setPage('my-prices')} style={{ fontSize: 12.5, fontWeight: 600 }}>
               ⭐ Tính giá của tôi
             </button>
-            <button className="btn sm" onClick={() => setPage('orders')} style={{ fontSize: 12.5, fontWeight: 500, background: '#FFFFFF' }}>
+            <button className="btn sm" onClick={() => setPage('orders')} style={{ fontSize: 12.5, fontWeight: 500, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}>
               🛒 Tạo đơn bán
             </button>
             {isAdmin && (
-              <button className="btn sm" onClick={() => setPage('admin-import')} style={{ fontSize: 12.5, fontWeight: 500, background: '#FFFFFF' }}>
+              <button className="btn sm" onClick={() => setPage('admin-import')} style={{ fontSize: 12.5, fontWeight: 500, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}>
                 📥 Import bảng giá
               </button>
             )}
-            <button className="btn sm" onClick={() => setPage('inventory')} style={{ fontSize: 12.5, fontWeight: 500, background: '#FFFFFF' }}>
+            <button className="btn sm" onClick={() => setPage('inventory')} style={{ fontSize: 12.5, fontWeight: 500, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}>
               📦 Quản lý tồn kho
             </button>
           </div>
@@ -1411,19 +1587,19 @@ function ExpenseTrackerModal({ expenses, onClose, user, toast }) {
   return (
     <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth: 620, display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>
-        <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#082B4C' }}>💸 QUẢN LÝ CHI PHÍ DOANH NGHIỆP</h2>
+        <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: 'var(--text)' }}>💸 QUẢN LÝ CHI PHÍ DOANH NGHIỆP</h2>
           <button className="btn ghost sm" onClick={onClose} style={{ padding: 6, fontSize: 16 }}>✕</button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', padding: 20, flex: 1 }}>
           {/* Form thêm chi phí */}
-          <form onSubmit={handleSave} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <h4 style={{ margin: '0 0 4px 0', color: '#082B4C', fontSize: 13, fontWeight: 800 }}>+ GHI NHẬN CHI PHÍ MỚI</h4>
+          <form onSubmit={handleSave} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <h4 style={{ margin: '0 0 4px 0', color: 'var(--text)', fontSize: 13, fontWeight: 800 }}>+ GHI NHẬN CHI PHÍ MỚI</h4>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 800, color: '#64748B', display: 'block', marginBottom: 4 }}>SỐ TIỀN (VNĐ)</label>
+                <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--text3)', display: 'block', marginBottom: 4 }}>SỐ TIỀN (VNĐ)</label>
                 <input
                   type="text"
                   className="input"
@@ -1502,7 +1678,7 @@ function ExpenseTrackerModal({ expenses, onClose, user, toast }) {
               <div style={{ border: '1px solid #E2E8F0', borderRadius: 8, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
                   <thead>
-                    <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', textAlign: 'left' }}>
+                    <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
                       <th style={{ padding: '8px 12px', color: '#64748B', fontWeight: 800 }}>Ngày</th>
                       <th style={{ padding: '8px 12px', color: '#64748B', fontWeight: 800 }}>Hạng mục</th>
                       <th style={{ padding: '8px 12px', color: '#64748B', fontWeight: 800 }}>Ghi chú</th>
@@ -1513,7 +1689,7 @@ function ExpenseTrackerModal({ expenses, onClose, user, toast }) {
                   <tbody>
                     {sortedExpenses.map(e => (
                       <tr key={e.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                        <td style={{ padding: '10px 12px', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text2)', whiteSpace: 'nowrap' }}>
                           {(() => {
                             if (!e.date) return '—'
                             const parts = e.date.split('-')
@@ -1521,7 +1697,7 @@ function ExpenseTrackerModal({ expenses, onClose, user, toast }) {
                           })()}
                         </td>
                         <td style={{ padding: '10px 12px', fontWeight: 750, color: '#082B4C' }}>{e.category}</td>
-                        <td style={{ padding: '10px 12px', color: '#64748B', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.note}>{e.note || '—'}</td>
+                        <td style={{ padding: '10px 12px', color: 'var(--text3)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.note}>{e.note || '—'}</td>
                         <td style={{ padding: '10px 12px', fontWeight: 800, color: '#EF4444', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           -{formatMoney(e.amount)}
                         </td>

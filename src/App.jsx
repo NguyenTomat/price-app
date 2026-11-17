@@ -16,6 +16,7 @@ import CatalogPage from './pages/CatalogPage'
 import TechnicalDossiersPage from './pages/TechnicalDossiersPage'
 import RevenuePage from './pages/RevenuePage'
 import BusPage from './pages/BusPage'
+import AccountPage from './pages/AccountPage'
 import Spotlight from './components/Spotlight'
 import UpdateBanner from './components/UpdateBanner'
 import PwaUpdateBanner from './components/PwaUpdateBanner'
@@ -113,6 +114,7 @@ function AppContent() {
     'web-manage':   <WebManagePage initialTab={webManageTab} onTabChange={setWebManageTab} />,
     'admin-import': <AdminImportPage/>,
     'admin-users':  <AdminUsersPage/>,
+    'account':      <AccountPage setPage={setPage}/>,
   }
 
   return (

@@ -2,6 +2,8 @@ import { initializeApp, getApps, deleteApp } from 'firebase/app'
 import {
   getAuth, signInWithEmailAndPassword, signOut,
   onAuthStateChanged, createUserWithEmailAndPassword,
+  updateProfile, updatePassword, updateEmail,
+  reauthenticateWithCredential, EmailAuthProvider,
 } from 'firebase/auth'
 import {
   getFirestore, collection, doc, getDoc, getDocs,
@@ -49,6 +51,81 @@ export const getUserProfile = async (uid) => {
 export const setUserProfile = (uid, data) =>
   setDoc(doc(db, 'users', uid), data, { merge: true })
 
+export const updateUserProfileData = async (uid, data) => {
+  const updates = { ...data }
+  if (updates.displayName !== undefined) updates.displayName = updates.displayName.trim()
+  let finalPhotoURL = updates.photoURL
+
+  // Nếu photoURL là base64 data URL, upload lên Firebase Storage để lấy HTTPS URL ngắn gọn
+  if (finalPhotoURL && finalPhotoURL.startsWith('data:')) {
+    try {
+      const storageRef = ref(storage, `avatars/${uid}_${Date.now()}.jpg`)
+      const snap = await uploadString(storageRef, finalPhotoURL, 'data_url')
+      finalPhotoURL = await getDownloadURL(snap.ref)
+      updates.photoURL = finalPhotoURL
+    } catch (storageErr) {
+      console.warn('Storage upload avatar fallback to base64 in Firestore:', storageErr)
+      // Giữ nguyên ảnh trong Firestore nhưng KHÔNG đẩy base64 dài vào updateProfile của Firebase Auth
+    }
+  }
+
+  // Cập nhật Firebase Auth (tránh lỗi Photo URL too long bằng cách bỏ qua data: URL)
+  if (auth.currentUser) {
+    try {
+      const authUpdates = {}
+      if (updates.displayName !== undefined) authUpdates.displayName = updates.displayName
+      if (finalPhotoURL !== undefined) {
+        if (!finalPhotoURL.startsWith('data:')) {
+          authUpdates.photoURL = finalPhotoURL
+        } else {
+          // Bỏ qua hoặc đặt rỗng trên auth profile, ảnh hiển thị sẽ dùng trực tiếp từ Firestore doc
+          authUpdates.photoURL = ''
+        }
+      }
+      if (Object.keys(authUpdates).length > 0) {
+        await updateProfile(auth.currentUser, authUpdates)
+      }
+    } catch (authErr) {
+      console.warn('updateProfile auth warning (ignored):', authErr)
+    }
+  }
+
+  await setDoc(doc(db, 'users', uid), { ...updates, updatedAt: Date.now() }, { merge: true })
+  return updates
+}
+
+export const changeUserPassword = async (currentPassword, newPassword) => {
+  const user = auth.currentUser
+  if (!user || !user.email) throw new Error('Chưa đăng nhập!')
+  if (!currentPassword) throw new Error('Vui lòng nhập mật khẩu hiện tại!')
+  if (!newPassword || newPassword.length < 6) throw new Error('Mật khẩu mới phải có ít nhất 6 ký tự!')
+
+  const cred = EmailAuthProvider.credential(user.email, currentPassword)
+  await reauthenticateWithCredential(user, cred)
+  await updatePassword(user, newPassword)
+}
+
+export const changeUserEmail = async (currentPassword, newEmail) => {
+  const user = auth.currentUser
+  if (!user || !user.email) throw new Error('Chưa đăng nhập!')
+  if (!currentPassword) throw new Error('Vui lòng nhập mật khẩu hiện tại để xác thực!')
+  const cleanEmail = (newEmail || '').trim().toLowerCase()
+  if (!cleanEmail || !cleanEmail.includes('@')) throw new Error('Email mới không hợp lệ!')
+
+  const cred = EmailAuthProvider.credential(user.email, currentPassword)
+  await reauthenticateWithCredential(user, cred)
+  await updateEmail(user, cleanEmail)
+  await setDoc(doc(db, 'users', user.uid), { email: cleanEmail, updatedAt: Date.now() }, { merge: true })
+}
+
+export const subscribeCompanyUsers = (cb) => {
+  const q = collection(db, 'users')
+  return onSnapshot(q, (snap) => {
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    cb(list)
+  }, (err) => console.warn('subscribeCompanyUsers error:', err))
+}
+
 // ── PRICE LISTS — realtime ─────────────────────────────────────────────────
 // Returns unsubscribe function. Calls cb(lists[]) on every change.
 export const subscribePriceLists = (cb) => {
@@ -84,26 +161,51 @@ export const updatePriceList = (id, data) =>
 export const deletePriceList = (id) =>
   deleteDoc(doc(db, 'priceLists', id))
 
-// ── PRODUCTS — realtime ────────────────────────────────────────────────────
+// ── PRODUCTS — realtime & cached ─────────────────────────────────────────────
+const productsMemoryCache = new Map()
+let allProductsFlatCache = null
+let allProductsFlatCacheTime = 0
+const FLAT_CACHE_TTL = 60000 // 60s cache for flat product list
+
+export const invalidateProductCaches = (listId = null) => {
+  if (listId) {
+    productsMemoryCache.delete(listId)
+  } else {
+    productsMemoryCache.clear()
+  }
+  allProductsFlatCache = null
+  allProductsFlatCacheTime = 0
+}
+
 // Subscribe to products of a price list. Calls cb(products[]) on change.
 export const subscribeProducts = (listId, cb) => {
+  if (productsMemoryCache.has(listId)) {
+    try { cb(productsMemoryCache.get(listId)) } catch (e) { console.warn(e) }
+  }
   const q = collection(db, 'priceLists', listId, 'products')
   return onSnapshot(q, (snap) => {
     const products = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    productsMemoryCache.set(listId, products)
     cb(products)
   }, (err) => console.error('subscribeProducts error:', err))
 }
 
 export const getProducts = async (listId) => {
+  if (productsMemoryCache.has(listId)) {
+    return productsMemoryCache.get(listId)
+  }
   const snap = await getDocs(collection(db, 'priceLists', listId, 'products'))
-  return snap.docs
+  const products = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  productsMemoryCache.set(listId, products)
+  return products
 }
 
 export const saveProducts = async (listId, products) => {
+  invalidateProductCaches(listId)
   const colRef = collection(db, 'priceLists', listId, 'products')
   const BATCH  = 400
   const existing = await getDocs(colRef)
@@ -119,6 +221,71 @@ export const saveProducts = async (listId, products) => {
     })
     await batch.commit()
   }
+}
+
+/**
+ * Đồng bộ / Cập nhật bảng giá thông minh từ Excel:
+ * - Bảo vệ 100% hình ảnh (images, webImages) của sản phẩm cũ
+ * - Cập nhật giá mới và thông số
+ * - Thêm các sản phẩm mới toanh
+ */
+export const syncPriceListProducts = async (listId, { updates = [], additions = [] }) => {
+  invalidateProductCaches(listId)
+  const colRef = collection(db, 'priceLists', listId, 'products')
+  const BATCH_SIZE = 400
+
+  // 1. Cập nhật các sản phẩm cũ (Bảo lưu toàn bộ images, webImages, order)
+  for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db)
+    updates.slice(i, i + BATCH_SIZE).forEach((item) => {
+      const prodRef = doc(colRef, item.id)
+      const updateData = {
+        updatedAt: Date.now(),
+      }
+      if (item.price != null && !isNaN(Number(item.price))) {
+        updateData.price = Number(item.price)
+      }
+      if (item.spec1) updateData.spec1 = item.spec1
+      if (item.spec2) updateData.spec2 = item.spec2
+      if (item.phiHocng) updateData.phiHocng = item.phiHocng
+      if (item.group) updateData.group = item.group
+      batch.update(prodRef, updateData)
+    })
+    await batch.commit()
+  }
+
+  // 2. Thêm các sản phẩm mới
+  if (additions.length > 0) {
+    const existingSnap = await getDocs(colRef)
+    let maxOrder = 0
+    if (!existingSnap.empty) {
+      maxOrder = Math.max(...existingSnap.docs.map((d) => d.data().order || 0), 0) + 1
+    }
+
+    for (let i = 0; i < additions.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db)
+      additions.slice(i, i + BATCH_SIZE).forEach((item, idx) => {
+        const newDoc = doc(colRef)
+        batch.set(newDoc, {
+          name: item.name || '',
+          group: item.group || 'Chung',
+          spec1: item.spec1 || '',
+          spec2: item.spec2 || '',
+          price: Number(item.price) || 0,
+          phiHocng: item.phiHocng || '',
+          images: [],
+          webImages: [],
+          order: maxOrder + i + idx,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+      })
+      await batch.commit()
+    }
+  }
+
+  // Cập nhật updatedAt cho bảng giá
+  await updateDoc(doc(db, 'priceLists', listId), { updatedAt: serverTimestamp() })
 }
 
 // Batch-update the `order` field for a list of products (used when inserting a new product mid-group)
@@ -189,7 +356,11 @@ export const updateProductImages = async (listId, productId, images) => {
 
 // Load ALL products from ALL price lists — used in order form for "giá bảng giá" picker
 // Returns flat array: [{ id, listId, listName, name, group, spec1, price, ... }]
-export const getAllProductsFlat = async () => {
+export const getAllProductsFlat = async (forceRefresh = false) => {
+  const now = Date.now()
+  if (!forceRefresh && allProductsFlatCache && (now - allProductsFlatCacheTime < FLAT_CACHE_TTL)) {
+    return allProductsFlatCache
+  }
   const lists = await getPriceLists()
   const chunks = await Promise.all(
     lists.map(l =>
@@ -198,7 +369,9 @@ export const getAllProductsFlat = async () => {
       )
     )
   )
-  return chunks.flat()
+  allProductsFlatCache = chunks.flat()
+  allProductsFlatCacheTime = now
+  return allProductsFlatCache
 }
 
 export const sanitizeWebProduct = (p, listId, listName) => {

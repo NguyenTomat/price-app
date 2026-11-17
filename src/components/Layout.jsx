@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { logout } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
+import UserAvatar from './UserAvatar'
 
 const Icon = ({ d, size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -52,7 +53,7 @@ export default function Layout({ page, setPage, children, onSpotlight, pendingWe
     ...(canManageWeb ? [
       {
         key: 'web-manage',
-        label: 'Quản lý Web 🌐',
+        label: 'Quản lý Web',
         icon: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm1-13h-2v6h2zm0 8h-2v2h2z',
         badge: pendingWebOrdersCount > 0 ? pendingWebOrdersCount : null,
       }
@@ -61,6 +62,7 @@ export default function Layout({ page, setPage, children, onSpotlight, pendingWe
       { key: 'admin-users',  label: 'Quản lý user',    icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
       { key: 'admin-import', label: 'Import bảng giá', icon: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3' },
     ] : []),
+    { key: 'account',      label: 'Quản lý tài khoản', icon: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
   ]
 
   const currentPage = navItems.find(i => i.key === page)
@@ -138,19 +140,69 @@ export default function Layout({ page, setPage, children, onSpotlight, pendingWe
         </nav>
 
         <div className="sidebar-footer">
-          <div className="user-name">{profile?.displayName || profile?.email || 'User'}</div>
+          <div
+            className="sidebar-user-card"
+            onClick={() => goTo('account')}
+            title="Bấm để mở Quản lý tài khoản"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              cursor: 'pointer',
+              padding: '8px 10px',
+              borderRadius: 8,
+              transition: 'background .15s',
+              marginBottom: 6,
+              background: page === 'account' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255, 255, 255, 0.06)',
+              border: page === 'account' ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+            onMouseEnter={(e) => {
+              if (page !== 'account') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'
+            }}
+            onMouseLeave={(e) => {
+              if (page !== 'account') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+            }}
+          >
+            <UserAvatar user={{ ...profile, ...user }} size={34} showStatus={true} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  margin: 0,
+                  color: '#ffffff',
+                  letterSpacing: '0.01em',
+                }}
+              >
+                {profile?.displayName || user?.displayName || profile?.email || 'User'}
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.65)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+                <span>Quản lý tài khoản</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </div>
+            </div>
+          </div>
           <div className="sidebar-footer-actions">
-            <span className={`badge ${isAdmin ? 'badge-amber' : 'badge-blue'}`} style={{ fontSize: 10 }}>
-              {isAdmin ? '👑 Admin' : '👤 User'}
+            <span className={`badge ${isAdmin ? 'badge-amber' : 'badge-blue'}`} style={{ fontSize: 10, fontWeight: 700 }}>
+              {isAdmin ? 'Admin' : 'User'}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{dark ? '🌙' : '☀️'}</span>
-              <div className={`theme-toggle ${dark ? 'on' : ''}`} onClick={toggle} title="Đổi giao diện"/>
+              <div
+                className={`theme-toggle ${dark ? 'on' : ''}`}
+                onClick={toggle}
+                title={dark ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+              />
             </div>
             <button
               type="button"
               className="btn ghost xs sidebar-logout"
               onClick={logout}
+              style={{ fontSize: 11 }}
             >
               Đăng xuất
             </button>

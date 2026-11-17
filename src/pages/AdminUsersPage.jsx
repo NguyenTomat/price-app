@@ -3,6 +3,7 @@ import { db, adminCreateUser } from '../firebase/firebase'
 import { collection, getDocs, setDoc, doc } from 'firebase/firestore'
 import { useToast } from '../components/Toast'
 import MobileTableWrap from '../components/MobileTableWrap'
+import UserAvatar from '../components/UserAvatar'
 
 const FIREBASE_ERRORS = {
   'auth/email-already-in-use': 'Email này đã được sử dụng',
@@ -167,10 +168,10 @@ export default function AdminUsersPage() {
               <table>
                 <thead>
                   <tr>
-                    <th>Tên</th>
+                    <th>Tài khoản &amp; Avatar</th>
                     <th>Email</th>
                     <th>Vai trò</th>
-                    <th style={{ textAlign: 'center' }}>Đơn Web & Chuông báo</th>
+                    <th style={{ textAlign: 'center' }}>Đơn Web &amp; Chuông báo</th>
                     <th>Ngày tạo</th>
                     <th style={{ textAlign: 'center' }}>Thao tác</th>
                   </tr>
@@ -178,17 +179,31 @@ export default function AdminUsersPage() {
                 <tbody>
                   {users.map(u => (
                     <tr key={u.id} style={{ cursor: 'default' }}>
-                      <td style={{ fontWeight: 500 }}>{u.displayName || '—'}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <UserAvatar user={u} size={36} showStatus={true} />
+                          <div>
+                            <div style={{ fontWeight: 650, color: 'var(--text)', fontSize: 13 }}>
+                              {u.displayName || u.email?.split('@')[0] || '—'}
+                            </div>
+                            {u.phone && (
+                              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>
+                                📞 {u.phone}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
                       <td style={{ fontFamily: 'var(--mono)', fontSize: 13 }}>{u.email}</td>
                       <td>
                         <span className={`badge ${u.role === 'admin' ? 'badge-amber' : 'badge-blue'}`}>
-                          {u.role === 'admin' ? '👑 Admin' : '👤 Người dùng'}
+                          {u.role === 'admin' ? 'Admin' : 'Nhân viên'}
                         </span>
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         {(u.email || '').toLowerCase() === 'tunbebong1126@gmail.com' ? (
                           <span className="badge badge-amber" title="Chủ sở hữu hệ thống">
-                            👑 Chủ sở hữu (Mặc định)
+                            Chủ sở hữu
                           </span>
                         ) : (
                           <button
@@ -209,7 +224,7 @@ export default function AdminUsersPage() {
                             }}
                             title={u.canManageWeb ? 'Click để tắt nhận đơn web' : 'Click để cấp quyền nhận đơn web'}
                           >
-                            {u.canManageWeb ? '🔔 Đã cấp quyền' : '🔕 Không có quyền'}
+                            {u.canManageWeb ? '✓ Đã cấp quyền' : 'Chưa cấp quyền'}
                           </button>
                         )}
                       </td>

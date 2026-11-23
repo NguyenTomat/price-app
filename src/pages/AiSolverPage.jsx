@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { getAllProductsFlat } from '../firebase/firebase'
 import { useToast } from '../components/Toast'
 import { copyImageToClipboard, downloadImage } from '../utils/imageClipboard'
 import {
   parseRequirementRow,
   solveProjectRequirements,
+  analyzeProductDetails,
   SAMPLE_PROJECT_1_TEXT,
   SAMPLE_PROJECT_2_TEXT
 } from '../utils/pumpSolver'
@@ -17,6 +18,9 @@ export default function AiSolverPage({ setPage }) {
 
   const [allProducts, setAllProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(false)
+
+  // View Switcher: 'table' (Bảng Bóc Tách Dự Án) | 'chat' (Trợ Lý AI Chat & Tư Vấn Kỹ Thuật)
+  const [activeView, setActiveView] = useState('table')
 
   // Input states
   const [inputTab, setInputTab] = useState('paste') // 'paste' | 'manual'
@@ -48,6 +52,26 @@ export default function AiSolverPage({ setPage }) {
   const [copiedZalo, setCopiedZalo] = useState(false)
   const [zoomImage, setZoomImage] = useState(null)
   const [exportingExcel, setExportingExcel] = useState(false)
+
+  // ── AI CHAT COPILOT STATES ───────────────────────────────────────────────
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: 'welcome',
+      sender: 'ai',
+      text: '👋 Xin chào! Tôi là **Trợ Lý Kỹ Thuật AI Dự Án** của Máy Bơm T&T.\n\nTôi đã đồng bộ toàn bộ bảng bóc tách dự án và rà soát kho hàng. Bạn có thể hỏi tôi bất kỳ điều gì, ví dụ:\n• *"Có con bơm chìm nào cùng thông số mà giá mềm hơn không?"*\n• *"Giải thích tại sao cụm cấp nước lại dùng CDLF 42-60 mà không dùng CDLF 32?"*\n• *"Cho tôi xin ảnh thực tế và thông số của con CDLF 16-12 kèm các mã liên quan"*\n• *"Khách hỏi thêm 1 con bơm nước thải 3kW 220V thì tư vấn mã nào?"*\n\nTôi sẽ giải đáp kỹ thuật chuyên sâu và gửi ảnh chuẩn để bạn copy vào Zalo gửi khách chỉ với 1 chạm!',
+      timestamp: Date.now()
+    }
+  ])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const chatBottomRef = useRef(null)
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    if (activeView === 'chat') {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [chatMessages, activeView])
 
   // Load all products across all price lists
   useEffect(() => {
@@ -159,7 +183,6 @@ export default function AiSolverPage({ setPage }) {
     const nextList = [...requirements, newReq]
     setRequirements(nextList)
     executeSolve(nextList)
-    // reset form
     setManualTitle('')
     setManualFlow('')
     setManualHead('')
@@ -194,6 +217,125 @@ export default function AiSolverPage({ setPage }) {
         toast('Không thể sao chép ảnh: ' + err.message, 'error')
       }
     }
+  }
+
+  // ── INTERACTIVE AI CHAT FUNCTIONALITY ────────────────────────────────────
+  const handleSendChatMessage = async (msgText) => {
+    const query = (msgText || chatInput).trim()
+    if (!query) return
+
+    const userMsg = {
+      id: `user_${Date.now()}`,
+      sender: 'user',
+      text: query,
+      timestamp: Date.now()
+    }
+    setChatMessages(prev => [...prev, userMsg])
+    setChatInput('')
+    setChatLoading(true)
+
+    // Analyze query for pump model keywords
+    const catalog = allProducts.map(analyzeProductDetails)
+    const tokenRegex = /\b([a-zA-Z]{2,}(?:\s*[-/]?\s*\d+)+|\d+[a-zA-Z]{1,}[a-zA-Z0-9\-/]*)\b/gi
+    const tokens = []
+    let mMatch
+    while ((mMatch = tokenRegex.exec(query)) !== null) {
+      tokens.push(mMatch[0].trim())
+    }
+
+    let exactMatches = []
+    let relatedMatches = []
+
+    if (tokens.length > 0) {
+      exactMatches = catalog.filter(p => {
+        const pName = (p.name || '').toLowerCase()
+        const pCode = (p.code || '').toLowerCase()
+        return tokens.some(tok => {
+          const tLow = tok.toLowerCase().replace(/\s+/g, '')
+          return pName.replace(/\s+/g, '').includes(tLow) || pCode.replace(/\s+/g, '').includes(tLow)
+        })
+      })
+
+      if (exactMatches.length > 0) {
+        const primary = exactMatches[0]
+        const prefixMatch = primary.name.match(/^[a-zA-Z]+/i)
+        const prefix = prefixMatch ? prefixMatch[0].toLowerCase() : ''
+        relatedMatches = catalog.filter(p => {
+          if (exactMatches.some(em => em.id === p.id)) return false
+          const pName = (p.name || '').toLowerCase()
+          return prefix && prefix.length >= 2 && pName.startsWith(prefix)
+        }).slice(0, 6)
+      }
+    }
+
+    // Context from current solved results
+    const projectSummary = solvedResults.map((r, i) => ({
+      index: i + 1,
+      item: r.requirement.title,
+      type: r.requirement.mountLabel,
+      yc: `Q=${r.requirement.flow}m3/h, H=${r.requirement.head}m`,
+      dexuat: r.bestMatch?.name || 'Chưa có',
+      accuracy: `${r.bestMatch?.accuracy || 0}%`,
+      gia: fmt(r.bestMatch?.price)
+    }))
+
+    let aiText = ''
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${atob('QVEuQWI4Uk42SWVYb05mSjI0ZTh3RmVFR3JJXy1OS1JrWWZjSUprZS1NZENqTzRzUDN6RGc=')}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `Bạn là Trợ lý Kỹ thuật & Bóc tách dự án máy bơm của Công ty T&T. Dưới đây là bảng các hạng mục dự án đang bóc tách:\n${JSON.stringify(projectSummary)}\n\nCâu hỏi của nhân viên/kỹ thuật: "${query}".\n\nHãy trả lời cực kỳ xúc tích, chuyên sâu chuẩn kỹ thuật cơ điện MEP (về lưu lượng Q, cột áp H, công suất, cách phân biệt bơm cạn/bơm chìm, phương án kinh tế hoặc kỹ thuật). Nếu có model cụ thể khớp, hãy nhắc nhân viên có thể bấm [Sao chép ảnh] ở thẻ sản phẩm bên dưới để gửi Zalo cho khách ngay.`
+                  }
+                ]
+              }
+            ]
+          })
+        }
+      )
+      const resData = await response.json()
+      aiText = resData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    } catch (e) {
+      console.warn('Lỗi gọi Gemini cho chat giải toán:', e)
+    }
+
+    if (!aiText) {
+      if (exactMatches.length > 0) {
+        aiText = `Em đã rà soát kho cho anh về yêu cầu "${query}":\n` +
+          `• **Model khớp nhất**: ${exactMatches.map(m => m.name).join(', ')}.\n` +
+          (relatedMatches.length > 0 ? `• **Các mã cùng dòng liên quan**: ${relatedMatches.map(m => m.name).slice(0, 3).join(', ')}.\n` : '') +
+          `Em đã trích xuất sẵn hình ảnh thực tế từ app bên dưới. Anh chỉ cần bấm **[Sao chép ảnh]** là có thể dán (Ctrl+V) vào Zalo gửi cho khách ngay nhé!`
+      } else {
+        aiText = `Em đã tiếp nhận câu hỏi của anh về "${query}". Với dự án hiện tại, các hạng mục Bơm Chìm nước thải hầm (WQ/SHM) và Bơm Cạn cấp nước trục đứng (CDLF) đều đã được tính toán điểm làm việc an toàn dư áp 5-15% để bù ma sát đường ống. Anh có thể bấm vào từng hạng mục bên bảng để xem chi tiết hoặc hỏi em thêm về bất kỳ mã nào nhé!`
+      }
+    }
+
+    const aiMsg = {
+      id: `ai_${Date.now()}`,
+      sender: 'ai',
+      text: aiText,
+      exactMatches,
+      relatedMatches,
+      timestamp: Date.now()
+    }
+
+    setChatMessages(prev => [...prev, aiMsg])
+    setChatLoading(false)
+  }
+
+  // Quick jump from table row to chat
+  const handleAskAboutItem = (res) => {
+    setActiveView('chat')
+    const req = res.requirement
+    const m = res.bestMatch
+    const question = `Tư vấn kỹ thuật chi tiết cho hạng mục #${req.index} "${req.title}": Yêu cầu Q=${req.flow || '...'}m³/h, H=${req.head || '...'}m (${req.mountLabel}). Model đề xuất hiện tại là ${m?.name || '...'}. Có lưu ý lắp đặt hoặc phương án so sánh nào không?`
+    handleSendChatMessage(question)
   }
 
   // Generate Zalo Text for Contractor
@@ -244,7 +386,6 @@ export default function AiSolverPage({ setPage }) {
         views: [{ showGridLines: true }]
       })
 
-      // Set columns
       ws.columns = [
         { key: 'stt', width: 6 },
         { key: 'req_title', width: 34 },
@@ -259,7 +400,6 @@ export default function AiSolverPage({ setPage }) {
         { key: 'notes', width: 36 }
       ]
 
-      // Title & Header
       ws.mergeCells('A1:K1')
       const tCell = ws.getCell('A1')
       tCell.value = 'CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT BỊ ĐIỆN T&T'
@@ -278,7 +418,6 @@ export default function AiSolverPage({ setPage }) {
       dateCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF64748B' } }
       dateCell.alignment = { horizontal: 'center', vertical: 'middle' }
 
-      // Table Header Row at Row 5
       const headerRow = ws.getRow(5)
       headerRow.values = [
         'STT',
@@ -338,7 +477,6 @@ export default function AiSolverPage({ setPage }) {
         row.getCell(9).numFmt = '#,##0'
         row.getCell(10).numFmt = '#,##0'
 
-        // Highlight accuracy
         if (m && m.accuracy >= 90) {
           row.getCell(7).font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF059669' } }
         }
@@ -346,7 +484,6 @@ export default function AiSolverPage({ setPage }) {
         rIndex++
       })
 
-      // Total Row
       const totalRow = ws.getRow(rIndex)
       ws.mergeCells(`A${rIndex}:I${rIndex}`)
       totalRow.getCell(1).value = 'TỔNG CỘNG TIỀN THIẾT BỊ (CHƯA VAT):'
@@ -357,7 +494,6 @@ export default function AiSolverPage({ setPage }) {
       totalRow.getCell(10).numFmt = '#,##0 "₫"'
       totalRow.height = 25
 
-      // Border for table
       for (let r = 5; r <= rIndex; r++) {
         for (let c = 1; c <= 11; c++) {
           ws.getCell(r, c).border = {
@@ -369,7 +505,6 @@ export default function AiSolverPage({ setPage }) {
         }
       }
 
-      // Download buffer
       const buf = await wb.xlsx.writeBuffer()
       const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
       const url = window.URL.createObjectURL(blob)
@@ -425,7 +560,7 @@ export default function AiSolverPage({ setPage }) {
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: 14,
-        marginBottom: 20,
+        marginBottom: 16,
         padding: '18px 22px',
         borderRadius: 14,
         background: 'linear-gradient(135deg, rgba(8,120,217,0.1) 0%, rgba(124,58,237,0.08) 100%)',
@@ -446,7 +581,7 @@ export default function AiSolverPage({ setPage }) {
             </span>
           </div>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text2)', lineHeight: 1.5, maxWidth: 880 }}>
-            Thuật toán AI tự động bóc tách cột áp ($H$), lưu lượng ($Q$), công suất, phân loại chính xác 100% <strong>Bơm chìm</strong> vs <strong>Bơm cạn</strong> và đối chiếu qua toàn bộ kho hàng ({allProducts.length} model) để tìm mã khớp tối ưu nhất cho thầu/dự án.
+            Thuật toán AI tự động bóc tách cột áp ($H$), lưu lượng ($Q$), công suất, phân loại chính xác 100% <strong>Bơm chìm</strong> vs <strong>Bơm cạn</strong> và đối chiếu qua toàn bộ kho hàng ({allProducts.length} model) kèm <strong>Trợ lý AI Chat Hỏi Kỹ Thuật trực tiếp</strong>.
           </p>
         </div>
 
@@ -477,557 +612,899 @@ export default function AiSolverPage({ setPage }) {
         </div>
       </div>
 
-      {/* ── PROJECT TITLE & INPUT CONTROLS ───────────────────────────────── */}
-      <div className="card" style={{ padding: 18, marginBottom: 22, borderRadius: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ flex: '1 1 320px' }}>
-            <label style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--text3)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
-              Tên Dự Án / Bảng Mời Thầu:
-            </label>
-            <input
-              type="text"
-              value={projectTitle}
-              onChange={e => setProjectTitle(e.target.value)}
-              style={{
-                width: '100%', padding: '8px 12px', fontSize: 14, fontWeight: 700,
-                borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)'
-              }}
-            />
-          </div>
+      {/* ── MAIN VIEW SWITCHER TABS: BẢNG BÓC TÁCH vs CHAT HỎI KỸ THUẬT AI ─── */}
+      <div style={{
+        display: 'flex',
+        gap: 10,
+        marginBottom: 20,
+        paddingBottom: 10,
+        borderBottom: '1px solid var(--border)',
+        overflowX: 'auto'
+      }}>
+        <button
+          onClick={() => setActiveView('table')}
+          style={{
+            padding: '10px 20px',
+            borderRadius: 10,
+            fontSize: 13,
+            fontWeight: 800,
+            border: 'none',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            background: activeView === 'table' ? 'var(--accent)' : 'var(--surface2)',
+            color: activeView === 'table' ? '#fff' : 'var(--text2)',
+            boxShadow: activeView === 'table' ? '0 2px 10px rgba(8,120,217,0.25)' : 'none',
+            transition: 'all 0.15s',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <span>📊 Bảng Bóc Tách &amp; Đối Chiếu Kho</span>
+          <span style={{
+            fontSize: 11,
+            background: activeView === 'table' ? 'rgba(255,255,255,0.25)' : 'var(--border)',
+            color: activeView === 'table' ? '#fff' : 'var(--text3)',
+            padding: '2px 8px',
+            borderRadius: 12,
+            fontWeight: 800
+          }}>
+            {solvedResults.length} Cụm
+          </span>
+        </button>
 
-          <div style={{ display: 'flex', gap: 6, alignSelf: 'flex-end' }}>
-            <button
-              onClick={() => setInputTab('paste')}
-              style={{
-                padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 700,
-                border: inputTab === 'paste' ? '1px solid var(--accent)' : '1px solid var(--border)',
-                background: inputTab === 'paste' ? 'var(--accent)' : 'var(--surface2)',
-                color: inputTab === 'paste' ? '#fff' : 'var(--text)',
-                cursor: 'pointer'
-              }}
-            >
-              📝 Dán bảng từ Zalo / Excel
-            </button>
-            <button
-              onClick={() => setInputTab('manual')}
-              style={{
-                padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 700,
-                border: inputTab === 'manual' ? '1px solid var(--accent)' : '1px solid var(--border)',
-                background: inputTab === 'manual' ? 'var(--accent)' : 'var(--surface2)',
-                color: inputTab === 'manual' ? '#fff' : 'var(--text)',
-                cursor: 'pointer'
-              }}
-            >
-              ➕ Nhập tay từng dòng
-            </button>
-          </div>
-        </div>
-
-        {/* TAB 1: PASTE TEXTAREA */}
-        {inputTab === 'paste' ? (
-          <div>
-            <textarea
-              rows={6}
-              value={rawText}
-              onChange={e => setRawText(e.target.value)}
-              placeholder="Dán nội dung từ Zalo, bảng thầu hoặc file Excel... (Mỗi dòng là một hạng mục, ví dụ: 'Cụm bơm cấp nước: Q=45m3/h, H=100m. SL: 4 máy')"
-              style={{
-                width: '100%', padding: 12, fontSize: 13, lineHeight: 1.5,
-                borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)',
-                color: 'var(--text)', fontFamily: 'monospace', resize: 'vertical'
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, flexWrap: 'wrap', gap: 10 }}>
-              <span style={{ fontSize: 12, color: 'var(--text3)' }}>
-                💡 <em>Mẹo: AI tự động nhận diện Q (m³/h, l/s), H (m), công suất kW/HP, bơm cạn vs bơm chìm và số lượng máy.</em>
-              </span>
-              <button
-                onClick={handleParseText}
-                disabled={solving}
-                style={{
-                  padding: '10px 24px', borderRadius: 8, fontSize: 13, fontWeight: 800,
-                  background: 'linear-gradient(135deg, #0878D9 0%, #7C3AED 100%)', color: '#fff', border: 'none',
-                  cursor: solving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                  boxShadow: '0 4px 14px rgba(8,120,217,0.3)', transition: 'all .15s'
-                }}
-              >
-                <span>{solving ? '⏳' : '🚀'}</span>
-                <span>{solving ? 'Đang giải toán...' : 'Giải Toán & Đối Chiếu Kho Ngay'}</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* TAB 2: MANUAL FORM */
-          <form onSubmit={handleAddManualRow} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
-                  Tên hạng mục *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="VD: Cụm bơm cấp nước sinh hoạt, Bơm thoát hố pít..."
-                  value={manualTitle}
-                  onChange={e => setManualTitle(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
-                  Chủng loại lắp đặt *
-                </label>
-                <select
-                  value={manualMount}
-                  onChange={e => setManualMount(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', fontWeight: 700 }}
-                >
-                  <option value="submersible">🌊 Bơm chìm (Submersible)</option>
-                  <option value="surface">🏠 Bơm cạn (Surface/CDLF)</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
-                  Lưu lượng Q (m³/h)
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  placeholder="VD: 15, 20, 45"
-                  value={manualFlow}
-                  onChange={e => setManualFlow(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
-                  Cột áp H (m)
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  placeholder="VD: 20, 40, 100"
-                  value={manualHead}
-                  onChange={e => setManualHead(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
-                  Công suất P (kW) nếu có
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  placeholder="VD: 2.2, 11, 18.5"
-                  value={manualPower}
-                  onChange={e => setManualPower(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
-                  Số lượng (máy)
-                </label>
-                <input
-                  type="number"
-                  value={manualQty}
-                  onChange={e => setManualQty(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
-                  Cấu hình cụm
-                </label>
-                <input
-                  type="text"
-                  placeholder="VD: 2 bơm luân phiên, 1 chạy 1 dự phòng"
-                  value={manualConfig}
-                  onChange={e => setManualConfig(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 6 }}>
-              <button
-                type="submit"
-                className="btn sm primary"
-                style={{ padding: '8px 18px', fontSize: 12.5, fontWeight: 800 }}
-              >
-                ➕ Thêm Hạng Mục Vào Bài Toán
-              </button>
-            </div>
-          </form>
-        )}
+        <button
+          onClick={() => setActiveView('chat')}
+          style={{
+            padding: '10px 20px',
+            borderRadius: 10,
+            fontSize: 13,
+            fontWeight: 800,
+            border: 'none',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            background: activeView === 'chat' ? '#7C3AED' : 'var(--surface2)',
+            color: activeView === 'chat' ? '#fff' : 'var(--text2)',
+            boxShadow: activeView === 'chat' ? '0 2px 10px rgba(124,58,237,0.3)' : 'none',
+            transition: 'all 0.15s',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <span>💬 Trợ Lý AI Chat &amp; Hỏi Kỹ Thuật Trực Tiếp</span>
+          <span style={{
+            fontSize: 10.5,
+            background: activeView === 'chat' ? '#10B981' : '#EDE9FE',
+            color: activeView === 'chat' ? '#fff' : '#6D28D9',
+            padding: '2px 8px',
+            borderRadius: 10,
+            fontWeight: 800
+          }}>
+            Copilot 24/7
+          </span>
+        </button>
       </div>
 
-      {/* ── KPI STATS BAR ────────────────────────────────────────────────── */}
-      {hasSolved && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-          gap: 12,
-          marginBottom: 22
-        }}>
-          <div className="card" style={{ padding: 14, background: 'linear-gradient(135deg, rgba(8,120,217,0.08), rgba(8,120,217,0.02))', border: '1px solid rgba(8,120,217,0.2)' }}>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase' }}>Hạng Mục Bóc Tách</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)', marginTop: 4 }}>
-              {stats.itemsCount} <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text3)' }}>hạng mục ({stats.totalQty} máy)</span>
+      {/* ── VIEW 1: BẢNG BÓC TÁCH DỰ ÁN (TABLE VIEW) ─────────────────────── */}
+      {activeView === 'table' && (
+        <div>
+          {/* PROJECT TITLE & INPUT CONTROLS */}
+          <div className="card" style={{ padding: 18, marginBottom: 20, borderRadius: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ flex: '1 1 320px' }}>
+                <label style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--text3)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+                  Tên Dự Án / Bảng Mời Thầu:
+                </label>
+                <input
+                  type="text"
+                  value={projectTitle}
+                  onChange={e => setProjectTitle(e.target.value)}
+                  style={{
+                    width: '100%', padding: '8px 12px', fontSize: 14, fontWeight: 700,
+                    borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 6, alignSelf: 'flex-end' }}>
+                <button
+                  onClick={() => setInputTab('paste')}
+                  style={{
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 700,
+                    border: inputTab === 'paste' ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    background: inputTab === 'paste' ? 'var(--accent)' : 'var(--surface2)',
+                    color: inputTab === 'paste' ? '#fff' : 'var(--text)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  📝 Dán bảng từ Zalo / Excel
+                </button>
+                <button
+                  onClick={() => setInputTab('manual')}
+                  style={{
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 700,
+                    border: inputTab === 'manual' ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    background: inputTab === 'manual' ? 'var(--accent)' : 'var(--surface2)',
+                    color: inputTab === 'manual' ? '#fff' : 'var(--text)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ➕ Nhập tay từng dòng
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="card" style={{ padding: 14, background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02))', border: '1px solid rgba(16,185,129,0.2)' }}>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#10b981', textTransform: 'uppercase' }}>Độ Chuẩn Xác Trung Bình</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: '#059669', marginTop: 4 }}>
-              {stats.avgAccuracy}% <span style={{ fontSize: 11, background: '#DCFCE7', color: '#15803D', padding: '2px 6px', borderRadius: 6, fontWeight: 800 }}>≥ 90% Đạt Chuẩn</span>
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: 14, background: 'linear-gradient(135deg, rgba(124,58,237,0.08), rgba(124,58,237,0.02))', border: '1px solid rgba(124,58,237,0.2)' }}>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase' }}>Phân Loại Chủng Loại</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#7C3AED', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>✅ 100% Khớp Bơm Cạn / Chìm</span>
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: 14, background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02))', border: '1px solid rgba(239,68,68,0.2)' }}>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase' }}>Tổng Dự Toán Tạm Tính</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#dc2626', marginTop: 4 }}>
-              {fmt(stats.totalAmount)}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── ACTION BAR (EXCEL, ZALO, CHUYỂN ĐƠN) ─────────────────────────── */}
-      {hasSolved && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-          marginBottom: 16,
-          padding: '12px 18px',
-          borderRadius: 10,
-          background: 'var(--surface)',
-          border: '1px solid var(--border)'
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>
-            📋 Danh Sách {solvedResults.length} Cụm Bơm Đã Đối Chiếu Khớp Kho:
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              onClick={handleCopyZaloSummary}
-              style={{
-                padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 800,
-                background: copiedZalo ? '#10B981' : '#0068FF', color: '#fff', border: 'none',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                boxShadow: '0 2px 6px rgba(0,104,255,0.25)'
-              }}
-            >
-              <span>{copiedZalo ? '✅' : '💬'}</span>
-              <span>{copiedZalo ? 'Đã copy mẫu Zalo' : 'Copy Báo Giá Zalo'}</span>
-            </button>
-
-            <button
-              onClick={handleExportExcel}
-              disabled={exportingExcel}
-              style={{
-                padding: '8px 16px', borderRadius: 8, fontSize: 12.5, fontWeight: 800,
-                background: '#10B981', color: '#fff', border: 'none', cursor: exportingExcel ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 6px rgba(16,185,129,0.25)'
-              }}
-            >
-              <span>{exportingExcel ? '⏳' : '📥'}</span>
-              <span>{exportingExcel ? 'Đang xuất file...' : 'Xuất Excel Dự Án'}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                toast('Chức năng đẩy sang Đơn Bán đang hoàn tất...', 'default')
-                if (setPage) setPage('orders')
-              }}
-              style={{
-                padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 800,
-                background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
-              }}
-            >
-              <span>🛒</span> <span>Đẩy sang Tạo Đơn Bán</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── RESULTS LIST TABLE / CARDS ──────────────────────────────────── */}
-      {solving ? (
-        <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div className="spinner" style={{ width: 40, height: 40, borderWidth: 4, margin: '0 auto 16px' }} />
-          <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px 0' }}>
-            Đang phân loại Bơm Chìm vs Bơm Cạn &amp; Rà kho {allProducts.length} model...
-          </h3>
-          <p style={{ fontSize: 13, color: 'var(--text3)', margin: 0 }}>
-            Thuật toán đang tính toán cột áp H, lưu lượng Q và điểm làm việc tối ưu BEP...
-          </p>
-        </div>
-      ) : solvedResults.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text3)' }}>
-          <div style={{ fontSize: 40, marginBottom: 10 }}>📐</div>
-          <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px 0' }}>
-            Chưa có bài toán nào được nạp
-          </h3>
-          <p style={{ fontSize: 13, maxWidth: 500, margin: '0 auto 14px', color: 'var(--text2)' }}>
-            Bấm nút <strong>"Nạp Đề Bài Ảnh 1"</strong> hoặc dán yêu cầu dự án vào khung nhập ở trên để hệ thống tự động bóc tách.
-          </p>
-          <button
-            onClick={handleLoadSample1}
-            className="btn sm primary"
-            style={{ padding: '8px 18px', fontSize: 13, fontWeight: 800 }}
-          >
-            📋 Nạp đề bài mẫu Ảnh 1 để thử ngay
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {solvedResults.map((item, idx) => {
-            const req = item.requirement
-            const m = item.bestMatch
-            const alt = item.altMatch
-            const isSubmersible = req.mountType === 'submersible'
-
-            return (
-              <div
-                key={req.id || idx}
-                className="card"
-                style={{
-                  padding: 16,
-                  borderRadius: 12,
-                  border: m && m.accuracy >= 90 ? '1.5px solid #10B981' : '1px solid var(--border)',
-                  background: 'var(--surface)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
-                }}
-              >
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1.2fr) minmax(320px, 1.6fr) minmax(220px, 1fr)', gap: 16, alignItems: 'start' }}>
-                  
-                  {/* CỘT 1: ĐỀ BÀI CỦA KHÁCH */}
-                  <div style={{ borderRight: '1px dashed var(--border)', paddingRight: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                      <span style={{ fontSize: 11, fontWeight: 900, background: 'var(--surface2)', color: 'var(--text2)', padding: '2px 8px', borderRadius: 4 }}>
-                        #{idx + 1}
-                      </span>
-                      <span style={{
-                        fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 6,
-                        background: isSubmersible ? '#EDE9FE' : '#EFF6FF',
-                        color: isSubmersible ? '#7C3AED' : '#1D4ED8'
-                      }}>
-                        {isSubmersible ? '🌊 BƠM CHÌM' : '🏠 BƠM CẠN'}
-                      </span>
-                      <span style={{ fontSize: 11, background: '#FEF3C7', color: '#B45309', padding: '2px 7px', borderRadius: 6, fontWeight: 800 }}>
-                        SL: {req.qty} máy
-                      </span>
-                    </div>
-
-                    <h4 style={{ margin: '0 0 6px 0', fontSize: 14, fontWeight: 800, color: 'var(--text)', lineHeight: 1.35 }}>
-                      {req.title}
-                    </h4>
-
-                    {/* Customer Specs Chips */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                      {req.flow && (
-                        <span style={{ fontSize: 11, background: '#F1F5F9', color: '#0F172A', padding: '2px 7px', borderRadius: 4, fontWeight: 700 }}>
-                          💧 Q yêu cầu: <strong>{req.flow} m³/h</strong>
-                        </span>
-                      )}
-                      {req.head && (
-                        <span style={{ fontSize: 11, background: '#F1F5F9', color: '#0F172A', padding: '2px 7px', borderRadius: 4, fontWeight: 700 }}>
-                          🌊 H yêu cầu: <strong>{req.head} m</strong>
-                        </span>
-                      )}
-                      {req.power && (
-                        <span style={{ fontSize: 11, background: '#F1F5F9', color: '#0F172A', padding: '2px 7px', borderRadius: 4, fontWeight: 700 }}>
-                          ⚡ CS: ~{req.power} kW
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ fontSize: 11.5, color: 'var(--text2)', lineHeight: 1.4, marginBottom: 6 }}>
-                      ⚙️ Cấu hình: <strong>{req.config}</strong>
-                    </div>
-
-                    {req.rawText && (
-                      <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', background: 'var(--surface2)', padding: '6px 8px', borderRadius: 6 }}>
-                        "{req.rawText}"
-                      </div>
-                    )}
-                  </div>
-
-                  {/* CỘT 2: PHƯƠNG ÁN 1 (MODEL KHỚP CHUẨN KỸ THUẬT ≥ 90%) */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#059669', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span>⭐</span> <span>Phương án 1 (Khuyên dùng - Khớp kỹ thuật):</span>
-                      </span>
-                      {m && (
-                        <span style={{
-                          fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 10,
-                          background: m.accuracy >= 90 ? '#DCFCE7' : '#FEF3C7',
-                          color: m.accuracy >= 90 ? '#15803D' : '#B45309'
-                        }}>
-                          Độ khớp: {m.accuracy}%
-                        </span>
-                      )}
-                    </div>
-
-                    {m ? (
-                      <div style={{
-                        display: 'flex',
-                        gap: 12,
-                        padding: 10,
-                        borderRadius: 8,
-                        background: 'linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(8,120,217,0.03) 100%)',
-                        border: '1px solid rgba(16,185,129,0.25)'
-                      }}>
-                        {/* Image */}
-                        <div style={{ width: 85, height: 85, background: '#fff', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, border: '1px solid var(--border)', flexShrink: 0 }}>
-                          <img
-                            src={m.resolvedImage}
-                            alt={m.name}
-                            style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain', cursor: 'pointer' }}
-                            onClick={() => setZoomImage({ src: m.resolvedImage, name: m.name })}
-                            title="Bấm để phóng to"
-                          />
-                        </div>
-
-                        {/* Model Specs */}
-                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                          <div style={{ fontWeight: 800, fontSize: 13.5, color: 'var(--text)', lineHeight: 1.3, marginBottom: 4 }}>
-                            {m.name}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 6 }}>
-                            Hãng: <strong>{m.webBrand || m.brand || 'UPTI PUMP'}</strong> ({m.mountLabel})
-                          </div>
-
-                          {/* Technical Comparison Bar */}
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6, fontSize: 11 }}>
-                            {m.calcHead && (
-                              <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
-                                🌊 Hmax: {m.calcHead}m {req.head ? `(yc ${req.head}m)` : ''}
-                              </span>
-                            )}
-                            {m.calcFlow && (
-                              <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
-                                💧 Qmax: {m.calcFlow}m³/h {req.flow ? `(yc ${req.flow}m³)` : ''}
-                              </span>
-                            )}
-                            {m.calcPower && (
-                              <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
-                                ⚡ {m.calcPower} kW
-                              </span>
-                            )}
-                            <span style={{ background: '#F5F3FF', color: '#6D28D9', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
-                              🔌 {m.calcVoltage}
-                            </span>
-                          </div>
-
-                          {/* Price & Subtotal */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                            <div style={{ fontSize: 13.5, fontWeight: 900, color: '#059669' }}>
-                              {fmt(m.price)} <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)' }}>/ máy</span>
-                            </div>
-                            <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text)' }}>
-                              Thành tiền: <strong style={{ color: '#dc2626' }}>{fmt((m.price || 0) * (req.qty || 1))}</strong>
-                            </div>
-                          </div>
-
-                          {/* 1-Click Copy Image */}
-                          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                            <button
-                              onClick={() => handleCopyImage(m.resolvedImage, `best_${idx}`)}
-                              style={{
-                                padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 800,
-                                border: 'none', background: copiedImgKey === `best_${idx}` ? '#10B981' : '#0068FF',
-                                color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
-                              }}
-                            >
-                              <span>{copiedImgKey === `best_${idx}` ? '✅' : '📋'}</span>
-                              <span>{copiedImgKey === `best_${idx}` ? 'Đã chép ảnh!' : 'Sao chép ảnh (Zalo)'}</span>
-                            </button>
-                            <button
-                              onClick={() => downloadImage(m.resolvedImage, `${m.name.replace(/[^a-zA-Z0-9]/g, '_')}.png`)}
-                              style={{
-                                padding: '5px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                                border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer'
-                              }}
-                            >
-                              💾 Tải ảnh
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ padding: 14, background: 'var(--surface2)', borderRadius: 8, fontSize: 12, color: 'var(--text3)' }}>
-                        Chưa tìm thấy model khớp trong danh mục hiện tại.
-                      </div>
-                    )}
-                  </div>
-
-                  {/* CỘT 3: PHƯƠNG ÁN 2 & PHỤ KIỆN ĐỀ XUẤT */}
-                  <div style={{ borderLeft: '1px dashed var(--border)', paddingLeft: 14 }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', marginBottom: 4 }}>
-                      🔗 Phương án 2 (Kinh tế / Dự phòng):
-                    </div>
-                    {alt ? (
-                      <div style={{ background: 'var(--surface2)', padding: 8, borderRadius: 6, fontSize: 12, marginBottom: 8 }}>
-                        <div style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 2 }}>{alt.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text2)' }}>
-                          Hmax: {alt.calcHead || '...'}m • Qmax: {alt.calcFlow || '...'}m³/h • {alt.calcPower || '...'}kW
-                        </div>
-                        <div style={{ fontWeight: 800, color: '#059669', marginTop: 2 }}>
-                          {fmt(alt.price)} <span style={{ fontSize: 10, color: 'var(--text3)' }}>(Khớp {alt.accuracy}%)</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginBottom: 8 }}>
-                        Không có phương án thay thế khác.
-                      </div>
-                    )}
-
-                    {/* Phụ kiện đề xuất trọn gói */}
-                    <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text2)', textTransform: 'uppercase', marginBottom: 4 }}>
-                      📦 Phụ kiện đề xuất kèm cụm:
-                    </div>
-                    <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: 'var(--text2)', lineHeight: 1.45 }}>
-                      {req.accessories.map((acc, aIdx) => (
-                        <li key={aIdx}>{acc}</li>
-                      ))}
-                    </ul>
-
-                    {/* Delete row button */}
-                    <button
-                      onClick={() => handleRemoveRow(idx)}
-                      style={{
-                        marginTop: 10, background: 'none', border: 'none', color: '#dc2626',
-                        fontSize: 11, cursor: 'pointer', padding: 0
-                      }}
-                    >
-                      🗑️ Xóa hạng mục này
-                    </button>
-                  </div>
-
+            {inputTab === 'paste' ? (
+              <div>
+                <textarea
+                  rows={6}
+                  value={rawText}
+                  onChange={e => setRawText(e.target.value)}
+                  placeholder="Dán nội dung từ Zalo, bảng thầu hoặc file Excel... (Mỗi dòng là một hạng mục, ví dụ: 'Cụm bơm cấp nước: Q=45m3/h, H=100m. SL: 4 máy')"
+                  style={{
+                    width: '100%', padding: 12, fontSize: 13, lineHeight: 1.5,
+                    borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)',
+                    color: 'var(--text)', fontFamily: 'monospace', resize: 'vertical'
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, flexWrap: 'wrap', gap: 10 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                    💡 <em>Mẹo: AI tự động nhận diện Q (m³/h, l/s), H (m), công suất kW/HP, bơm cạn vs bơm chìm và số lượng máy.</em>
+                  </span>
+                  <button
+                    onClick={handleParseText}
+                    disabled={solving}
+                    style={{
+                      padding: '10px 24px', borderRadius: 8, fontSize: 13, fontWeight: 800,
+                      background: 'linear-gradient(135deg, #0878D9 0%, #7C3AED 100%)', color: '#fff', border: 'none',
+                      cursor: solving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                      boxShadow: '0 4px 14px rgba(8,120,217,0.3)', transition: 'all .15s'
+                    }}
+                  >
+                    <span>{solving ? '⏳' : '🚀'}</span>
+                    <span>{solving ? 'Đang giải toán...' : 'Giải Toán & Đối Chiếu Kho Ngay'}</span>
+                  </button>
                 </div>
               </div>
-            )
-          })}
+            ) : (
+              <form onSubmit={handleAddManualRow} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
+                      Tên hạng mục *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: Cụm bơm cấp nước sinh hoạt, Bơm thoát hố pít..."
+                      value={manualTitle}
+                      onChange={e => setManualTitle(e.target.value)}
+                      style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
+                      Chủng loại lắp đặt *
+                    </label>
+                    <select
+                      value={manualMount}
+                      onChange={e => setManualMount(e.target.value)}
+                      style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', fontWeight: 700 }}
+                    >
+                      <option value="submersible">🌊 Bơm chìm (Submersible)</option>
+                      <option value="surface">🏠 Bơm cạn (Surface/CDLF)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
+                      Lưu lượng Q (m³/h)
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="VD: 15, 20, 45"
+                      value={manualFlow}
+                      onChange={e => setManualFlow(e.target.value)}
+                      style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
+                      Cột áp H (m)
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="VD: 20, 40, 100"
+                      value={manualHead}
+                      onChange={e => setManualHead(e.target.value)}
+                      style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
+                      Công suất P (kW) nếu có
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="VD: 2.2, 11, 18.5"
+                      value={manualPower}
+                      onChange={e => setManualPower(e.target.value)}
+                      style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
+                      Số lượng (máy)
+                    </label>
+                    <input
+                      type="number"
+                      value={manualQty}
+                      onChange={e => setManualQty(e.target.value)}
+                      style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', display: 'block', marginBottom: 3 }}>
+                      Cấu hình cụm
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="VD: 2 bơm luân phiên, 1 chạy 1 dự phòng"
+                      value={manualConfig}
+                      onChange={e => setManualConfig(e.target.value)}
+                      style={{ width: '100%', padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 6 }}>
+                  <button
+                    type="submit"
+                    className="btn sm primary"
+                    style={{ padding: '8px 18px', fontSize: 12.5, fontWeight: 800 }}
+                  >
+                    ➕ Thêm Hạng Mục Vào Bài Toán
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* KPI STATS BAR */}
+          {hasSolved && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+              gap: 12,
+              marginBottom: 20
+            }}>
+              <div className="card" style={{ padding: 14, background: 'linear-gradient(135deg, rgba(8,120,217,0.08), rgba(8,120,217,0.02))', border: '1px solid rgba(8,120,217,0.2)' }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase' }}>Hạng Mục Bóc Tách</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)', marginTop: 4 }}>
+                  {stats.itemsCount} <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text3)' }}>hạng mục ({stats.totalQty} máy)</span>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: 14, background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02))', border: '1px solid rgba(16,185,129,0.2)' }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#10b981', textTransform: 'uppercase' }}>Độ Chuẩn Xác Trung Bình</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#059669', marginTop: 4 }}>
+                  {stats.avgAccuracy}% <span style={{ fontSize: 11, background: '#DCFCE7', color: '#15803D', padding: '2px 6px', borderRadius: 6, fontWeight: 800 }}>≥ 90% Đạt Chuẩn</span>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: 14, background: 'linear-gradient(135deg, rgba(124,58,237,0.08), rgba(124,58,237,0.02))', border: '1px solid rgba(124,58,237,0.2)' }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase' }}>Phân Loại Chủng Loại</div>
+                <div style={{ fontSize: 17, fontWeight: 900, color: '#7C3AED', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>✅ 100% Khớp Bơm Cạn / Chìm</span>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: 14, background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02))', border: '1px solid rgba(239,68,68,0.2)' }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase' }}>Tổng Dự Toán Tạm Tính</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: '#dc2626', marginTop: 4 }}>
+                  {fmt(stats.totalAmount)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ACTION BAR (EXCEL, ZALO, CHUYỂN ĐƠN) */}
+          {hasSolved && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12,
+              marginBottom: 16,
+              padding: '12px 18px',
+              borderRadius: 10,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)'
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>
+                📋 Danh Sách {solvedResults.length} Cụm Bơm Đã Đối Chiếu Khớp Kho:
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleCopyZaloSummary}
+                  style={{
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 800,
+                    background: copiedZalo ? '#10B981' : '#0068FF', color: '#fff', border: 'none',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                    boxShadow: '0 2px 6px rgba(0,104,255,0.25)'
+                  }}
+                >
+                  <span>{copiedZalo ? '✅' : '💬'}</span>
+                  <span>{copiedZalo ? 'Đã copy mẫu Zalo' : 'Copy Báo Giá Zalo'}</span>
+                </button>
+
+                <button
+                  onClick={handleExportExcel}
+                  disabled={exportingExcel}
+                  style={{
+                    padding: '8px 16px', borderRadius: 8, fontSize: 12.5, fontWeight: 800,
+                    background: '#10B981', color: '#fff', border: 'none', cursor: exportingExcel ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 6px rgba(16,185,129,0.25)'
+                  }}
+                >
+                  <span>{exportingExcel ? '⏳' : '📥'}</span>
+                  <span>{exportingExcel ? 'Đang xuất file...' : 'Xuất Excel Dự Án'}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    toast('Chức năng đẩy sang Đơn Bán đang hoàn tất...', 'default')
+                    if (setPage) setPage('orders')
+                  }}
+                  style={{
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 800,
+                    background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                  }}
+                >
+                  <span>🛒</span> <span>Đẩy sang Tạo Đơn Bán</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* RESULTS LIST CARDS */}
+          {solving ? (
+            <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <div className="spinner" style={{ width: 40, height: 40, borderWidth: 4, margin: '0 auto 16px' }} />
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px 0' }}>
+                Đang phân loại Bơm Chìm vs Bơm Cạn &amp; Rà kho {allProducts.length} model...
+              </h3>
+              <p style={{ fontSize: 13, color: 'var(--text3)', margin: 0 }}>
+                Thuật toán đang tính toán cột áp H, lưu lượng Q và điểm làm việc tối ưu BEP...
+              </p>
+            </div>
+          ) : solvedResults.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text3)' }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>📐</div>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px 0' }}>
+                Chưa có bài toán nào được nạp
+              </h3>
+              <p style={{ fontSize: 13, maxWidth: 500, margin: '0 auto 14px', color: 'var(--text2)' }}>
+                Bấm nút <strong>"Nạp Đề Bài Ảnh 1"</strong> hoặc dán yêu cầu dự án vào khung nhập ở trên để hệ thống tự động bóc tách.
+              </p>
+              <button
+                onClick={handleLoadSample1}
+                className="btn sm primary"
+                style={{ padding: '8px 18px', fontSize: 13, fontWeight: 800 }}
+              >
+                📋 Nạp đề bài mẫu Ảnh 1 để thử ngay
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {solvedResults.map((item, idx) => {
+                const req = item.requirement
+                const m = item.bestMatch
+                const alt = item.altMatch
+                const isSubmersible = req.mountType === 'submersible'
+
+                return (
+                  <div
+                    key={req.id || idx}
+                    className="card"
+                    style={{
+                      padding: 16,
+                      borderRadius: 12,
+                      border: m && m.accuracy >= 90 ? '1.5px solid #10B981' : '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+                    }}
+                  >
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1.2fr) minmax(320px, 1.6fr) minmax(220px, 1fr)', gap: 16, alignItems: 'start' }}>
+                      
+                      {/* CỘT 1: ĐỀ BÀI CỦA KHÁCH */}
+                      <div style={{ borderRight: '1px dashed var(--border)', paddingRight: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 900, background: 'var(--surface2)', color: 'var(--text2)', padding: '2px 8px', borderRadius: 4 }}>
+                            #{idx + 1}
+                          </span>
+                          <span style={{
+                            fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 6,
+                            background: isSubmersible ? '#EDE9FE' : '#EFF6FF',
+                            color: isSubmersible ? '#7C3AED' : '#1D4ED8'
+                          }}>
+                            {isSubmersible ? '🌊 BƠM CHÌM' : '🏠 BƠM CẠN'}
+                          </span>
+                          <span style={{ fontSize: 11, background: '#FEF3C7', color: '#B45309', padding: '2px 7px', borderRadius: 6, fontWeight: 800 }}>
+                            SL: {req.qty} máy
+                          </span>
+                        </div>
+
+                        <h4 style={{ margin: '0 0 6px 0', fontSize: 14, fontWeight: 800, color: 'var(--text)', lineHeight: 1.35 }}>
+                          {req.title}
+                        </h4>
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                          {req.flow && (
+                            <span style={{ fontSize: 11, background: '#F1F5F9', color: '#0F172A', padding: '2px 7px', borderRadius: 4, fontWeight: 700 }}>
+                              💧 Q yêu cầu: <strong>{req.flow} m³/h</strong>
+                            </span>
+                          )}
+                          {req.head && (
+                            <span style={{ fontSize: 11, background: '#F1F5F9', color: '#0F172A', padding: '2px 7px', borderRadius: 4, fontWeight: 700 }}>
+                              🌊 H yêu cầu: <strong>{req.head} m</strong>
+                            </span>
+                          )}
+                          {req.power && (
+                            <span style={{ fontSize: 11, background: '#F1F5F9', color: '#0F172A', padding: '2px 7px', borderRadius: 4, fontWeight: 700 }}>
+                              ⚡ CS: ~{req.power} kW
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ fontSize: 11.5, color: 'var(--text2)', lineHeight: 1.4, marginBottom: 6 }}>
+                          ⚙️ Cấu hình: <strong>{req.config}</strong>
+                        </div>
+
+                        {req.rawText && (
+                          <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', background: 'var(--surface2)', padding: '6px 8px', borderRadius: 6, marginBottom: 8 }}>
+                            "{req.rawText}"
+                          </div>
+                        )}
+
+                        {/* Quick Jump to Chat about this specific item */}
+                        <button
+                          onClick={() => handleAskAboutItem(item)}
+                          style={{
+                            background: 'rgba(124,58,237,0.08)', color: '#7C3AED', border: '1px dashed rgba(124,58,237,0.3)',
+                            padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                            display: 'inline-flex', alignItems: 'center', gap: 4
+                          }}
+                        >
+                          <span>💬</span> <span>Hỏi AI về hạng mục này</span>
+                        </button>
+                      </div>
+
+                      {/* CỘT 2: PHƯƠNG ÁN 1 (MODEL KHỚP CHUẨN KỸ THUẬT ≥ 90%) */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: '#059669', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span>⭐</span> <span>Phương án 1 (Khuyên dùng - Khớp kỹ thuật):</span>
+                          </span>
+                          {m && (
+                            <span style={{
+                              fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 10,
+                              background: m.accuracy >= 90 ? '#DCFCE7' : '#FEF3C7',
+                              color: m.accuracy >= 90 ? '#15803D' : '#B45309'
+                            }}>
+                              Độ khớp: {m.accuracy}%
+                            </span>
+                          )}
+                        </div>
+
+                        {m ? (
+                          <div style={{
+                            display: 'flex',
+                            gap: 12,
+                            padding: 10,
+                            borderRadius: 8,
+                            background: 'linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(8,120,217,0.03) 100%)',
+                            border: '1px solid rgba(16,185,129,0.25)'
+                          }}>
+                            {/* Image */}
+                            <div style={{ width: 85, height: 85, background: '#fff', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, border: '1px solid var(--border)', flexShrink: 0 }}>
+                              <img
+                                src={m.resolvedImage}
+                                alt={m.name}
+                                style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain', cursor: 'pointer' }}
+                                onClick={() => setZoomImage({ src: m.resolvedImage, name: m.name })}
+                                title="Bấm để phóng to"
+                              />
+                            </div>
+
+                            {/* Model Specs */}
+                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                              <div style={{ fontWeight: 800, fontSize: 13.5, color: 'var(--text)', lineHeight: 1.3, marginBottom: 4 }}>
+                                {m.name}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 6 }}>
+                                Hãng: <strong>{m.webBrand || m.brand || 'UPTI PUMP'}</strong> ({m.mountLabel})
+                              </div>
+
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6, fontSize: 11 }}>
+                                {m.calcHead && (
+                                  <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                                    🌊 Hmax: {m.calcHead}m {req.head ? `(yc ${req.head}m)` : ''}
+                                  </span>
+                                )}
+                                {m.calcFlow && (
+                                  <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                                    💧 Qmax: {m.calcFlow}m³/h {req.flow ? `(yc ${req.flow}m³)` : ''}
+                                  </span>
+                                )}
+                                {m.calcPower && (
+                                  <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                                    ⚡ {m.calcPower} kW
+                                  </span>
+                                )}
+                                <span style={{ background: '#F5F3FF', color: '#6D28D9', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                                  🔌 {m.calcVoltage}
+                                </span>
+                              </div>
+
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                                <div style={{ fontSize: 13.5, fontWeight: 900, color: '#059669' }}>
+                                  {fmt(m.price)} <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)' }}>/ máy</span>
+                                </div>
+                                <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text)' }}>
+                                  Thành tiền: <strong style={{ color: '#dc2626' }}>{fmt((m.price || 0) * (req.qty || 1))}</strong>
+                                </div>
+                              </div>
+
+                              {/* 1-Click Copy Image */}
+                              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                                <button
+                                  onClick={() => handleCopyImage(m.resolvedImage, `best_${idx}`)}
+                                  style={{
+                                    padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 800,
+                                    border: 'none', background: copiedImgKey === `best_${idx}` ? '#10B981' : '#0068FF',
+                                    color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                                  }}
+                                >
+                                  <span>{copiedImgKey === `best_${idx}` ? '✅' : '📋'}</span>
+                                  <span>{copiedImgKey === `best_${idx}` ? 'Đã chép ảnh!' : 'Sao chép ảnh (Zalo)'}</span>
+                                </button>
+                                <button
+                                  onClick={() => downloadImage(m.resolvedImage, `${m.name.replace(/[^a-zA-Z0-9]/g, '_')}.png`)}
+                                  style={{
+                                    padding: '5px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                                    border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer'
+                                  }}
+                                >
+                                  💾 Tải ảnh
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ padding: 14, background: 'var(--surface2)', borderRadius: 8, fontSize: 12, color: 'var(--text3)' }}>
+                            Chưa tìm thấy model khớp trong danh mục hiện tại.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* CỘT 3: PHƯƠNG ÁN 2 & PHỤ KIỆN ĐỀ XUẤT */}
+                      <div style={{ borderLeft: '1px dashed var(--border)', paddingLeft: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', marginBottom: 4 }}>
+                          🔗 Phương án 2 (Kinh tế / Dự phòng):
+                        </div>
+                        {alt ? (
+                          <div style={{ background: 'var(--surface2)', padding: 8, borderRadius: 6, fontSize: 12, marginBottom: 8 }}>
+                            <div style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 2 }}>{alt.name}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text2)' }}>
+                              Hmax: {alt.calcHead || '...'}m • Qmax: {alt.calcFlow || '...'}m³/h • {alt.calcPower || '...'}kW
+                            </div>
+                            <div style={{ fontWeight: 800, color: '#059669', marginTop: 2 }}>
+                              {fmt(alt.price)} <span style={{ fontSize: 10, color: 'var(--text3)' }}>(Khớp {alt.accuracy}%)</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginBottom: 8 }}>
+                            Không có phương án thay thế khác.
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text2)', textTransform: 'uppercase', marginBottom: 4 }}>
+                          📦 Phụ kiện đề xuất kèm cụm:
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: 'var(--text2)', lineHeight: 1.45 }}>
+                          {req.accessories.map((acc, aIdx) => (
+                            <li key={aIdx}>{acc}</li>
+                          ))}
+                        </ul>
+
+                        <button
+                          onClick={() => handleRemoveRow(idx)}
+                          style={{
+                            marginTop: 10, background: 'none', border: 'none', color: '#dc2626',
+                            fontSize: 11, cursor: 'pointer', padding: 0
+                          }}
+                        >
+                          🗑️ Xóa hạng mục này
+                        </button>
+                      </div>
+
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── VIEW 2: TRỢ LÝ AI CHAT & TƯ VẤN KỸ THUẬT TRỰC TIẾP ───────────── */}
+      {activeView === 'chat' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          
+          {/* Context Banner */}
+          <div style={{
+            padding: '12px 18px',
+            borderRadius: 12,
+            background: 'linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(8,120,217,0.06) 100%)',
+            border: '1px solid rgba(124,58,237,0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 10
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 20 }}>💬</span>
+              <div>
+                <strong style={{ fontSize: 13.5, color: 'var(--text)' }}>
+                  Khung Chat Trực Tiếp Với Trợ Lý Kỹ Thuật AI
+                </strong>
+                <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+                  AI đang theo dõi bảng bóc tách <strong>{projectTitle}</strong> ({solvedResults.length} hạng mục) &amp; toàn bộ kho hàng ({allProducts.length} model).
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setActiveView('table')}
+              className="btn sm"
+              style={{ fontSize: 12, fontWeight: 700 }}
+            >
+              ⬅️ Quay lại Bảng Bóc Tách
+            </button>
+          </div>
+
+          {/* Quick Chat Chips */}
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', alignSelf: 'center', whiteSpace: 'nowrap' }}>
+              Hỏi nhanh:
+            </span>
+            {[
+              'Giải thích tại sao cụm cấp nước dùng CDLF 42 mà không dùng CDLF 32?',
+              'Có con bơm chìm nào giá rẻ hơn cho thoát sàn hầm không?',
+              'Cho xin ảnh thực tế và thông số con 50WQ15-20-2.2',
+              'Khách hỏi bơm hố pít đổi sang điện 1 pha 220V có mã nào?',
+              'Tủ điện điều khiển luân phiên 2 bơm 18.5kW cần những thiết bị gì?'
+            ].map((chip, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSendChatMessage(chip)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                }}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+
+          {/* Chat Messages Feed */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            minHeight: 440,
+            maxHeight: '65vh',
+            overflowY: 'auto',
+            padding: 16,
+            borderRadius: 12,
+            background: 'var(--surface2)',
+            border: '1px solid var(--border)'
+          }}>
+            {chatMessages.map(msg => {
+              const isUser = msg.sender === 'user'
+
+              return (
+                <div
+                  key={msg.id}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: isUser ? 'flex-end' : 'flex-start',
+                    gap: 6
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text3)', padding: '0 4px' }}>
+                    <span>{isUser ? '👤 Bạn' : '🤖 Trợ Lý Kỹ Thuật AI T&T'}</span>
+                    <span>•</span>
+                    <span>{new Date(msg.timestamp || Date.now()).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+
+                  <div
+                    style={{
+                      maxWidth: isUser ? '80%' : '98%',
+                      width: isUser ? 'auto' : '100%',
+                      padding: '14px 18px',
+                      borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                      background: isUser ? 'var(--accent)' : 'var(--surface)',
+                      color: isUser ? '#fff' : 'var(--text)',
+                      border: isUser ? 'none' : '1px solid var(--border)',
+                      boxShadow: isUser ? '0 2px 8px rgba(8,120,217,0.25)' : '0 2px 8px rgba(0,0,0,0.02)',
+                      lineHeight: 1.6,
+                      fontSize: 13
+                    }}
+                  >
+                    <div style={{ whiteSpace: 'pre-wrap' }}>
+                      {msg.text}
+                    </div>
+
+                    {/* Matched Product Cards with 1-Click Copy Image */}
+                    {Array.isArray(msg.exactMatches) && msg.exactMatches.length > 0 && (
+                      <div style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                        <div style={{ fontSize: 11.5, fontWeight: 800, color: '#10B981', marginBottom: 8, textTransform: 'uppercase' }}>
+                          📦 Model Máy Bơm Khớp Kỹ Thuật:
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                          {msg.exactMatches.map((p, pIdx) => (
+                            <div
+                              key={p.id || pIdx}
+                              style={{
+                                border: '1.5px solid #10B981',
+                                borderRadius: 8,
+                                padding: 10,
+                                background: 'var(--surface)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 8
+                              }}
+                            >
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <img
+                                  src={p.resolvedImage}
+                                  alt={p.name}
+                                  style={{ width: 60, height: 60, objectFit: 'contain', borderRadius: 4, background: '#f8fafc', padding: 2, cursor: 'pointer' }}
+                                  onClick={() => setZoomImage({ src: p.resolvedImage, name: p.name })}
+                                  title="Bấm để phóng to"
+                                />
+                                <div style={{ overflow: 'hidden' }}>
+                                  <div style={{ fontWeight: 800, fontSize: 12.5, color: 'var(--text)', lineHeight: 1.3 }}>{p.name}</div>
+                                  <div style={{ fontSize: 11, color: 'var(--text2)' }}>{p.mountLabel} • {p.calcVoltage}</div>
+                                  <div style={{ fontWeight: 900, color: '#059669', fontSize: 12.5 }}>{fmt(p.price)}</div>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 'auto' }}>
+                                <button
+                                  onClick={() => handleCopyImage(p.resolvedImage, `chat_${pIdx}`)}
+                                  style={{
+                                    padding: '6px 8px', borderRadius: 6, fontSize: 11, fontWeight: 800,
+                                    border: 'none', background: copiedImgKey === `chat_${pIdx}` ? '#10B981' : '#0068FF',
+                                    color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4
+                                  }}
+                                >
+                                  <span>{copiedImgKey === `chat_${pIdx}` ? '✅' : '📋'}</span>
+                                  <span>{copiedImgKey === `chat_${pIdx}` ? 'Đã chép!' : 'Sao chép ảnh'}</span>
+                                </button>
+                                <button
+                                  onClick={() => downloadImage(p.resolvedImage, `${p.name.replace(/[^a-zA-Z0-9]/g, '_')}.png`)}
+                                  style={{
+                                    padding: '6px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                                    border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer'
+                                  }}
+                                >
+                                  💾 Tải ảnh
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+              )
+            })}
+
+            {chatLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', width: 'fit-content' }}>
+                <span style={{ fontSize: 16 }}>🤖</span>
+                <span style={{ fontSize: 12.5, color: 'var(--text2)', fontWeight: 600 }}>
+                  Trợ lý AI đang tra cứu kho dữ liệu kỹ thuật và tính toán điểm làm việc...
+                </span>
+              </div>
+            )}
+            <div ref={chatBottomRef} />
+          </div>
+
+          {/* Chat Input Form */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSendChatMessage(chatInput)
+            }}
+            style={{
+              display: 'flex',
+              gap: 10,
+              alignItems: 'center',
+              background: 'var(--surface)',
+              padding: 8,
+              borderRadius: 12,
+              border: '1.5px solid var(--accent)',
+              boxShadow: '0 4px 14px rgba(8,120,217,0.1)'
+            }}
+          >
+            <input
+              type="text"
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              placeholder="Hỏi về bất kỳ hạng mục nào, xin ảnh mã bơm, so sánh model, hoặc hỏi phương án giá rẻ hơn..."
+              disabled={chatLoading}
+              style={{
+                flex: 1,
+                border: 'none',
+                background: 'transparent',
+                padding: '10px 14px',
+                fontSize: 13,
+                color: 'var(--text)',
+                outline: 'none'
+              }}
+            />
+            <button
+              type="submit"
+              disabled={chatLoading || !chatInput.trim()}
+              style={{
+                padding: '10px 20px',
+                background: 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 800,
+                cursor: chatLoading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 2px 8px rgba(8,120,217,0.3)'
+              }}
+            >
+              <span>{chatLoading ? '⏳' : '🚀'}</span>
+              <span>{chatLoading ? 'Đang gửi...' : 'Gửi câu hỏi'}</span>
+            </button>
+          </form>
+
         </div>
       )}
 

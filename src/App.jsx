@@ -17,6 +17,7 @@ import TechnicalDossiersPage from './pages/TechnicalDossiersPage'
 import RevenuePage from './pages/RevenuePage'
 import BusPage from './pages/BusPage'
 import AccountPage from './pages/AccountPage'
+import AiSolverPage from './pages/AiSolverPage'
 import Spotlight from './components/Spotlight'
 import UpdateBanner from './components/UpdateBanner'
 import PwaUpdateBanner from './components/PwaUpdateBanner'
@@ -105,6 +106,7 @@ function AppContent() {
     'lists':        <PriceListsPage spotlightTarget={spotlightTarget} clearSpotlightTarget={() => setSpotlightTarget(null)}/>,
     'my-prices':    <MyPricesPage/>,
     'orders':       <OrdersPage/>,
+    'ai-solver':    <AiSolverPage setPage={setPage}/>,
     'cost-prices':  <CostPricesPage/>,
     'inventory':    <InventoryPage/>,
     'catalog':      <CatalogPage/>,

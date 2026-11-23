@@ -2675,6 +2675,16 @@ export default function WebCatalog() {
     setChatInput('')
     setChatLoading(true)
 
+    // Tự động nhận diện số điện thoại khách để lại trong tin nhắn AI để lưu Lead
+    const phoneMatch = msgText.match(/(?:0|\+84)[3|5|7|8|9][0-9]{8}\b/)
+    if (phoneMatch) {
+      saveWebLead({
+        phone: phoneMatch[0],
+        note: msgText,
+        source: 'ai-chat-live'
+      }).catch(() => {})
+    }
+
     // Add temporary AI placeholder
     const aiPlaceholder = { sender: 'ai', text: '...', isLoading: true }
     setChatMessages(prev => [...prev, aiPlaceholder])
@@ -2748,12 +2758,20 @@ export default function WebCatalog() {
     }
   }
 
-  const handleSendToZalo = () => {
+  const handleSendToZalo = async () => {
     if (!custName.trim() || !custPhone.trim()) {
       alert('Vui lòng điền đủ Họ tên và SĐT để chúng tôi gọi điện tư vấn!')
       return
     }
     const reqText = customNeedText || (selectedNeed === 'day-cao' ? 'Bơm cấp nước đẩy cao' : 'Bơm chìm nước thải/sục khí')
+    try {
+      saveWebLead({
+        phone: custPhone,
+        name: custName,
+        note: reqText,
+        source: 'ai-consultation'
+      }).catch(() => {})
+    } catch {}
     const message = `Khách hàng: ${custName}\nSĐT: ${custPhone}\nYêu cầu tư vấn: ${reqText}\nPhản hồi AI tư vấn: ${aiResponseText}`
     window.open(`https://zalo.me/0984273806?text=${encodeURIComponent(message)}`, '_blank')
   }

@@ -415,6 +415,88 @@ export default function WebManagePage({ initialTab = 'products', onTabChange }) 
   const [leadNoteText, setLeadNoteText] = useState('')
   const [savingLeadNote, setSavingLeadNote] = useState(false)
   const [copiedPhoneId, setCopiedPhoneId] = useState(null)
+  const [selectedLeadForAi, setSelectedLeadForAi] = useState(null)
+  const [showAiConfigModal, setShowAiConfigModal] = useState(false)
+  const [showCreateLeadModal, setShowCreateLeadModal] = useState(false)
+  const [newLeadForm, setNewLeadForm] = useState({ phone: '', name: '', note: '', source: 'hotline' })
+  const [savingNewLead, setSavingNewLead] = useState(false)
+  const [copiedZaloMsg, setCopiedZaloMsg] = useState(false)
+  const [aiEnabled, setAiEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('tt_ai_web_enabled') !== 'false'
+    } catch {
+      return true
+    }
+  })
+
+  // Hàm AI phân tích thông số kỹ thuật (Cột áp, Lưu lượng, Công suất, Điện áp) & gợi ý model T&T
+  const parseCustomerInquiry = (inquiryText) => {
+    const t = (inquiryText || '').toLowerCase()
+    const headMatch = t.match(/(\d+(?:[.,]\d+)?)\s*(?:m|mét|met)/i)
+    const head = headMatch ? parseFloat(headMatch[1].replace(',', '.')) : null
+
+    const flowMatch = t.match(/(\d+(?:[.,]\d+)?)\s*(?:m3|khối|khoi|m³)/i)
+    const flow = flowMatch ? parseFloat(flowMatch[1].replace(',', '.')) : null
+
+    const powerMatch = t.match(/(\d+(?:[.,]\d+)?)\s*(?:kw|hp|ngựa|ngua)/i)
+    let power = powerMatch ? parseFloat(powerMatch[1].replace(',', '.')) : null
+    if (powerMatch && (powerMatch[0].toLowerCase().includes('hp') || powerMatch[0].toLowerCase().includes('ngựa') || powerMatch[0].toLowerCase().includes('ngua'))) {
+      power = Number((power * 0.7457).toFixed(1))
+    }
+
+    const is3Phase = t.includes('3 pha') || t.includes('380v') || t.includes('380')
+    const is1Phase = t.includes('1 pha') || t.includes('220v') || t.includes('gia đình') || t.includes('dân dụng')
+    const voltage = is3Phase ? '380V (3 pha)' : is1Phase ? '220V (1 pha)' : '220V / 380V'
+
+    let pumpType = 'Máy bơm chuyên dụng'
+    if (t.includes('thải') || t.includes('hố móng') || t.includes('bùn') || t.includes('chăn nuôi') || t.includes('rác')) {
+      pumpType = 'Bơm chìm nước thải cánh cắt / gang'
+    } else if (t.includes('giếng') || t.includes('khoan') || t.includes('hỏa tiễn')) {
+      pumpType = 'Bơm chìm giếng khoan hỏa tiễn'
+    } else if (t.includes('trục đứng') || t.includes('đẩy cao') || t.includes('chung cư') || t.includes('lọc nước') || t.includes('nồi hơi')) {
+      pumpType = 'Bơm ly tâm trục đứng cao áp'
+    } else if (t.includes('tăng áp') || t.includes('biến tần') || t.includes('áp lực')) {
+      pumpType = 'Bơm tăng áp biến tần thông minh'
+    } else if (t.includes('thổi khí') || t.includes('sục khí') || t.includes('nuôi tôm') || t.includes('con sò')) {
+      pumpType = 'Máy thổi khí con sò'
+    } else if (t.includes('hóa chất') || t.includes('axit') || t.includes('định lượng')) {
+      pumpType = 'Bơm hóa chất & định lượng'
+    } else if (t.includes('ly tâm') || t.includes('tưới') || t.includes('nông nghiệp')) {
+      pumpType = 'Bơm ly tâm lưu lượng lớn'
+    }
+
+    const list = products || []
+    const matched = list.filter(p => {
+      const pName = (p.name || '').toLowerCase()
+      const pGroup = (p.group || p.category || '').toLowerCase()
+      if (pumpType.includes('nước thải') && (pGroup.includes('thải') || pName.includes('wq') || pName.includes('shm') || pName.includes('dwmt'))) return true
+      if (pumpType.includes('giếng khoan') && (pGroup.includes('giếng') || pName.includes('sp') || pName.includes('sl') || pName.includes('r 150'))) return true
+      if (pumpType.includes('trục đứng') && (pGroup.includes('trục đứng') || pName.includes('cdlf') || pName.includes('ts'))) return true
+      if (pumpType.includes('biến tần') && (pGroup.includes('biến tần') || pName.includes('mhi') || pName.includes('wb-'))) return true
+      if (pumpType.includes('thổi khí') && (pGroup.includes('thổi khí') || pName.includes('gb'))) return true
+      return false
+    })
+
+    const finalMatched = (matched.length > 0 ? matched : list).slice(0, 3)
+
+    return {
+      head,
+      flow,
+      power,
+      voltage,
+      pumpType,
+      matchedProducts: finalMatched
+    }
+  }
+
+  // Soạn sẵn tin nhắn Zalo chuẩn chỉnh cho chuyên viên chốt đơn
+  const generateZaloReply = (lead, analysis) => {
+    const custName = lead.name ? `anh/chị ${lead.name}` : 'anh/chị'
+    const topModel = analysis?.matchedProducts?.[0]
+    const modelText = topModel ? `🔹 Model đề xuất: ${topModel.name}\n🔹 Thương hiệu: ${topModel.webBrand || 'T&T'}\n🔹 Giá niêm yết: ${fmt(topModel.price)}` : ''
+    
+    return `Dạ em chào ${custName}! Em là chuyên viên kỹ thuật từ Công ty Máy Bơm T&T.\n\nNhận được yêu cầu của mình:\n"${lead.note || lead.productName || 'Tư vấn chọn máy bơm'}"\n\nAI kỹ thuật T&T đã phân tích và gợi ý dòng bơm tối ưu nhất:\n👉 Dòng bơm: ${analysis?.pumpType || 'Máy bơm chuyên dụng'}\n${analysis?.head ? `🌊 Cột áp yêu cầu: ~${analysis.head} mét\n` : ''}${analysis?.flow ? `💧 Lưu lượng yêu cầu: ~${analysis.flow} m³/h\n` : ''}⚡ Điện áp: ${analysis?.voltage || '220V/380V'}\n\n${modelText}\n\nAnh/chị kết bạn Zalo hoặc để em gửi catalog chi tiết kèm mức giá chiết khấu đại lý tốt nhất cho mình nhé ạ!`
+  }
 
   // Realtime subscribe to web leads
   useEffect(() => {
@@ -1562,7 +1644,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
             display: 'flex', alignItems: 'center', gap: 6, position: 'relative'
           }}
         >
-          🎯 Khách xem &amp; Bắt Lead
+          🤖 Yêu Cầu &amp; Trợ Lý AI
           {leads.filter(l => l.status === 'new').length > 0 ? (
             <span style={{
               marginLeft: 4, background: '#ef4444', color: '#fff', fontSize: 9.5,
@@ -2842,24 +2924,61 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
           </div>
         ) : activeAdminTab === 'leads' ? (
           <div>
-            {/* Top Toolbar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+            {/* Header: Title + AI Copilot Badges + Action Buttons */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12,
+              marginBottom: 20,
+              padding: '16px 20px',
+              borderRadius: 12,
+              background: 'linear-gradient(135deg, rgba(8,120,217,0.08) 0%, rgba(124,58,237,0.05) 100%)',
+              border: '1px solid rgba(8,120,217,0.18)',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+            }}>
               <div>
-                <h2 style={{ margin: '0 0 4px 0', fontSize: 18, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>🎯 Khách Hàng Tiềm Năng &amp; Yêu Cầu Báo Giá (Leads Live)</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <h2 style={{ margin: 0, fontSize: 19, fontWeight: 900, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>🤖 Quản Lý Yêu Cầu Khách &amp; Trợ Lý AI</span>
+                  </h2>
                   <span style={{ fontSize: 11, background: '#10B981', color: '#fff', padding: '2px 8px', borderRadius: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'inline-block' }} /> Live Realtime
                   </span>
-                </h2>
-                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text3)' }}>
-                  Theo dõi số điện thoại khách để lại nhận báo giá chiết khấu, sản phẩm khách đang xem và liên hệ tư vấn chốt đơn 1 chạm.
+                  <span style={{ fontSize: 11, background: '#7C3AED', color: '#fff', padding: '2px 8px', borderRadius: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    ⚡ Gemini 3.5 Copilot
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.4 }}>
+                  Thu thập mọi câu hỏi và yêu cầu tư vấn từ Web &amp; AI Chatbot. AI tự động bóc tách cột áp, lưu lượng và gợi ý mã bơm chốt đơn 1 chạm.
                 </p>
               </div>
 
+              {/* Action Buttons: Thêm khách mới & Cấu hình AI */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>
-                  Tổng cộng: <strong>{leads.length}</strong> khách
-                </span>
+                <button
+                  onClick={() => setShowCreateLeadModal(true)}
+                  style={{
+                    background: 'var(--accent)', color: '#fff', border: 'none',
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 800,
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                    boxShadow: '0 2px 8px rgba(8,120,217,0.3)', transition: 'all 0.15s'
+                  }}
+                >
+                  <span>➕</span> <span>Thêm yêu cầu mới</span>
+                </button>
+                <button
+                  onClick={() => setShowAiConfigModal(true)}
+                  style={{
+                    background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)',
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 700,
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <span>⚙️</span> <span>Cấu hình AI Web</span>
+                </button>
               </div>
             </div>
 
@@ -2871,19 +2990,19 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
               const wonLeads = leads.filter(l => l.status === 'won').length;
 
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, marginBottom: 20 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 20 }}>
                   
                   {/* Card 1: Total Leads */}
                   <div className="card" style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.08), rgba(37,99,235,0.02))', border: '1px solid rgba(37,99,235,0.2)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tổng Yêu Cầu Báo Giá</span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tổng Yêu Cầu &amp; Lead</span>
                       <span style={{ fontSize: 20 }}>📋</span>
                     </div>
                     <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
                       {totalLeads}
                     </div>
                     <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6 }}>
-                      Tất cả số điện thoại đã thu thập
+                      Khách gửi từ Web, Form &amp; Chatbot AI
                     </div>
                   </div>
 
@@ -2897,21 +3016,21 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                       {newLeads}
                     </div>
                     <div style={{ fontSize: 11.5, color: '#dc2626', marginTop: 6, fontWeight: 700 }}>
-                      Khách chưa được chuyên viên liên hệ
+                      Khách mới đang chờ kỹ thuật tư vấn
                     </div>
                   </div>
 
                   {/* Card 3: In Contact */}
                   <div className="card" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02))', border: '1px solid rgba(245,158,11,0.2)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Đang Tư Vấn Báo Giá</span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Đang Trao Đổi Báo Giá</span>
                       <span style={{ fontSize: 20 }}>💬</span>
                     </div>
                     <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
                       {contactedLeads}
                     </div>
                     <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6 }}>
-                      Đang trao đổi Zalo / Điện thoại
+                      Đang chat Zalo hoặc gọi trao đổi
                     </div>
                   </div>
 
@@ -2941,7 +3060,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                 <div style={{ position: 'relative', flex: '1 1 280px', minWidth: 240 }}>
                   <input
                     type="text"
-                    placeholder="🔍 Tìm SĐT, tên máy bơm, tỉnh thành, nhà mạng..."
+                    placeholder="🔍 Tìm SĐT, tên khách, model máy bơm, nhu cầu (H, Q), tỉnh thành..."
                     value={leadSearch}
                     onChange={e => setLeadSearch(e.target.value)}
                     style={{
@@ -2988,7 +3107,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
               </div>
             </div>
 
-            {/* LEADS LIST */}
+            {/* LEADS & AI INQUIRIES LIST */}
             {(() => {
               const filteredLeads = leads.filter(lead => {
                 if (leadFilterStatus !== 'all' && lead.status !== leadFilterStatus) return false;
@@ -3010,26 +3129,35 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
               if (filteredLeads.length === 0) {
                 return (
                   <div className="card" style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text3)' }}>
-                    <div style={{ fontSize: 36, marginBottom: 12 }}>🎯</div>
-                    <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px 0' }}>
-                      {leads.length === 0 ? 'Chưa có yêu cầu báo giá nào' : 'Không có yêu cầu phù hợp với bộ lọc'}
+                    <div style={{ fontSize: 40, marginBottom: 12 }}>🤖</div>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px 0' }}>
+                      {leads.length === 0 ? 'Chưa có yêu cầu hoặc tin nhắn AI nào' : 'Không có yêu cầu phù hợp với bộ lọc'}
                     </h3>
-                    <p style={{ fontSize: 12.5, maxWidth: 460, margin: '0 auto', lineHeight: 1.5 }}>
+                    <p style={{ fontSize: 13, maxWidth: 500, margin: '0 auto 16px', lineHeight: 1.5, color: 'var(--text2)' }}>
                       {leads.length === 0
-                        ? 'Khi khách hàng ghé thăm website và nhập số điện thoại tại form "Nhận báo giá chiết khấu qua Zalo" hoặc trang chi tiết sản phẩm, thông tin sẽ lập tức xuất hiện tại đây.'
+                        ? 'Khi khách hàng ghé thăm website và chat với Trợ lý AI, để lại số điện thoại hoặc yêu cầu báo giá, hệ thống sẽ tự động phân tích và hiển thị ngay tại đây.'
                         : 'Thử tìm kiếm với từ khóa khác hoặc chuyển sang tab "Tất cả".'}
                     </p>
+                    <button
+                      onClick={() => setShowCreateLeadModal(true)}
+                      style={{
+                        background: 'var(--accent)', color: '#fff', border: 'none',
+                        padding: '9px 18px', borderRadius: 8, fontSize: 12.5, fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ➕ Thử thêm 1 yêu cầu khách hàng mẫu
+                    </button>
                   </div>
                 );
               }
 
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 16 }}>
                   {filteredLeads.map(lead => {
                     const timeStr = lead.createdAt ? new Date(lead.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--';
                     const dateStr = lead.createdAt ? new Date(lead.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
                     
-                    // Relative time
                     const diffMins = lead.createdAt ? Math.round((Date.now() - lead.createdAt) / 60000) : null;
                     let relTime = '';
                     if (diffMins != null) {
@@ -3042,8 +3170,11 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                     const isNew = lead.status === 'new';
                     const isWon = lead.status === 'won';
                     const isContacted = lead.status === 'contacted';
-
                     const cleanPhone = (lead.phone || '').replace(/\s+/g, '');
+
+                    // AI phân tích thông minh cho từng yêu cầu
+                    const inquiryText = lead.note || lead.productName || '';
+                    const aiAnalysis = parseCustomerInquiry(inquiryText);
 
                     return (
                       <div
@@ -3055,12 +3186,13 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                           flexDirection: 'column',
                           gap: 12,
                           border: isNew ? '1.5px solid #ef4444' : '1px solid var(--border)',
-                          boxShadow: isNew ? '0 4px 16px rgba(239,68,68,0.1)' : 'none',
+                          boxShadow: isNew ? '0 4px 16px rgba(239,68,68,0.1)' : '0 2px 6px rgba(0,0,0,0.02)',
                           position: 'relative',
-                          background: 'var(--surface)'
+                          background: 'var(--surface)',
+                          borderRadius: 12
                         }}
                       >
-                        {/* Top: Phone & Quick Actions */}
+                        {/* Top: Phone, Name, Source Tag & Status Selector */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -3078,71 +3210,146 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text3)' }}
                                 title="Copy số điện thoại"
                               >
-                                {copiedPhoneId === lead.id ? '✅' : '📋'}
+                                {copiedPhoneId === lead.id ? '✅ Đã chép' : '📋'}
                               </button>
                             </div>
-                            {lead.name && (
-                              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--accent)', marginTop: 2 }}>
-                                👤 {lead.name}
-                              </div>
-                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                              {lead.name ? (
+                                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--accent)' }}>
+                                  👤 {lead.name}
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>
+                                  Khách vãng lai
+                                </span>
+                              )}
+                              <span style={{
+                                fontSize: 10.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
+                                background: lead.source?.includes('ai') ? '#F3E8FF' : '#E0F2FE',
+                                color: lead.source?.includes('ai') ? '#7C3AED' : '#0369A1'
+                              }}>
+                                {lead.source?.includes('ai') ? '🤖 AI Chat' : '🌐 Form Web'}
+                              </span>
+                            </div>
                           </div>
 
-                          {/* Status Badge & Selector */}
+                          {/* Status Dropdown */}
                           <select
                             value={lead.status || 'new'}
                             onChange={async (e) => {
                               const newStatus = e.target.value;
                               try {
                                 await updateWebLead(lead.id, { status: newStatus });
-                                toast('Đã cập nhật trạng thái lead', 'success');
+                                toast('Đã cập nhật trạng thái', 'success');
                               } catch (err) {
                                 toast('Lỗi cập nhật: ' + err.message, 'error');
                               }
                             }}
                             style={{
-                              padding: '4px 8px', borderRadius: 8, fontSize: 11.5, fontWeight: 800,
+                              padding: '5px 8px', borderRadius: 8, fontSize: 11.5, fontWeight: 800,
                               background: isNew ? '#FEE2E2' : isWon ? '#DCFCE7' : isContacted ? '#FEF3C7' : 'var(--surface2)',
                               color: isNew ? '#B91C1C' : isWon ? '#15803D' : isContacted ? '#B45309' : 'var(--text2)',
                               border: 'none', cursor: 'pointer', outline: 'none'
                             }}
                           >
-                            <option value="new">🔴 Mới (Chưa gọi)</option>
+                            <option value="new">🔴 Mới (Cần gọi)</option>
                             <option value="contacted">🟡 Đang tư vấn</option>
                             <option value="won">🟢 Đã chốt đơn</option>
                             <option value="lost">⚪ Đã hủy</option>
                           </select>
                         </div>
 
-                        {/* PRODUCT OF INTEREST */}
+                        {/* Customer Inquiry Question Quotation */}
                         <div style={{
                           background: 'var(--surface2)',
                           padding: '10px 12px',
                           borderRadius: 8,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 4
+                          borderLeft: '3px solid var(--accent)'
                         }}>
-                          <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>
-                            Sản phẩm khách quan tâm:
+                          <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 3 }}>
+                            💬 Nhu cầu / Lời nhắn khách gửi:
                           </div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span>💧</span>
-                            <span>{lead.productName || 'Yêu cầu tư vấn máy bơm'}</span>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>
+                            "{lead.note || lead.productName || 'Khách yêu cầu báo giá tư vấn máy bơm'}"
                           </div>
                           {lead.productCode && (
-                            <div style={{ fontSize: 11.5, color: 'var(--accent)', fontWeight: 700 }}>
-                              Mã model: {lead.productCode}
-                            </div>
-                          )}
-                          {lead.note && (
-                            <div style={{ fontSize: 11.5, color: 'var(--text2)', fontStyle: 'italic', marginTop: 2 }}>
-                              "{lead.note}"
+                            <div style={{ fontSize: 11.5, color: 'var(--accent)', fontWeight: 700, marginTop: 4 }}>
+                              💧 Mã máy bơm xem lúc gửi: {lead.productCode}
                             </div>
                           )}
                         </div>
 
-                        {/* VISITOR TELEMETRY & NETWORK INFO */}
+                        {/* AI COPILOT ANALYSIS BOX */}
+                        <div style={{
+                          background: 'linear-gradient(135deg, rgba(8,120,217,0.06) 0%, rgba(124,58,237,0.04) 100%)',
+                          border: '1px solid rgba(8,120,217,0.18)',
+                          borderRadius: 8,
+                          padding: '10px 12px'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span>⚡</span> <span>AI COPILOT PHÂN TÍCH:</span>
+                            </span>
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--accent)' }}>
+                              {aiAnalysis.pumpType}
+                            </span>
+                          </div>
+
+                          {/* Technical Chips */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                            {aiAnalysis.head && (
+                              <span style={{ fontSize: 11, background: '#EFF6FF', color: '#1D4ED8', padding: '2px 7px', borderRadius: 4, fontWeight: 700 }}>
+                                🌊 H: ~{aiAnalysis.head}m
+                              </span>
+                            )}
+                            {aiAnalysis.flow && (
+                              <span style={{ fontSize: 11, background: '#EFF6FF', color: '#1D4ED8', padding: '2px 7px', borderRadius: 4, fontWeight: 700 }}>
+                                💧 Q: ~{aiAnalysis.flow}m³/h
+                              </span>
+                            )}
+                            {aiAnalysis.power && (
+                              <span style={{ fontSize: 11, background: '#EFF6FF', color: '#1D4ED8', padding: '2px 7px', borderRadius: 4, fontWeight: 700 }}>
+                                ⚡ CS: ~{aiAnalysis.power}kW
+                              </span>
+                            )}
+                            <span style={{ fontSize: 11, background: '#F5F3FF', color: '#6D28D9', padding: '2px 7px', borderRadius: 4, fontWeight: 700 }}>
+                              🔌 {aiAnalysis.voltage}
+                            </span>
+                          </div>
+
+                          {/* Suggested Model Preview */}
+                          {aiAnalysis.matchedProducts?.[0] && (
+                            <div style={{
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                              background: 'var(--surface)', padding: '6px 10px', borderRadius: 6,
+                              border: '1px solid rgba(8,120,217,0.15)', fontSize: 11.5
+                            }}>
+                              <div style={{ fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65%' }}>
+                                👉 {aiAnalysis.matchedProducts[0].name}
+                              </div>
+                              <div style={{ fontWeight: 800, color: '#059669', whiteSpace: 'nowrap' }}>
+                                {fmt(aiAnalysis.matchedProducts[0].price)}
+                              </div>
+                            </div>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              setSelectedLeadForAi({ lead, analysis: aiAnalysis });
+                              setCopiedZaloMsg(false);
+                            }}
+                            style={{
+                              width: '100%', marginTop: 8, padding: '6px 10px', background: '#7C3AED',
+                              color: '#fff', border: 'none', borderRadius: 6, fontSize: 11.5,
+                              fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center',
+                              justifyContent: 'center', gap: 6, boxShadow: '0 2px 6px rgba(124,58,237,0.25)'
+                            }}
+                          >
+                            <span>🤖</span> <span>Mở AI Chốt Đơn &amp; Mẫu Chat Zalo</span>
+                          </button>
+                        </div>
+
+                        {/* Telemetry info */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 11 }}>
                           {lead.city && (
                             <span style={{ background: 'rgba(16,185,129,0.1)', color: '#059669', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
@@ -3150,22 +3357,17 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                             </span>
                           )}
                           {lead.isp && (
-                            <span style={{ background: 'rgba(8,120,217,0.1)', color: 'var(--accent)', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }} title="Nhà mạng khách sử dụng">
+                            <span style={{ background: 'rgba(8,120,217,0.1)', color: 'var(--accent)', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
                               📶 {lead.isp}
                             </span>
                           )}
                           <span style={{ background: 'var(--surface2)', color: 'var(--text2)', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>
                             {lead.device === 'Mobile' ? '📱 Điện thoại' : '💻 Máy tính'}
                           </span>
-                          {lead.source && (
-                            <span style={{ background: 'var(--surface2)', color: 'var(--text3)', padding: '2px 8px', borderRadius: 6 }}>
-                              🌐 {lead.source}
-                            </span>
-                          )}
                         </div>
 
-                        {/* INTERNAL NOTE */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
+                        {/* Internal Note */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {editingLeadNoteId === lead.id ? (
                             <div style={{ display: 'flex', gap: 6 }}>
                               <input
@@ -3258,10 +3460,10 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                             </a>
                             <button
                               onClick={async () => {
-                                if (window.confirm(`Xóa yêu cầu báo giá của SĐT ${lead.phone}?`)) {
+                                if (window.confirm('Bạn có chắc muốn xóa yêu cầu này?')) {
                                   try {
                                     await deleteWebLead(lead.id);
-                                    toast('Đã xóa yêu cầu báo giá', 'success');
+                                    toast('Đã xóa yêu cầu', 'success');
                                   } catch (err) {
                                     toast('Lỗi xóa: ' + err.message, 'error');
                                   }
@@ -3285,8 +3487,378 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
               );
             })()}
 
+            {/* MODAL 1: AI COPILOT CHI TIẾT & SOẠN TIN NHẮN ZALO */}
+            {selectedLeadForAi && (
+              <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', zIndex: 1000, padding: 20
+              }}>
+                <div style={{
+                  background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 620,
+                  maxHeight: '90vh', overflowY: 'auto', padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+                  position: 'relative'
+                }}>
+                  {/* Modal Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 24 }}>🤖</span>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: 'var(--text)' }}>
+                          AI Copilot - Trợ Lý Chốt Đơn &amp; Báo Giá
+                        </h3>
+                        <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                          Khách hàng: <strong>{selectedLeadForAi.lead.name || 'Khách vãng lai'}</strong> ({selectedLeadForAi.lead.phone})
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedLeadForAi(null)}
+                      style={{ background: 'none', border: 'none', fontSize: 18, color: 'var(--text3)', cursor: 'pointer' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Nhu cầu gốc của khách */}
+                  <div style={{ background: 'var(--surface2)', padding: 12, borderRadius: 8, marginBottom: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 4 }}>
+                      Yêu cầu gốc khách hàng gửi:
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', fontStyle: 'italic' }}>
+                      "{selectedLeadForAi.lead.note || selectedLeadForAi.lead.productName || 'Không có mô tả chi tiết'}"
+                    </div>
+                  </div>
+
+                  {/* Các thông số kỹ thuật AI bóc tách */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#7C3AED', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>⚡</span> <span>THÔNG SỐ KỸ THUẬT AI BÓC TÁCH:</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, fontSize: 12 }}>
+                      <div style={{ background: 'var(--surface2)', padding: '8px 12px', borderRadius: 6 }}>
+                        <span style={{ color: 'var(--text3)' }}>Dòng máy:</span> <strong>{selectedLeadForAi.analysis.pumpType}</strong>
+                      </div>
+                      <div style={{ background: 'var(--surface2)', padding: '8px 12px', borderRadius: 6 }}>
+                        <span style={{ color: 'var(--text3)' }}>Điện áp:</span> <strong>{selectedLeadForAi.analysis.voltage}</strong>
+                      </div>
+                      <div style={{ background: 'var(--surface2)', padding: '8px 12px', borderRadius: 6 }}>
+                        <span style={{ color: 'var(--text3)' }}>Cột áp (H):</span> <strong>{selectedLeadForAi.analysis.head ? `~${selectedLeadForAi.analysis.head} mét` : 'Chưa xác định'}</strong>
+                      </div>
+                      <div style={{ background: 'var(--surface2)', padding: '8px 12px', borderRadius: 6 }}>
+                        <span style={{ color: 'var(--text3)' }}>Lưu lượng (Q):</span> <strong>{selectedLeadForAi.analysis.flow ? `~${selectedLeadForAi.analysis.flow} m³/h` : 'Chưa xác định'}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Top sản phẩm đề xuất từ kho T&T */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>
+                      📦 TOP MÃ BƠM T&amp;T PHÙ HỢP NHẤT TRONG KHO:
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {selectedLeadForAi.analysis.matchedProducts.map((p, idx) => (
+                        <div key={idx} style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '10px 14px', background: 'var(--surface2)', borderRadius: 8,
+                          border: idx === 0 ? '1.5px solid #7C3AED' : '1px solid var(--border)'
+                        }}>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>
+                              {idx === 0 && <span style={{ color: '#7C3AED', marginRight: 4 }}>★ [Tối ưu nhất]</span>}
+                              {p.name}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                              Hãng: {p.webBrand || 'T&T'} • Nhóm: {p.group || p.category || 'Máy bơm'}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 900, color: '#059669', fontSize: 13.5 }}>
+                              {fmt(p.price)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tin nhắn Zalo soạn sẵn */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#0284C7' }}>
+                        💬 MẪU TIN NHẮN ZALO SOẠN SẴN:
+                      </span>
+                      <button
+                        onClick={() => {
+                          const replyText = generateZaloReply(selectedLeadForAi.lead, selectedLeadForAi.analysis);
+                          if (navigator.clipboard) {
+                            navigator.clipboard.writeText(replyText);
+                            setCopiedZaloMsg(true);
+                            setTimeout(() => setCopiedZaloMsg(false), 2000);
+                          }
+                        }}
+                        style={{
+                          background: 'none', border: 'none', color: 'var(--accent)',
+                          fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                        }}
+                      >
+                        {copiedZaloMsg ? '✅ Đã chép mẫu Zalo!' : '📋 Sao chép mẫu'}
+                      </button>
+                    </div>
+                    <textarea
+                      readOnly
+                      rows={7}
+                      value={generateZaloReply(selectedLeadForAi.lead, selectedLeadForAi.analysis)}
+                      style={{
+                        width: '100%', padding: '10px 12px', fontSize: 12, borderRadius: 8,
+                        border: '1px solid var(--border)', background: 'var(--surface2)',
+                        color: 'var(--text)', outline: 'none', resize: 'none', lineHeight: 1.45,
+                        fontFamily: 'inherit'
+                      }}
+                    />
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => setSelectedLeadForAi(null)}
+                      className="btn sm"
+                      style={{ padding: '8px 16px', fontSize: 12.5 }}
+                    >
+                      Đóng
+                    </button>
+                    <a
+                      href={`https://zalo.me/${(selectedLeadForAi.lead.phone || '').replace(/\s+/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn sm"
+                      style={{
+                        background: '#0284C7', color: '#fff', border: 'none',
+                        padding: '8px 16px', borderRadius: 8, fontWeight: 800, fontSize: 12.5,
+                        textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6
+                      }}
+                    >
+                      💬 Mở Zalo Khách Hàng
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* MODAL 2: CẤU HÌNH TRỢ LÝ AI WEBSITE */}
+            {showAiConfigModal && (
+              <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', zIndex: 1000, padding: 20
+              }}>
+                <div style={{
+                  background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 500,
+                  padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
+                    <h3 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>⚙️</span> <span>Cấu Hình Trợ Lý AI Website</span>
+                    </h3>
+                    <button
+                      onClick={() => setShowAiConfigModal(false)}
+                      style={{ background: 'none', border: 'none', fontSize: 18, color: 'var(--text3)', cursor: 'pointer' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {/* Toggle Bật / Tắt AI */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'var(--surface2)', borderRadius: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>
+                          Bật Trợ Lý AI trên Web
+                        </div>
+                        <div style={{ fontSize: 11.5, color: 'var(--text3)' }}>
+                          Cho phép khách hàng trò chuyện và tư vấn chọn bơm với AI
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={aiEnabled}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          setAiEnabled(val);
+                          try {
+                            localStorage.setItem('tt_ai_web_enabled', val ? 'true' : 'false');
+                          } catch {}
+                        }}
+                        style={{ width: 20, height: 20, cursor: 'pointer', accentColor: 'var(--accent)' }}
+                      />
+                    </div>
+
+                    {/* AI Engine Model */}
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 4 }}>
+                        Mô hình AI vận hành:
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        value="Google Gemini 3.5 Flash (Tích hợp kho bảng giá T&T Realtime)"
+                        style={{
+                          width: '100%', padding: '8px 12px', fontSize: 12, borderRadius: 8,
+                          border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)'
+                        }}
+                      />
+                    </div>
+
+                    {/* Hotline Zalo nhận tin */}
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 4 }}>
+                        Số điện thoại Zalo nhận yêu cầu:
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        value="0984 273 806 (Công ty TNHH Máy Bơm T&T)"
+                        style={{
+                          width: '100%', padding: '8px 12px', fontSize: 12, borderRadius: 8,
+                          border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button
+                      onClick={() => setShowAiConfigModal(false)}
+                      className="btn sm primary"
+                      style={{ padding: '8px 18px', fontSize: 12.5 }}
+                    >
+                      Đã xong
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* MODAL 3: THÊM YÊU CẦU MỚI THỦ CÔNG */}
+            {showCreateLeadModal && (
+              <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', zIndex: 1000, padding: 20
+              }}>
+                <div style={{
+                  background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 480,
+                  padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
+                    <h3 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>➕</span> <span>Thêm Yêu Cầu Khách Hàng Mới</span>
+                    </h3>
+                    <button
+                      onClick={() => setShowCreateLeadModal(false)}
+                      style={{ background: 'none', border: 'none', fontSize: 18, color: 'var(--text3)', cursor: 'pointer' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!newLeadForm.phone.trim()) {
+                      alert('Vui lòng nhập số điện thoại khách hàng!');
+                      return;
+                    }
+                    setSavingNewLead(true);
+                    try {
+                      await saveWebLead({
+                        phone: newLeadForm.phone,
+                        name: newLeadForm.name,
+                        note: newLeadForm.note,
+                        source: 'hotline-manual'
+                      });
+                      toast('Đã thêm yêu cầu mới thành công!', 'success');
+                      setShowCreateLeadModal(false);
+                      setNewLeadForm({ phone: '', name: '', note: '', source: 'hotline' });
+                    } catch (err) {
+                      toast('Lỗi thêm: ' + err.message, 'error');
+                    } finally {
+                      setSavingNewLead(false);
+                    }
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 4 }}>
+                          Số điện thoại khách (*):
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ví dụ: 0984123456"
+                          value={newLeadForm.phone}
+                          onChange={e => setNewLeadForm({ ...newLeadForm, phone: e.target.value })}
+                          style={{
+                            width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 8,
+                            border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 4 }}>
+                          Tên khách hàng:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ví dụ: Anh Nam (Hà Nội)"
+                          value={newLeadForm.name}
+                          onChange={e => setNewLeadForm({ ...newLeadForm, name: e.target.value })}
+                          style={{
+                            width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 8,
+                            border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 4 }}>
+                          Nhu cầu kỹ thuật / Câu hỏi của khách (AI sẽ phân tích bóc tách):
+                        </label>
+                        <textarea
+                          rows={3}
+                          placeholder="Ví dụ: Cần bơm chìm nước thải đẩy cao 30m lưu lượng 15 khối dùng điện 380V..."
+                          value={newLeadForm.note}
+                          onChange={e => setNewLeadForm({ ...newLeadForm, note: e.target.value })}
+                          style={{
+                            width: '100%', padding: '8px 12px', fontSize: 12.5, borderRadius: 8,
+                            border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)',
+                            resize: 'none'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateLeadModal(false)}
+                        className="btn sm"
+                        style={{ padding: '8px 16px', fontSize: 12 }}
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingNewLead}
+                        className="btn sm primary"
+                        style={{ padding: '8px 18px', fontSize: 12.5, fontWeight: 800 }}
+                      >
+                        {savingNewLead ? 'Đang lưu...' : 'Lưu & AI Phân Tích'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
           </div>
-        
         ) : activeAdminTab === 'analytics' ? (
           <div>
             {/* Top Toolbar */}

@@ -1626,53 +1626,65 @@ export const subscribeWebAnalyticsLogs = (onUpdate, maxLogs = 50) => {
 }
 
 // ── WEB LEADS CAPTURE & CRM ──────────────────────────────────────────────────
-export const saveWebLead = async ({ phone, name = '', note = '', productId = '', productName = '', productCode = '', meta = {} }) => {
+export const saveWebLead = async ({ id, phone = '', name = '', note = '', productId = '', productName = '', productCode = '', status = '', meta = {} }) => {
   try {
     const clientInfo = getClientDeviceAndSource()
     const geoInfo = await getVisitorGeoData()
     const dateKey = getVNFormattedDate()
 
     const cleanPhone = (phone || '').replace(/[\s.-]/g, '').trim()
-    if (!cleanPhone || cleanPhone.length < 8) {
-      throw new Error('Vui lòng nhập số điện thoại hợp lệ (tối thiểu 8-10 số)')
-    }
+    const hasValidPhone = Boolean(cleanPhone && cleanPhone.length >= 8)
 
     const leadDoc = {
-      phone: cleanPhone,
+      phone: hasValidPhone ? cleanPhone : (cleanPhone || 'Chưa để lại SĐT'),
+      hasPhone: hasValidPhone,
       name: (name || '').trim(),
       note: (note || '').trim(),
       productId: productId || '',
-      productName: productName || 'Yêu cầu tư vấn báo giá chung',
+      productName: productName || (hasValidPhone ? 'Yêu cầu tư vấn báo giá' : 'Tư vấn chọn máy bơm qua AI'),
       productCode: productCode || '',
-      status: 'new', // 'new' (Mới) | 'contacted' (Đang tư vấn) | 'won' (Đã chốt) | 'lost' (Hủy)
-      adminNote: '',
+      status: status || (hasValidPhone ? 'new' : 'ai_chat'), // 'new' | 'ai_chat' | 'contacted' | 'won' | 'lost'
       device: clientInfo.deviceType || 'Desktop',
       isMobile: clientInfo.isMobile || false,
       os: clientInfo.os || 'Khác',
       browser: clientInfo.browser || 'Khác',
-      source: clientInfo.source || 'Trực tiếp (Direct)',
+      source: meta.source || clientInfo.source || 'Trực tiếp (Direct)',
       ip: geoInfo?.ip || '',
       city: geoInfo?.city || '',
       region: geoInfo?.region || '',
       country: geoInfo?.country || 'Việt Nam',
       isp: geoInfo?.isp || '',
       org: geoInfo?.org || '',
-      createdAt: Date.now(),
+      updatedAt: Date.now(),
       date: dateKey,
       ...meta
     }
 
-    const ref = await addDoc(collection(db, 'web_leads'), leadDoc)
+    let docId = id
+    if (docId) {
+      const docRef = doc(db, 'web_leads', docId)
+      await setDoc(docRef, {
+        ...leadDoc,
+        createdAt: leadDoc.createdAt || Date.now()
+      }, { merge: true })
+    } else {
+      leadDoc.createdAt = Date.now()
+      leadDoc.adminNote = ''
+      const ref = await addDoc(collection(db, 'web_leads'), leadDoc)
+      docId = ref.id
+    }
 
     // Log vào telemetry stream
     logWebAnalyticsEvent({
-      type: 'lead_captured',
-      title: `⚡ Khách để lại SĐT: ${cleanPhone} (${productName || 'Báo giá'})`,
+      type: hasValidPhone ? 'lead_captured' : 'ai_chat_inquiry',
+      title: hasValidPhone
+        ? `⚡ Khách để lại SĐT: ${cleanPhone} (${productName || 'Báo giá'})`
+        : `💬 Khách chat với Trợ lý AI: "${(note || '').slice(0, 45)}"`,
       path: typeof window !== 'undefined' ? (window.location.hash || '/') : '/',
-      meta: { leadId: ref.id, phone: cleanPhone, productName, code: productCode }
+      meta: { leadId: docId, phone: cleanPhone, productName, code: productCode }
     }).catch(() => {})
 
-    return { id: ref.id, ...leadDoc }
+    return { id: docId, ...leadDoc }
   } catch (err) {
     console.error('Lỗi saveWebLead:', err)
     throw err

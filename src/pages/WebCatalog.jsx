@@ -2675,15 +2675,34 @@ export default function WebCatalog() {
     setChatInput('')
     setChatLoading(true)
 
-    // Tự động nhận diện số điện thoại khách để lại trong tin nhắn AI để lưu Lead
-    const phoneMatch = msgText.match(/(?:0|\+84)[3|5|7|8|9][0-9]{8}\b/)
-    if (phoneMatch) {
-      saveWebLead({
-        phone: phoneMatch[0],
-        note: msgText,
-        source: 'ai-chat-live'
-      }).catch(() => {})
+    // Tạo hoặc lấy session ID cho phiên chat của khách để lưu Firestore Realtime
+    let chatSessionId = ''
+    try {
+      chatSessionId = sessionStorage.getItem('tandt_chat_session_id')
+      if (!chatSessionId) {
+        chatSessionId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7)
+        sessionStorage.setItem('tandt_chat_session_id', chatSessionId)
+      }
+    } catch {
+      chatSessionId = 'chat_' + Date.now()
     }
+
+    // Tự động nhận diện số điện thoại khách để lại trong tin nhắn AI nếu có
+    const phoneMatch = msgText.match(/(?:0|\+84)[3|5|7|8|9][0-9]{8}\b/)
+    
+    // Lưu ngay câu hỏi của khách vào Firestore CRM (Realtime sang Admin Quản lý Web)
+    saveWebLead({
+      id: chatSessionId,
+      phone: phoneMatch ? phoneMatch[0] : '',
+      note: msgText,
+      source: 'ai-chat-live',
+      status: phoneMatch ? 'new' : 'ai_chat',
+      productName: 'Tư vấn chọn máy bơm qua AI',
+      meta: {
+        lastUserMessage: msgText,
+        chatSessionId
+      }
+    }).catch(err => console.warn('Lưu lead chat ban đầu:', err))
 
     // Add temporary AI placeholder
     const aiPlaceholder = { sender: 'ai', text: '...', isLoading: true }
@@ -2737,6 +2756,20 @@ export default function WebCatalog() {
       } else {
         setChatSuggestions([])
       }
+
+      // Cập nhật phản hồi của AI và các sản phẩm gợi ý vào Firestore CRM cho Admin
+      saveWebLead({
+        id: chatSessionId,
+        meta: {
+          lastAiResponse: text,
+          suggestedProducts: (matches && matches.length > 0 ? matches : []).slice(0, 3).map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.retailPrice || p.price || 0,
+            image: (Array.isArray(p.webImages) && p.webImages[0]) || (Array.isArray(p.images) && p.images[0]) || p.image || ''
+          }))
+        }
+      }).catch(() => {})
     } catch (err) {
       console.warn("Lỗi AI Chat (Chuyển sang bộ quy tắc chuyên gia cục bộ):", err)
       const fallback = localAIEngine(msgText, products)
@@ -2753,6 +2786,20 @@ export default function WebCatalog() {
       } else {
         setChatSuggestions([])
       }
+
+      // Cập nhật phản hồi Fallback vào Firestore CRM
+      saveWebLead({
+        id: chatSessionId,
+        meta: {
+          lastAiResponse: fallback.responseText,
+          suggestedProducts: (fallback.suggestedProducts || []).slice(0, 3).map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.retailPrice || p.price || 0,
+            image: (Array.isArray(p.webImages) && p.webImages[0]) || (Array.isArray(p.images) && p.images[0]) || p.image || ''
+          }))
+        }
+      }).catch(() => {})
     } finally {
       setChatLoading(false)
     }
@@ -2765,11 +2812,15 @@ export default function WebCatalog() {
     }
     const reqText = customNeedText || (selectedNeed === 'day-cao' ? 'Bơm cấp nước đẩy cao' : 'Bơm chìm nước thải/sục khí')
     try {
+      let chatSessionId = ''
+      try { chatSessionId = sessionStorage.getItem('tandt_chat_session_id') } catch {}
       saveWebLead({
+        id: chatSessionId || undefined,
         phone: custPhone,
         name: custName,
         note: reqText,
-        source: 'ai-consultation'
+        source: 'ai-consultation',
+        status: 'new'
       }).catch(() => {})
     } catch {}
     const message = `Khách hàng: ${custName}\nSĐT: ${custPhone}\nYêu cầu tư vấn: ${reqText}\nPhản hồi AI tư vấn: ${aiResponseText}`
@@ -2794,6 +2845,13 @@ export default function WebCatalog() {
         orderType: 'callback',
         status: 'pending'
       })
+      saveWebLead({
+        phone: callbackPhone.trim(),
+        name: callbackName.trim(),
+        note: callbackNote.trim() || 'Yêu cầu gọi lại tư vấn từ trang chủ Web',
+        source: 'callback-request',
+        status: 'new'
+      }).catch(() => {})
       alert('Yêu cầu gọi lại đã được gửi thành công! Kỹ thuật viên của Máy Bơm T&T sẽ liên hệ lại ngay với bạn.')
       setCallbackName('')
       setCallbackPhone('')

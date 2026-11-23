@@ -794,6 +794,11 @@ export default function WebCatalog() {
   const [activeBrand, setActiveBrand] = useState('ALL')
   const [sortType, setSortType] = useState('price-asc')
   const [homeFeaturedTab, setHomeFeaturedTab] = useState('ALL')
+  const [featuredSlideIndex, setFeaturedSlideIndex] = useState(0)
+  const [featuredIsPaused, setFeaturedIsPaused] = useState(false)
+  const [featuredProgress, setFeaturedProgress] = useState(0)
+  const [isFeaturedFading, setIsFeaturedFading] = useState(false)
+  const [featuredRandomSeed, setFeaturedRandomSeed] = useState(0)
 
   // Routing states: 'catalog' | 'product-detail'
   const [viewMode, setViewMode] = useState('catalog')
@@ -1102,60 +1107,219 @@ export default function WebCatalog() {
     return Array.from(brandsSet);
   }, [products]);
 
-  // Lấy danh sách sản phẩm nổi bật ngoài trang chủ: Đa dạng mỗi dòng 1 con đại diện + ưu tiên sản phẩm ghim thủ công
-  const homeFeaturedProducts = useMemo(() => {
-    // 1. Lọc sản phẩm hiển thị trên Web và theo Tab thương hiệu đang chọn
-    const eligible = (products || []).filter(p => p && p.showOnWeb && (homeFeaturedTab === 'ALL' || getProductBrands(p).some(b => b.toUpperCase() === homeFeaturedTab.toUpperCase())))
-    if (eligible.length === 0) return []
-
-    // 2. Lấy sản phẩm được ghim nổi bật thủ công (p.featured === true)
-    const manuallyFeatured = eligible.filter(p => !!p.featured)
-
-    // 3. Gom nhóm theo Group / Category để chọn đại diện đa dạng mỗi dòng 1 sản phẩm tiêu biểu
-    const groupsMap = new Map()
-    eligible.forEach(p => {
-      const g = String(p?.group || p?.category || 'Dòng bơm khác').trim()
-      if (!groupsMap.has(g)) {
-        groupsMap.set(g, [])
+  // Trích xuất công suất số (kW) để xếp hạng & ưu tiên các mẫu máy bơm công suất lớn
+  const extractNumericPower = useCallback((p) => {
+    if (!p) return 0
+    const raw = String(p.webSpecs?.power || p.power || p.powerKw || '').trim().replace(',', '.')
+    if (!raw) {
+      const m = (p.name || '').match(/(\d+(?:[.,]\d+)?)\s*(?:kw|hp)/i)
+      if (m) {
+        let val = parseFloat(m[1].replace(',', '.'))
+        if (m[0].toLowerCase().includes('hp')) val *= 0.7457
+        return isNaN(val) ? 0 : val
       }
-      groupsMap.get(g).push(p)
+      return 0
+    }
+    if (raw.toLowerCase().includes('w') && !raw.toLowerCase().includes('kw')) {
+      const val = parseFloat(raw)
+      return isNaN(val) ? 0 : val / 1000
+    }
+    const match = raw.match(/(\d+(?:\.\d+)?)/)
+    if (match) {
+      let val = parseFloat(match[1])
+      if (raw.toLowerCase().includes('hp')) val *= 0.7457
+      return isNaN(val) ? 0 : val
+    }
+    return 0
+  }, []);
+
+  // Danh sách các đợt (batches) sản phẩm nổi bật random: Tự động gom & ưu tiên công suất lớn + đa dạng dòng bơm
+  const homeFeaturedBatches = useMemo(() => {
+    // 1. Lọc sản phẩm hiển thị trên Web và có ảnh hợp lệ
+    const eligible = (products || []).filter(p => {
+      if (!p || p.showOnWeb === false) return false
+      const hasImg = (Array.isArray(p.webImages) && p.webImages.length > 0) ||
+                     (Array.isArray(p.images) && p.images.length > 0) ||
+                     !!p.image
+      if (!hasImg) return false
+      if (homeFeaturedTab !== 'ALL') {
+        const brands = getProductBrands(p).map(b => b.toUpperCase())
+        if (!brands.some(b => b === homeFeaturedTab.toUpperCase())) return false
+      }
+      return true
     })
 
-    // Sắp xếp sản phẩm trong từng nhóm: ưu tiên sản phẩm có ảnh thật và có công suất
-    groupsMap.forEach(prods => {
-      prods.sort((a, b) => {
-        const aScore = (Array.isArray(a.webImages) && a.webImages.length ? 3 : (Array.isArray(a.images) && a.images.length ? 1 : 0)) + (a.webSpecs?.power ? 2 : 0) + (a.price > 0 ? 1 : 0)
-        const bScore = (Array.isArray(b.webImages) && b.webImages.length ? 3 : (Array.isArray(b.images) && b.images.length ? 1 : 0)) + (b.webSpecs?.power ? 2 : 0) + (b.price > 0 ? 1 : 0)
-        return bScore - aScore
-      })
-    })
+    if (eligible.length === 0) return [[]]
 
-    const selected = [...manuallyFeatured]
-    const selectedIds = new Set(selected.map(p => p.id))
+    // Hàm xáo trộn mảng ngẫu nhiên (Fisher-Yates)
+    const shuffleArray = (arr) => {
+      const a = [...arr]
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[a[i], a[j]] = [a[j], a[i]]
+      }
+      return a
+    }
 
-    // Lấy luân phiên từ mỗi nhóm 1 sản phẩm đại diện
-    const groupEntries = Array.from(groupsMap.entries())
-    let round = 0
-    let addedAny = true
-    while (selected.length < 12 && addedAny) {
-      addedAny = false
-      for (const [_, prods] of groupEntries) {
-        if (prods && prods[round]) {
-          const candidate = prods[round]
-          if (candidate && candidate.id && !selectedIds.has(candidate.id)) {
-            selected.push(candidate)
-            selectedIds.add(candidate.id)
-            addedAny = true
-            if (selected.length >= 12) break
+    // 2. Phân tầng theo công suất: Ưu tiên công suất lớn
+    // Tier 1: Công suất lớn (>= 5.5 kW, ví dụ: 5.5kW, 7.5kW, 11kW, 15kW, 22kW, 30kW, 45kW)
+    const tierHigh = shuffleArray(eligible.filter(p => extractNumericPower(p) >= 5.5))
+    // Tier 2: Công suất vừa (1.5 kW đến < 5.5 kW, ví dụ: 1.5kW, 2.2kW, 3kW, 4kW)
+    const tierMid = shuffleArray(eligible.filter(p => {
+      const kw = extractNumericPower(p)
+      return kw >= 1.5 && kw < 5.5
+    }))
+    // Tier 3: Công suất nhỏ hoặc dòng bơm khác (< 1.5 kW)
+    const tierLow = shuffleArray(eligible.filter(p => extractNumericPower(p) < 1.5))
+
+    // 3. Tạo 6 đợt trượt (batches), mỗi đợt 8 sản phẩm (desktop 8, mobile 6)
+    // Ưu tiên 5 mẫu công suất lớn, 2 mẫu công suất vừa, 1 mẫu công suất nhỏ / dòng khác
+    const BATCH_COUNT = 6
+    const BATCH_SIZE = 8
+    const batches = []
+
+    let highIdx = 0
+    let midIdx = 0
+    let lowIdx = 0
+
+    for (let b = 0; b < BATCH_COUNT; b++) {
+      const batch = []
+      const usedIds = new Set()
+      const groupCounts = new Map()
+
+      const tryAdd = (p, maxPerGroup = 2) => {
+        if (!p || usedIds.has(p.id)) return false
+        const g = String(p.group || p.category || 'other').trim()
+        const count = groupCounts.get(g) || 0
+        if (count >= maxPerGroup) return false
+        usedIds.add(p.id)
+        groupCounts.set(g, count + 1)
+        batch.push(p)
+        return true
+      }
+
+      // Lấy 4-5 con công suất lớn
+      let targetHigh = 5
+      if (tierHigh.length < targetHigh) targetHigh = tierHigh.length
+      let attempts = 0
+      while (batch.length < targetHigh && attempts < tierHigh.length * 2 && tierHigh.length > 0) {
+        const candidate = tierHigh[highIdx % tierHigh.length]
+        highIdx++
+        attempts++
+        tryAdd(candidate, 2)
+      }
+
+      // Lấy 2 con công suất vừa
+      attempts = 0
+      while (batch.length < 7 && attempts < tierMid.length * 2 && tierMid.length > 0) {
+        const candidate = tierMid[midIdx % tierMid.length]
+        midIdx++
+        attempts++
+        tryAdd(candidate, 2)
+      }
+
+      // Lấy 1 con công suất nhỏ / khác
+      attempts = 0
+      while (batch.length < BATCH_SIZE && attempts < tierLow.length * 2 && tierLow.length > 0) {
+        const candidate = tierLow[lowIdx % tierLow.length]
+        lowIdx++
+        attempts++
+        tryAdd(candidate, 2)
+      }
+
+      // Nếu còn thiếu (ví dụ khi chọn lọc theo 1 thương hiệu có ít sản phẩm), lấy thêm từ danh sách còn lại
+      if (batch.length < BATCH_SIZE) {
+        const fallbackList = shuffleArray(eligible)
+        for (const fb of fallbackList) {
+          if (batch.length >= BATCH_SIZE) break
+          if (!usedIds.has(fb.id)) {
+            usedIds.add(fb.id)
+            batch.push(fb)
           }
         }
       }
-      round++
-      if (round > 20) break
+
+      // Sắp xếp các sản phẩm trong batch để hiển thị hài hòa:
+      // Các mẫu công suất lớn sẽ xuất hiện nổi bật lên đầu và xen kẽ
+      batch.sort((x, y) => extractNumericPower(y) - extractNumericPower(x))
+
+      if (batch.length > 0) {
+        batches.push(batch)
+      }
     }
 
-    return selected.slice(0, 12)
-  }, [products, homeFeaturedTab]);
+    return batches.length > 0 ? batches : [eligible.slice(0, 8)]
+  }, [products, homeFeaturedTab, extractNumericPower, featuredRandomSeed]);
+
+  // Bộ sản phẩm của slide hiện tại
+  const currentFeaturedProducts = useMemo(() => {
+    const total = homeFeaturedBatches.length
+    if (total === 0) return []
+    const idx = featuredSlideIndex % total
+    return homeFeaturedBatches[idx] || []
+  }, [homeFeaturedBatches, featuredSlideIndex]);
+
+  // Tự động chuyển batch sản phẩm nổi bật mỗi 15 giây
+  useEffect(() => {
+    if (homeFeaturedBatches.length <= 1) return
+    const INTERVAL_MS = 100 // Tần số cập nhật progress bar mượt mà
+    const TOTAL_DURATION = 15000 // 15s
+
+    const timer = setInterval(() => {
+      setFeaturedProgress(prev => {
+        if (featuredIsPaused) return prev // Tạm dừng khi rê chuột vào xem
+        const next = prev + (INTERVAL_MS / TOTAL_DURATION) * 100
+        if (next >= 100) {
+          // Kích hoạt hiệu ứng chuyển slide mềm mại
+          setIsFeaturedFading(true)
+          setTimeout(() => {
+            setFeaturedSlideIndex(curr => (curr + 1) % homeFeaturedBatches.length)
+            setTimeout(() => {
+              setIsFeaturedFading(false)
+            }, 60)
+          }, 180)
+          return 0
+        }
+        return next
+      })
+    }, INTERVAL_MS)
+
+    return () => clearInterval(timer)
+  }, [homeFeaturedBatches.length, featuredIsPaused]);
+
+  const handleFeaturedNext = () => {
+    setIsFeaturedFading(true)
+    setTimeout(() => {
+      setFeaturedSlideIndex(curr => (curr + 1) % homeFeaturedBatches.length)
+      setFeaturedProgress(0)
+      setTimeout(() => setIsFeaturedFading(false), 60)
+    }, 180)
+  };
+
+  const handleFeaturedPrev = () => {
+    setIsFeaturedFading(true)
+    setTimeout(() => {
+      setFeaturedSlideIndex(curr => (curr - 1 + homeFeaturedBatches.length) % homeFeaturedBatches.length)
+      setFeaturedProgress(0)
+      setTimeout(() => setIsFeaturedFading(false), 60)
+    }, 180)
+  };
+
+  const handleFeaturedRandomize = () => {
+    setIsFeaturedFading(true)
+    setTimeout(() => {
+      setFeaturedRandomSeed(prev => prev + 1)
+      setFeaturedSlideIndex(0)
+      setFeaturedProgress(0)
+      setTimeout(() => setIsFeaturedFading(false), 60)
+    }, 180)
+  };
+
+  const handleFeaturedTabChange = (key) => {
+    setHomeFeaturedTab(key)
+    setFeaturedSlideIndex(0)
+    setFeaturedProgress(0)
+  };
 
   const [aiResponseText, setAiResponseText] = useState('')
 
@@ -1599,6 +1763,28 @@ export default function WebCatalog() {
             position: 'relative',
           }}
         >
+          {extractNumericPower(p) >= 5.5 && (
+            <div style={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: '1px solid #BAE6FD',
+              color: '#0284C7',
+              padding: '2px 8px',
+              borderRadius: 6,
+              fontSize: 10,
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              boxShadow: '0 2px 5px rgba(0,0,0,0.06)',
+              zIndex: 2,
+              letterSpacing: '0.2px'
+            }}>
+              <Zap size={11} color="#0284C7" /> CS LỚN ({extractNumericPower(p)} kW)
+            </div>
+          )}
           <ProductImage
             src={p.webImages?.[0] || p.images?.[0] || p.image || ""}
             alt={p.name}
@@ -4630,11 +4816,16 @@ export default function WebCatalog() {
             </div>
           </section>
 
-          {/* 3. SẢN PHẨM NỔI BẬT */}
-          <section style={{ maxWidth: 1200, margin: '48px auto 32px', padding: '0 16px', boxSizing: 'border-box' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16, borderBottom: '1px solid #E2E8F0', paddingBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+          {/* 3. SẢN PHẨM NỔI BẬT: Random liên tục, ưu tiên công suất lớn, auto-slide 15s */}
+          <section
+            style={{ maxWidth: 1200, margin: '48px auto 32px', padding: '0 16px', boxSizing: 'border-box' }}
+            onMouseEnter={() => setFeaturedIsPaused(true)}
+            onMouseLeave={() => setFeaturedIsPaused(false)}
+          >
+            {/* Header: Tiêu đề + Brand Filter Tabs + Điều hướng */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12, borderBottom: '1px solid #E2E8F0', paddingBottom: 12, flexWrap: 'wrap', gap: 10 }}>
               <div>
-                <div style={{ marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -4652,51 +4843,190 @@ export default function WebCatalog() {
                   }}>
                     <Star size={12} color="#92400E" /> SẢN PHẨM ĐẮC LỰC
                   </span>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '3px 9px',
+                    borderRadius: '16px',
+                    background: '#EFF6FF',
+                    color: '#0284C7',
+                    fontSize: '10.5px',
+                    fontWeight: 800,
+                    border: '1px solid #BAE6FD'
+                  }}>
+                    <Zap size={11} color="#0284C7" /> ƯU TIÊN BƠM CÔNG SUẤT LỚN
+                  </span>
                 </div>
                 <h2 style={{ fontSize: 22, fontWeight: 900, color: '#082B4C', marginTop: 2, margin: 0 }}>SẢN PHẨM NỔI BẬT</h2>
               </div>
               
-              {/* Brand filter tabs inside Homepage */}
-              <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 6, overflowX: 'auto' }}>
-                {[
-                  { key: 'ALL', label: 'Tất cả' },
-                  { key: 'UPTI PUMP', label: 'UPTI' },
-                  { key: 'SELANNI', label: 'SELANNI' },
-                  { key: 'BERATI', label: 'BERATI' },
-                  { key: 'MASTRA', label: 'MASTRA' },
-                  { key: 'PENTAX', label: 'PENTAX' },
-                  { key: 'HOWAKI', label: 'HOWAKI' }
-                ].map(tab => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                {/* Brand filter tabs inside Homepage */}
+                <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 6, overflowX: 'auto', maxWidth: '100%' }}>
+                  {[
+                    { key: 'ALL', label: 'Tất cả' },
+                    { key: 'UPTI PUMP', label: 'UPTI' },
+                    { key: 'SELANNI', label: 'SELANNI' },
+                    { key: 'BERATI', label: 'BERATI' },
+                    { key: 'MASTRA', label: 'MASTRA' },
+                    { key: 'PENTAX', label: 'PENTAX' },
+                    { key: 'HOWAKI', label: 'HOWAKI' }
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => handleFeaturedTabChange(tab.key)}
+                      style={{
+                        background: homeFeaturedTab === tab.key ? '#FFFFFF' : 'transparent',
+                        color: homeFeaturedTab === tab.key ? '#0878D9' : '#64748B',
+                        border: 'none', borderRadius: 4, padding: '4px 12px', fontSize: 11.5,
+                        fontWeight: 700, cursor: 'pointer', boxShadow: homeFeaturedTab === tab.key ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
+                        transition: 'all 0.15s', whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Next/Prev & Random Controls */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <button
-                    key={tab.key}
-                    onClick={() => setHomeFeaturedTab(tab.key)}
+                    onClick={handleFeaturedRandomize}
+                    title="Đổi bộ sản phẩm ngẫu nhiên khác"
                     style={{
-                      background: homeFeaturedTab === tab.key ? '#FFFFFF' : 'transparent',
-                      color: homeFeaturedTab === tab.key ? '#0878D9' : '#64748B',
-                      border: 'none', borderRadius: 4, padding: '4px 12px', fontSize: 11.5,
-                      fontWeight: 700, cursor: 'pointer', boxShadow: homeFeaturedTab === tab.key ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
-                      transition: 'all 0.15s', whiteSpace: 'nowrap'
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: 6,
+                      padding: '5px 9px', fontSize: 11.5, fontWeight: 700, color: '#0878D9',
+                      cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                      transition: 'all 0.15s'
                     }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = '#0878D9'; }}
+                    onMouseOut={e => { e.currentTarget.style.borderColor = '#CBD5E1'; }}
                   >
-                    {tab.label}
+                    <RefreshCw size={12} color="#0878D9" /> <span className="desktop-only">Đổi khác</span>
                   </button>
-                ))}
+                  <button
+                    onClick={handleFeaturedPrev}
+                    title="Xem nhóm trước"
+                    style={{
+                      width: 29, height: 29, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: 6,
+                      cursor: 'pointer', color: '#475569', boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = '#0878D9'; e.currentTarget.style.color = '#0878D9'; }}
+                    onMouseOut={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#475569'; }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    onClick={handleFeaturedNext}
+                    title="Xem nhóm kế tiếp"
+                    style={{
+                      width: 29, height: 29, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: 6,
+                      cursor: 'pointer', color: '#475569', boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = '#0878D9'; e.currentTarget.style.color = '#0878D9'; }}
+                    onMouseOut={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#475569'; }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Desktop View: 4-column compact featured cards (Đa dạng mỗi dòng 1 sản phẩm đại diện) */}
-            <div className="desktop-only">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-                {homeFeaturedProducts.slice(0, 8).map(p => renderFeaturedCard(p))}
+            {/* Thanh tiến trình đếm ngược 15s mượt mà */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, fontSize: 11.5, color: '#64748B' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: featuredIsPaused ? '#FEF3C7' : '#EFF6FF',
+                    color: featuredIsPaused ? '#92400E' : '#0284C7',
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontWeight: 700,
+                    fontSize: 11,
+                    transition: 'all 0.2s'
+                  }}>
+                    <Clock size={11} /> {featuredIsPaused ? '⏸️ Đang dừng xem' : '⏱️ Tự động chuyển sau 15s'}
+                  </span>
+                  <span className="desktop-only" style={{ color: '#94A3B8', fontSize: 11 }}>
+                    • Rà chuột vào thẻ sản phẩm để giữ xem
+                  </span>
+                </div>
+                <div style={{ fontWeight: 800, color: '#334155', fontSize: 11 }}>
+                  Nhóm {(featuredSlideIndex % Math.max(1, homeFeaturedBatches.length)) + 1} / {Math.max(1, homeFeaturedBatches.length)}
+                </div>
+              </div>
+              <div style={{ width: '100%', height: 3, background: '#E2E8F0', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{
+                  width: `${featuredProgress}%`,
+                  height: '100%',
+                  background: featuredIsPaused ? '#F59E0B' : 'linear-gradient(90deg, #0878D9 0%, #06B6D4 100%)',
+                  transition: featuredProgress === 0 ? 'none' : 'width 0.1s linear, background 0.2s'
+                }} />
               </div>
             </div>
 
-            {/* Mobile View: Clean 2-column grid */}
-            <div className="mobile-only-flex" style={{ display: 'none', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {homeFeaturedProducts.slice(0, 6).map(p => renderFeaturedCard(p))}
+            {/* Container trượt & chuyển trang mềm mại */}
+            <div style={{
+              opacity: isFeaturedFading ? 0.25 : 1,
+              transform: isFeaturedFading ? 'translateY(6px) scale(0.995)' : 'translateY(0) scale(1)',
+              transition: 'opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}>
+              {/* Desktop View: 4-column compact featured cards (Đa dạng mỗi dòng 1 sản phẩm đại diện, ưu tiên CS lớn) */}
+              <div className="desktop-only">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                  {currentFeaturedProducts.slice(0, 8).map(p => renderFeaturedCard(p))}
+                </div>
+              </div>
+
+              {/* Mobile View: Clean 2-column grid */}
+              <div className="mobile-only-flex" style={{ display: 'none', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  {currentFeaturedProducts.slice(0, 6).map(p => renderFeaturedCard(p))}
+                </div>
               </div>
             </div>
+
+            {/* Dấu chấm chuyển trang (Pagination Dots) */}
+            {homeFeaturedBatches.length > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 18 }}>
+                {homeFeaturedBatches.map((_, dotIdx) => {
+                  const isActive = (featuredSlideIndex % homeFeaturedBatches.length) === dotIdx;
+                  return (
+                    <button
+                      key={dotIdx}
+                      onClick={() => {
+                        setIsFeaturedFading(true);
+                        setTimeout(() => {
+                          setFeaturedSlideIndex(dotIdx);
+                          setFeaturedProgress(0);
+                          setTimeout(() => setIsFeaturedFading(false), 60);
+                        }, 180);
+                      }}
+                      style={{
+                        width: isActive ? 24 : 7,
+                        height: 7,
+                        borderRadius: 4,
+                        background: isActive ? '#0878D9' : '#CBD5E1',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                      }}
+                      title={`Xem nhóm ${dotIdx + 1}`}
+                    />
+                  );
+                })}
+              </div>
+            )}
             
             <div style={{ textAlign: 'center', marginTop: 24 }}>
               <button

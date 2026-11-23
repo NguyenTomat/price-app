@@ -6,32 +6,11 @@ import {
   parseRequirementRow,
   solveProjectRequirements,
   analyzeProductDetails,
-  SAMPLE_PROJECT_1_TEXT,
-  SAMPLE_PROJECT_2_TEXT
+  SAMPLE_PROJECT_1_TEXT
 } from '../utils/pumpSolver'
 import ExcelJS from 'exceljs'
 
 const fmt = n => n != null && !isNaN(n) ? Number(n).toLocaleString('vi-VN') + ' ₫' : '—'
-
-// Initial preset requirement images
-const INITIAL_IMAGES = [
-  {
-    id: 'req1',
-    title: 'Trang 1: Bảng 6 cụm bơm MEP',
-    subTitle: 'Cấp nước sinh hoạt, tăng áp, thoát sàn, hố pít',
-    src: '/samples/sample_req_1.jpg',
-    rawText: SAMPLE_PROJECT_1_TEXT,
-    selected: true
-  },
-  {
-    id: 'req2',
-    title: 'Trang 2: Bể chứa & Tưới (3 cụm)',
-    subTitle: 'Bơm bể chứa, tăng áp biến tần, tưới cảnh quan',
-    src: '/samples/sample_req_2.jpg',
-    rawText: SAMPLE_PROJECT_2_TEXT,
-    selected: true
-  }
-]
 
 export default function AiSolverPage({ setPage }) {
   const toast = useToast()
@@ -40,8 +19,8 @@ export default function AiSolverPage({ setPage }) {
   const [allProducts, setAllProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(false)
 
-  // Multi-image requirement list
-  const [reqImages, setReqImages] = useState(INITIAL_IMAGES)
+  // Multi-image requirement list - Start EMPTY (no sample images)
+  const [reqImages, setReqImages] = useState([])
   const [activeImageIndex, setActiveImageIndex] = useState(0)
 
   // Side panel & Modal & Zoom states
@@ -66,7 +45,7 @@ export default function AiSolverPage({ setPage }) {
     {
       id: 'welcome',
       sender: 'ai',
-      text: '👋 Xin chào! Tôi là **Trợ Lý Kỹ Thuật T&T**.\n\nTôi đã kết nối dữ liệu kho hàng với hơn **650 model máy bơm** (Bơm chìm nước thải WQ, SHM, bơm ly tâm trục đứng CDLF, ly tâm trục ngang CAM, bơm biến tần...).\n\n📌 **Bên cạnh là danh sách Ảnh yêu cầu của khách** (Hỗ trợ thêm nhiều ảnh cùng lúc, dán từ Zalo).\nBạn có thể bấm nút **"⚡ Bóc tách & giải toán tất cả ảnh"**, hoặc gõ tin nhắn bất kỳ. Tôi sẽ phân loại chính xác 100% **Bơm Cạn vs Bơm Chìm**, tính toán cột áp H và lưu lượng Q đạt chuẩn kỹ thuật ≥ 90% kèm ảnh thật để bạn copy gửi Zalo cho khách!',
+      text: '👋 Xin chào! Tôi là **Trợ Lý Kỹ Thuật T&T**.\n\nTôi đã kết nối toàn bộ dữ liệu kho hàng thực tế của hơn **650 model máy bơm** (Bơm chìm nước thải WQ, SHM, bơm ly tâm trục đứng CDLF, ly tâm trục ngang CAM, bơm biến tần...).\n\n📌 **Bạn hãy bấm "+ Thêm ảnh" hoặc nhấn Ctrl + V để dán ảnh bảng yêu cầu của khách ở cột bên cạnh**.\nTôi sẽ tự động phân loại chính xác 100% **Bơm Cạn vs Bơm Chìm**, tính toán thông số Q, H chuẩn ≥ 90% và trích xuất sẵn ảnh thực tế để bạn copy gửi Zalo cho khách!',
       timestamp: Date.now()
     }
   ])
@@ -95,7 +74,7 @@ export default function AiSolverPage({ setPage }) {
   }, [chatMessages, chatLoading])
 
   // Active focused requirement image
-  const focusedImage = reqImages[activeImageIndex] || reqImages[0]
+  const focusedImage = reqImages[activeImageIndex] || reqImages[0] || null
 
   // Selected images for solving
   const selectedReqImages = useMemo(() => {
@@ -107,9 +86,9 @@ export default function AiSolverPage({ setPage }) {
     setReqImages(prev => prev.map(img => img.id === id ? { ...img, selected: !img.selected } : img))
   }
 
-  // Remove an image from list
+  // Remove single image with feedback
   const handleRemoveImage = (id, e) => {
-    e.stopPropagation()
+    if (e) e.stopPropagation()
     setReqImages(prev => {
       const next = prev.filter(img => img.id !== id)
       if (activeImageIndex >= next.length) {
@@ -117,7 +96,14 @@ export default function AiSolverPage({ setPage }) {
       }
       return next
     })
-    toast('Đã xóa 1 ảnh yêu cầu', 'default')
+    toast('Đã gỡ 1 ảnh yêu cầu', 'default')
+  }
+
+  // Clear all images
+  const handleClearAllImages = () => {
+    setReqImages([])
+    setActiveImageIndex(0)
+    toast('Đã gỡ toàn bộ ảnh yêu cầu', 'default')
   }
 
   // Copy Image directly to clipboard for Zalo
@@ -155,16 +141,19 @@ export default function AiSolverPage({ setPage }) {
       reader.onload = (event) => {
         newItems.push({
           id: `custom_${Date.now()}_${idx}`,
-          title: `Trang ${reqImages.length + newItems.length + 1}: ${file.name.length > 20 ? file.name.slice(0, 18) + '...' : file.name}`,
-          subTitle: `Ảnh tải lên từ máy (${(file.size / 1024).toFixed(0)} KB)`,
+          title: `Ảnh ${reqImages.length + newItems.length + 1}: ${file.name.length > 20 ? file.name.slice(0, 18) + '...' : file.name}`,
+          subTitle: `Tải lên (${(file.size / 1024).toFixed(0)} KB)`,
           src: event.target.result,
           rawText: '',
           selected: true
         })
         loadedCount++
         if (loadedCount === files.length) {
-          setReqImages(prev => [...prev, ...newItems])
-          setActiveImageIndex(reqImages.length)
+          setReqImages(prev => {
+            const next = [...prev, ...newItems]
+            setActiveImageIndex(next.length - 1)
+            return next
+          })
           toast(`✅ Đã thêm ${files.length} ảnh yêu cầu mới!`, 'success')
         }
       }
@@ -206,14 +195,17 @@ export default function AiSolverPage({ setPage }) {
         reader.onload = (event) => {
           const newReq = {
             id: `pasted_${Date.now()}`,
-            title: `Ảnh Zalo (${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })})`,
+            title: `Ảnh Zalo ${reqImages.length + 1} (${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })})`,
             subTitle: 'Dán trực tiếp từ Clipboard / Zalo',
             src: event.target.result,
             rawText: '',
             selected: true
           }
-          setReqImages(prev => [...prev, newReq])
-          setActiveImageIndex(reqImages.length)
+          setReqImages(prev => {
+            const next = [...prev, newReq]
+            setActiveImageIndex(next.length - 1)
+            return next
+          })
           toast('✅ Đã nhận ảnh bảng yêu cầu từ Clipboard (Ctrl+V)!', 'success')
         }
         reader.readAsDataURL(file)
@@ -622,7 +614,7 @@ export default function AiSolverPage({ setPage }) {
                 {
                   id: `welcome_${Date.now()}`,
                   sender: 'ai',
-                  text: 'Đã làm mới cuộc hội thoại. Bạn có thể chọn ảnh yêu cầu bên cạnh để bóc tách hoặc gõ câu hỏi kỹ thuật mới!',
+                  text: 'Đã làm mới cuộc hội thoại. Bạn có thể thêm ảnh yêu cầu bên cạnh để bóc tách hoặc gõ câu hỏi kỹ thuật mới!',
                   timestamp: Date.now()
                 }
               ])
@@ -670,166 +662,181 @@ export default function AiSolverPage({ setPage }) {
                   Bảng Yêu Cầu ({reqImages.length} ảnh)
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text3)' }}>
-                  Đang chọn {selectedReqImages.length}/{reqImages.length} ảnh để giải
+                  {reqImages.length > 0 ? `Đang chọn ${selectedReqImages.length}/${reqImages.length} ảnh` : 'Chưa có ảnh nào'}
                 </div>
               </div>
 
-              {/* Upload Multiple Images Button */}
-              <input
-                type="file"
-                ref={multiFileInputRef}
-                onChange={handleMultiFileUpload}
-                accept="image/*"
-                multiple
-                style={{ display: 'none' }}
-              />
-              <button
-                className="btn sm primary"
-                onClick={() => multiFileInputRef.current?.click()}
-                style={{ fontSize: 11, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4 }}
-                title="Chọn một hoặc nhiều file ảnh cùng lúc từ máy"
-              >
-                <span>+ Thêm nhiều ảnh</span>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {reqImages.length > 1 && (
+                  <button
+                    onClick={handleClearAllImages}
+                    className="btn sm"
+                    style={{ fontSize: 11, color: 'var(--danger)', padding: '4px 8px' }}
+                    title="Xóa tất cả các ảnh"
+                  >
+                    Xóa tất cả
+                  </button>
+                )}
+
+                {/* Upload Multiple Images Button */}
+                <input
+                  type="file"
+                  ref={multiFileInputRef}
+                  onChange={handleMultiFileUpload}
+                  accept="image/*"
+                  multiple
+                  style={{ display: 'none' }}
+                />
+                <button
+                  className="btn sm primary"
+                  onClick={() => multiFileInputRef.current?.click()}
+                  style={{ fontSize: 11, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4 }}
+                  title="Chọn một hoặc nhiều file ảnh từ máy"
+                >
+                  <span>+ Thêm ảnh</span>
+                </button>
+              </div>
             </div>
 
-            {/* Multi-Image Thumbnail Ribbon */}
-            <div
-              style={{
-                padding: '10px 12px',
-                borderBottom: '1px solid var(--border)',
-                display: 'flex',
-                gap: 8,
-                overflowX: 'auto',
-                background: 'var(--surface)',
-                alignItems: 'center'
-              }}
-            >
-              {reqImages.map((req, idx) => {
-                const isFocused = activeImageIndex === idx
-                return (
-                  <div
-                    key={req.id}
-                    onClick={() => setActiveImageIndex(idx)}
-                    style={{
-                      position: 'relative',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                      flexShrink: 0
-                    }}
-                  >
+            {/* If images exist: Multi-Image Thumbnail Ribbon */}
+            {reqImages.length > 0 && (
+              <div
+                style={{
+                  padding: '10px 12px',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex',
+                  gap: 8,
+                  overflowX: 'auto',
+                  background: 'var(--surface)',
+                  alignItems: 'center'
+                }}
+              >
+                {reqImages.map((req, idx) => {
+                  const isFocused = activeImageIndex === idx
+                  return (
                     <div
+                      key={req.id}
+                      onClick={() => setActiveImageIndex(idx)}
                       style={{
-                        width: 58,
-                        height: 58,
-                        borderRadius: 'var(--radius-sm)',
-                        overflow: 'hidden',
-                        border: isFocused ? '2px solid var(--accent)' : '1px solid var(--border2)',
-                        boxShadow: isFocused ? '0 0 0 2px rgba(37,99,235,0.2)' : 'none',
-                        background: '#f8fafc',
-                        position: 'relative'
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        flexShrink: 0
                       }}
                     >
-                      <img
-                        src={req.src}
-                        alt={req.title}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-
-                      {/* Checkbox toggle */}
-                      <input
-                        type="checkbox"
-                        checked={req.selected}
-                        onChange={(e) => {
-                          e.stopPropagation()
-                          toggleSelectImage(req.id)
-                        }}
-                        title={req.selected ? 'Bỏ chọn ảnh này' : 'Chọn ảnh này để giải'}
+                      <div
                         style={{
-                          position: 'absolute',
-                          top: 2,
-                          left: 2,
-                          width: 14,
-                          height: 14,
-                          cursor: 'pointer',
-                          accentColor: 'var(--accent)'
+                          width: 58,
+                          height: 58,
+                          borderRadius: 'var(--radius-sm)',
+                          overflow: 'hidden',
+                          border: isFocused ? '2px solid var(--accent)' : '1px solid var(--border2)',
+                          boxShadow: isFocused ? '0 0 0 2px rgba(37,99,235,0.2)' : 'none',
+                          background: '#f8fafc',
+                          position: 'relative'
                         }}
-                      />
+                      >
+                        <img
+                          src={req.src}
+                          alt={req.title}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
 
-                      {/* Delete button (for custom images) */}
-                      {reqImages.length > 1 && (
+                        {/* Checkbox toggle */}
+                        <input
+                          type="checkbox"
+                          checked={req.selected}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            toggleSelectImage(req.id)
+                          }}
+                          title={req.selected ? 'Bỏ chọn ảnh này' : 'Chọn ảnh này để giải'}
+                          style={{
+                            position: 'absolute',
+                            top: 2,
+                            left: 2,
+                            width: 14,
+                            height: 14,
+                            cursor: 'pointer',
+                            accentColor: 'var(--accent)'
+                          }}
+                        />
+
+                        {/* Remove button on thumbnail */}
                         <button
                           onClick={(e) => handleRemoveImage(req.id, e)}
-                          title="Xóa ảnh này"
+                          title="Gỡ ảnh này"
                           style={{
                             position: 'absolute',
                             top: 2,
                             right: 2,
-                            width: 16,
-                            height: 16,
+                            width: 18,
+                            height: 18,
                             borderRadius: '50%',
-                            background: 'rgba(0,0,0,0.6)',
+                            background: 'rgba(220, 38, 38, 0.9)',
                             color: '#fff',
                             border: 'none',
                             fontSize: 10,
-                            lineHeight: '16px',
+                            fontWeight: 'bold',
+                            lineHeight: '18px',
                             textAlign: 'center',
                             cursor: 'pointer',
-                            padding: 0
+                            padding: 0,
+                            zIndex: 2
                           }}
                         >
                           ✕
                         </button>
-                      )}
+                      </div>
+
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: isFocused ? 700 : 500,
+                          color: isFocused ? 'var(--accent)' : 'var(--text2)',
+                          marginTop: 3,
+                          maxWidth: 62,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Ảnh {idx + 1}
+                      </span>
                     </div>
+                  )
+                })}
 
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: isFocused ? 700 : 500,
-                        color: isFocused ? 'var(--accent)' : 'var(--text2)',
-                        marginTop: 3,
-                        maxWidth: 62,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      Ảnh {idx + 1}
-                    </span>
-                  </div>
-                )
-              })}
-
-              {/* Add more button tile in strip */}
-              <div
-                onClick={() => multiFileInputRef.current?.click()}
-                style={{
-                  width: 58,
-                  height: 58,
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px dashed var(--border2)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  background: 'var(--surface2)',
-                  color: 'var(--text3)',
-                  fontSize: 11,
-                  textAlign: 'center'
-                }}
-                title="Bấm để tải thêm ảnh"
-              >
-                <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
-                <span style={{ fontSize: 9, marginTop: 2 }}>Thêm</span>
+                {/* Add more button tile in strip */}
+                <div
+                  onClick={() => multiFileInputRef.current?.click()}
+                  style={{
+                    width: 58,
+                    height: 58,
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px dashed var(--border2)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    background: 'var(--surface2)',
+                    color: 'var(--text3)',
+                    fontSize: 11,
+                    textAlign: 'center'
+                  }}
+                  title="Bấm để tải thêm ảnh"
+                >
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
+                  <span style={{ fontSize: 9, marginTop: 2 }}>Thêm</span>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Main Preview Box of Focused Image */}
+            {/* Main Preview Box or Empty Dropzone */}
             <div
               style={{
                 flex: 1,
@@ -879,6 +886,7 @@ export default function AiSolverPage({ setPage }) {
                     </div>
                   </div>
 
+                  {/* Image info & Prominent Remove Button */}
                   <div
                     style={{
                       marginTop: 10,
@@ -889,45 +897,91 @@ export default function AiSolverPage({ setPage }) {
                       fontSize: 12
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                       <div style={{ fontWeight: 700, color: 'var(--text)' }}>
                         {focusedImage.title}
                       </div>
-                      <span className="badge badge-gray" style={{ fontSize: 10 }}>
-                        {activeImageIndex + 1} / {reqImages.length}
-                      </span>
+
+                      {/* Prominent Gỡ ảnh button */}
+                      <button
+                        onClick={() => handleRemoveImage(focusedImage.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          color: 'var(--danger)',
+                          border: '1px solid rgba(239, 68, 68, 0.25)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                        title="Gỡ ảnh này khỏi danh sách"
+                      >
+                        🗑️ Gỡ ảnh này
+                      </button>
                     </div>
-                    <div style={{ color: 'var(--text3)', fontSize: 11, marginTop: 2 }}>
-                      {focusedImage.subTitle}
+
+                    <div style={{ color: 'var(--text3)', fontSize: 11 }}>
+                      {focusedImage.subTitle} • {activeImageIndex + 1}/{reqImages.length} ảnh
                     </div>
                   </div>
+
+                  {/* Master CTA: Solve ALL Selected Images */}
+                  <button
+                    className="btn primary"
+                    onClick={() => handleSolveImages(selectedReqImages)}
+                    disabled={chatLoading || selectedReqImages.length === 0}
+                    style={{
+                      marginTop: 12,
+                      width: '100%',
+                      padding: '12px 16px',
+                      fontWeight: 700,
+                      fontSize: 13,
+                      boxShadow: 'var(--shadow-md)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <span>⚡ Bóc tách & giải toán ({selectedReqImages.length} ảnh đã chọn)</span>
+                  </button>
                 </>
               ) : (
-                <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 30, fontSize: 13 }}>
-                  Chưa có ảnh yêu cầu nào. Hãy bấm <strong>+ Thêm nhiều ảnh</strong> hoặc dán Ctrl+V.
+                /* Empty state when no images */
+                <div
+                  onClick={() => multiFileInputRef.current?.click()}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 24,
+                    textAlign: 'center',
+                    border: '2px dashed var(--border2)',
+                    borderRadius: 'var(--radius)',
+                    background: 'var(--surface)',
+                    cursor: 'pointer',
+                    color: 'var(--text2)',
+                    minHeight: 280
+                  }}
+                >
+                  <div style={{ fontSize: 40, marginBottom: 10 }}>📷</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 4 }}>
+                    Chưa có ảnh yêu cầu nào
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)', maxWidth: 260, marginBottom: 16, lineHeight: 1.5 }}>
+                    Bấm vào đây để tải một hoặc nhiều ảnh từ máy, hoặc nhấn <strong>Ctrl + V</strong> để dán ảnh Zalo.
+                  </div>
+                  <button className="btn primary" style={{ pointerEvents: 'none', fontSize: 12 }}>
+                    + Thêm ảnh yêu cầu
+                  </button>
                 </div>
               )}
-
-              {/* Master CTA: Solve ALL Selected Images */}
-              <button
-                className="btn primary"
-                onClick={() => handleSolveImages(selectedReqImages)}
-                disabled={chatLoading || selectedReqImages.length === 0}
-                style={{
-                  marginTop: 12,
-                  width: '100%',
-                  padding: '12px 16px',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  boxShadow: 'var(--shadow-md)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6
-                }}
-              >
-                <span>⚡ Bóc tách & giải toán tất cả ({selectedReqImages.length} ảnh đã chọn)</span>
-              </button>
 
               <div style={{ color: 'var(--text3)', fontSize: 11, marginTop: 8, textAlign: 'center' }}>
                 💡 Dán nhanh ảnh từ Zalo vào đây bằng <kbd style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 5px', borderRadius: 4, fontFamily: 'monospace' }}>Ctrl + V</kbd>
@@ -1483,13 +1537,15 @@ export default function AiSolverPage({ setPage }) {
               {/* Quick suggestion chips */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
                 <span style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap' }}>Gợi ý:</span>
-                <button
-                  className="btn xs"
-                  onClick={() => handleSolveImages(selectedReqImages)}
-                  style={{ borderRadius: 12, fontWeight: 700 }}
-                >
-                  ⚡ Bóc tách tất cả ({selectedReqImages.length} ảnh)
-                </button>
+                {selectedReqImages.length > 0 && (
+                  <button
+                    className="btn xs"
+                    onClick={() => handleSolveImages(selectedReqImages)}
+                    style={{ borderRadius: 12, fontWeight: 700 }}
+                  >
+                    ⚡ Bóc tách tất cả ({selectedReqImages.length} ảnh)
+                  </button>
+                )}
                 <button
                   className="btn xs"
                   onClick={() => handleSendMessage('Cho tôi xin ảnh thực tế và thông số con bơm CDLF 16-12')}
@@ -1503,6 +1559,13 @@ export default function AiSolverPage({ setPage }) {
                   style={{ borderRadius: 12 }}
                 >
                   💬 Bơm chìm Q=15 H=20
+                </button>
+                <button
+                  className="btn xs"
+                  onClick={() => handleSendMessage('Tư vấn cụm bơm tăng áp biến tần cho biệt thự hoặc tòa nhà mini')}
+                  style={{ borderRadius: 12 }}
+                >
+                  💬 Bơm tăng áp biến tần
                 </button>
               </div>
 

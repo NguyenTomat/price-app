@@ -763,7 +763,7 @@ export default function DashboardPage({ setPage }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <UserAvatar
-            user={{ ...profile, ...user }}
+            user={{ ...user, ...profile, photoURL: profile?.photoURL || user?.photoURL }}
             size={40}
             showStatus={true}
             onClick={() => setPage('account')}

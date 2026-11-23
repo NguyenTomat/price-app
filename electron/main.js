@@ -8,8 +8,19 @@ const isDev = !app.isPackaged
 autoUpdater.logger = require('electron').app
   ? (() => { try { return require('electron-log') } catch { return console } })()
   : console
-autoUpdater.autoDownload = true        // Tự động tải ngầm khi có bản mới
-autoUpdater.autoInstallOnAppQuit = true // Tự cài khi đóng app
+autoUpdater.autoDownload = false        // KHÔNG tự động tải ngầm
+autoUpdater.autoInstallOnAppQuit = false // TUYỆT ĐỐI KHÔNG hiện thông báo cập nhật / tự cài khi tắt app
+
+// Xóa triệt để file installer pending nếu có từ phiên bản cũ tránh bị Windows hỏi cài đặt/update khi thoát app
+try {
+  const localAppData = process.env.LOCALAPPDATA || (process.env.USERPROFILE ? path.join(process.env.USERPROFILE, 'AppData', 'Local') : '')
+  if (localAppData) {
+    const pendingDir = path.join(localAppData, 'price-manager-updater')
+    if (fs.existsSync(pendingDir)) {
+      fs.rmSync(pendingDir, { recursive: true, force: true })
+    }
+  }
+} catch (e) {}
 
 let mainWin = null
 
@@ -152,10 +163,10 @@ function setupAutoUpdater() {
     autoUpdater.checkForUpdates().catch(() => {})
   })
 
-  // Check tự động sau 3s khi app mở
-  setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(() => {})
-  }, 3000)
+  // Tắt kiểm tra tự động gây phiền toái khi mở/tắt app
+  // setTimeout(() => {
+  //   autoUpdater.checkForUpdates().catch(() => {})
+  // }, 3000)
 }
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────

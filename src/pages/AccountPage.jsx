@@ -394,7 +394,7 @@ export default function AccountPage({ setPage }) {
         <div style={{ marginBottom: 22, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <UserAvatar
-              user={{ ...profile, ...user }}
+              user={{ ...user, ...profile, photoURL: photoURL || profile?.photoURL || user?.photoURL }}
               size={46}
               showStatus={true}
               style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
@@ -566,7 +566,7 @@ export default function AccountPage({ setPage }) {
                     <UserAvatar
                       user={{ photoURL, displayName, email: user?.email }}
                       size={82}
-                      showStatus={true}
+                      showStatus={false}
                       style={{ boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}
                     />
                     <button
@@ -575,8 +575,8 @@ export default function AccountPage({ setPage }) {
                       title="Đổi ảnh đại diện"
                       style={{
                         position: 'absolute',
-                        bottom: -2,
-                        right: -2,
+                        bottom: 0,
+                        right: 0,
                         width: 28,
                         height: 28,
                         borderRadius: '50%',

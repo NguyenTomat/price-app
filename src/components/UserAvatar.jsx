@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 export default function UserAvatar({
   user,
@@ -7,7 +7,8 @@ export default function UserAvatar({
   style = {},
   onClick
 }) {
-  const photo = user?.photoURL
+  const [imgError, setImgError] = useState(false)
+  const photo = !imgError ? (user?.photoURL || null) : null
   const name = user?.displayName || user?.email || 'User'
   const initial = (name.trim() || 'U').charAt(0).toUpperCase()
 
@@ -26,17 +27,22 @@ export default function UserAvatar({
   }
   const bg = gradients[Math.abs(hash) % gradients.length]
 
+  const statusSize = Math.max(9, Math.round(size * 0.26))
+
   return (
     <div
       style={{
         position: 'relative',
         width: size,
         height: size,
+        borderRadius: '50%',
         flexShrink: 0,
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: onClick ? 'pointer' : 'default',
+        background: photo ? 'var(--surface, #ffffff)' : bg,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
         ...style,
       }}
       onClick={onClick}
@@ -46,35 +52,28 @@ export default function UserAvatar({
         <img
           src={photo}
           alt={name}
+          onError={() => setImgError(true)}
           style={{
-            width: size,
-            height: size,
+            width: '100%',
+            height: '100%',
             borderRadius: '50%',
             objectFit: 'cover',
-            border: '1.5px solid rgba(0,0,0,0.08)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
             display: 'block',
+            border: '1.5px solid rgba(0,0,0,0.08)',
           }}
         />
       ) : (
-        <div
+        <span
           style={{
-            width: size,
-            height: size,
-            borderRadius: '50%',
-            background: bg,
             color: '#ffffff',
             fontWeight: 700,
             fontSize: Math.max(10, Math.floor(size * 0.42)),
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
             userSelect: 'none',
+            lineHeight: 1,
           }}
         >
           {initial}
-        </div>
+        </span>
       )}
       {showStatus && (
         <span
@@ -82,11 +81,12 @@ export default function UserAvatar({
             position: 'absolute',
             bottom: 0,
             right: 0,
-            width: Math.max(8, Math.floor(size * 0.28)),
-            height: Math.max(8, Math.floor(size * 0.28)),
+            width: statusSize,
+            height: statusSize,
             borderRadius: '50%',
             background: '#10b981',
-            border: '1.5px solid var(--surface, #ffffff)',
+            border: '2px solid var(--surface, #ffffff)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
           }}
         />
       )}

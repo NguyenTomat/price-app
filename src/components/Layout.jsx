@@ -163,7 +163,7 @@ export default function Layout({ page, setPage, children, onSpotlight, pendingWe
               if (page !== 'account') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
             }}
           >
-            <UserAvatar user={{ ...profile, ...user }} size={34} showStatus={true} />
+            <UserAvatar user={{ ...user, ...profile, photoURL: profile?.photoURL || user?.photoURL }} size={34} showStatus={true} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{

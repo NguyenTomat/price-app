@@ -439,9 +439,23 @@ export const mergeCatalogData = (baseProducts, liveProducts) => {
   const merged = baseProducts.map(bp => {
     const lp = liveMap.get(bp.id)
     if (!lp) return bp
-    const validLiveImages = Array.isArray(lp.webImages) ? lp.webImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
-    const validBaseImages = Array.isArray(bp.webImages) ? bp.webImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
-    const images = (validLiveImages.length > 0) ? validLiveImages : validBaseImages
+
+    // Nếu Override chỉ định showOnWeb = false -> Bắt buộc ẩn
+    const isShowOnWeb = lp.showOnWeb !== undefined ? lp.showOnWeb === true : bp.showOnWeb === true
+    if (!isShowOnWeb) {
+      return { ...bp, ...lp, showOnWeb: false }
+    }
+
+    const validLiveWebImgs = Array.isArray(lp.webImages) ? lp.webImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
+    const validLiveImgs = Array.isArray(lp.images) ? lp.images.filter(img => typeof img === 'string' && img.trim().length > 0) : []
+    const validBaseWebImgs = Array.isArray(bp.webImages) ? bp.webImages.filter(img => typeof img === 'string' && img.trim().length > 0) : []
+    const validBaseImgs = Array.isArray(bp.images) ? bp.images.filter(img => typeof img === 'string' && img.trim().length > 0) : []
+
+    let images = []
+    if (validLiveWebImgs.length > 0) images = validLiveWebImgs
+    else if (validLiveImgs.length > 0) images = validLiveImgs
+    else if (validBaseWebImgs.length > 0) images = validBaseWebImgs
+    else if (validBaseImgs.length > 0) images = validBaseImgs
     const liveBrands = Array.isArray(lp.webBrands) && lp.webBrands.length > 0 ? lp.webBrands : (lp.webBrand ? String(lp.webBrand).split(/[·,;]/).map(b => b.trim()).filter(Boolean) : null)
     const baseBrands = Array.isArray(bp.webBrands) && bp.webBrands.length > 0 ? bp.webBrands : (bp.webBrand ? String(bp.webBrand).split(/[·,;]/).map(b => b.trim()).filter(Boolean) : null)
     const finalBrands = (liveBrands && liveBrands.length > 0) ? liveBrands : ((baseBrands && baseBrands.length > 0) ? baseBrands : ['UPTI PUMP'])
@@ -584,16 +598,31 @@ export const refreshWebCatalogSnapshot = async () => {
             console.warn(`Lỗi lưu override cho ${p.id}:`, e)
           }
         } else {
-          // Nếu sản phẩm không được tích Đăng Web nhưng từng có trong web_product_overrides với showOnWeb !== false, đánh dấu ẩn ngay
-          const prevOverride = existingOverridesMap.get(p.id)
-          if (prevOverride && prevOverride.showOnWeb !== false) {
-            try {
-              await setDoc(doc(db, 'web_product_overrides', p.id), { id: p.id, listId: l.id, showOnWeb: false, updatedAt: Date.now() }, { merge: true })
-            } catch (e) {}
-          }
+          // Bất kể sản phẩm đã có trong web_product_overrides hay chưa:
+          // Nếu sản phẩm KHÔNG được tích Đăng Web -> BẮT BUỘC ghi đè showOnWeb: false để không bị lọt lên web!
+          try {
+            await setDoc(doc(db, 'web_product_overrides', p.id), { id: p.id, listId: l.id, showOnWeb: false, updatedAt: Date.now() }, { merge: true })
+          } catch (e) {}
         }
       }
     }
+
+    // Đảm bảo các sản phẩm trong web_catalog.json cũ nếu không nằm trong danh sách Đăng Web cũng bị ẩn
+    try {
+      const baseRes = await fetch('/web_catalog.json', { cache: 'no-cache' })
+      if (baseRes.ok) {
+        const baseProds = await baseRes.json()
+        if (Array.isArray(baseProds)) {
+          const activeIds = new Set(allWebProducts.map(p => p.id))
+          for (const bp of baseProds) {
+            if (bp.id && !activeIds.has(bp.id)) {
+              await setDoc(doc(db, 'web_product_overrides', bp.id), { id: bp.id, showOnWeb: false, updatedAt: Date.now() }, { merge: true }).catch(() => {})
+            }
+          }
+        }
+      }
+    } catch (baseErr) {}
+
     return allWebProducts
   } catch (err) {
     console.error('Lỗi refreshWebCatalogSnapshot:', err)
@@ -1593,6 +1622,99 @@ export const subscribeWebAnalyticsLogs = (onUpdate, maxLogs = 50) => {
   } catch (err) {
     console.error('Lỗi subscribeWebAnalyticsLogs:', err)
     return () => {}
+  }
+}
+
+// ── WEB LEADS CAPTURE & CRM ──────────────────────────────────────────────────
+export const saveWebLead = async ({ phone, name = '', note = '', productId = '', productName = '', productCode = '', meta = {} }) => {
+  try {
+    const clientInfo = getClientDeviceAndSource()
+    const geoInfo = await getVisitorGeoData()
+    const dateKey = getVNFormattedDate()
+
+    const cleanPhone = (phone || '').replace(/[\s.-]/g, '').trim()
+    if (!cleanPhone || cleanPhone.length < 8) {
+      throw new Error('Vui lòng nhập số điện thoại hợp lệ (tối thiểu 8-10 số)')
+    }
+
+    const leadDoc = {
+      phone: cleanPhone,
+      name: (name || '').trim(),
+      note: (note || '').trim(),
+      productId: productId || '',
+      productName: productName || 'Yêu cầu tư vấn báo giá chung',
+      productCode: productCode || '',
+      status: 'new', // 'new' (Mới) | 'contacted' (Đang tư vấn) | 'won' (Đã chốt) | 'lost' (Hủy)
+      adminNote: '',
+      device: clientInfo.deviceType || 'Desktop',
+      isMobile: clientInfo.isMobile || false,
+      os: clientInfo.os || 'Khác',
+      browser: clientInfo.browser || 'Khác',
+      source: clientInfo.source || 'Trực tiếp (Direct)',
+      ip: geoInfo?.ip || '',
+      city: geoInfo?.city || '',
+      region: geoInfo?.region || '',
+      country: geoInfo?.country || 'Việt Nam',
+      isp: geoInfo?.isp || '',
+      org: geoInfo?.org || '',
+      createdAt: Date.now(),
+      date: dateKey,
+      ...meta
+    }
+
+    const ref = await addDoc(collection(db, 'web_leads'), leadDoc)
+
+    // Log vào telemetry stream
+    logWebAnalyticsEvent({
+      type: 'lead_captured',
+      title: `⚡ Khách để lại SĐT: ${cleanPhone} (${productName || 'Báo giá'})`,
+      path: typeof window !== 'undefined' ? (window.location.hash || '/') : '/',
+      meta: { leadId: ref.id, phone: cleanPhone, productName, code: productCode }
+    }).catch(() => {})
+
+    return { id: ref.id, ...leadDoc }
+  } catch (err) {
+    console.error('Lỗi saveWebLead:', err)
+    throw err
+  }
+}
+
+export const subscribeWebLeads = (onUpdate, maxLeads = 100) => {
+  try {
+    const q = query(collection(db, 'web_leads'), orderBy('createdAt', 'desc'), limit(maxLeads))
+    return onSnapshot(q, snap => {
+      const leads = []
+      snap.forEach(d => leads.push({ id: d.id, ...d.data() }))
+      onUpdate(leads)
+    }, err => {
+      console.warn('Lỗi lắng nghe web_leads:', err)
+    })
+  } catch (err) {
+    console.error('Lỗi subscribeWebLeads:', err)
+    return () => {}
+  }
+}
+
+export const updateWebLead = async (leadId, updates = {}) => {
+  if (!leadId) return
+  try {
+    await updateDoc(doc(db, 'web_leads', leadId), {
+      ...updates,
+      updatedAt: Date.now()
+    })
+  } catch (err) {
+    console.error('Lỗi cập nhật web_lead:', err)
+    throw err
+  }
+}
+
+export const deleteWebLead = async (leadId) => {
+  if (!leadId) return
+  try {
+    await deleteDoc(doc(db, 'web_leads', leadId))
+  } catch (err) {
+    console.error('Lỗi xóa web_lead:', err)
+    throw err
   }
 }
 

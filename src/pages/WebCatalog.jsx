@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { getWebCatalogProducts, subscribeWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder, getProductDetail, getWebProductById, logWebAnalyticsEvent } from '../firebase/firebase'
+import { getWebCatalogProducts, subscribeWebCatalogProducts, getWebCategories, getWebHeroSlides, createWebOrder, getProductDetail, getWebProductById, logWebAnalyticsEvent, saveWebLead } from '../firebase/firebase'
 import { toSlug } from '../utils/slug'
 import { DEFAULT_HERO_SLIDES, normalizeHeroSlides } from './WebManagePage'
 import {
@@ -348,6 +348,7 @@ function ProductImage({ src, alt, style = {}, className = '', fallbackTitle = ''
         ref={imgRef}
         src={cleanSrc}
         alt={alt || 'Máy bơm T&T'}
+        loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
@@ -862,6 +863,12 @@ export default function WebCatalog() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [sliderHead, setSliderHead] = useState(150)
   const [sliderFlow, setSliderFlow] = useState(200)
+
+  // 1-Click Smart Lead Capture states
+  const [leadPhone, setLeadPhone] = useState('')
+  const [leadCustomerName, setLeadCustomerName] = useState('')
+  const [leadSubmitting, setLeadSubmitting] = useState(false)
+  const [leadSubmitted, setLeadSubmitted] = useState(false)
 
   // Contact page form states
   const [contactName, setContactName] = useState('')
@@ -1439,7 +1446,7 @@ export default function WebCatalog() {
         {/* Product image container */}
         <div className="product-card-image" onClick={() => navigateToProduct(p.id)}>
           <ProductImage
-            src={p.webImages?.[0]}
+            src={p.webImages?.[0] || p.images?.[0] || p.image || ""}
             alt={`Máy bơm nước ${p.name}`}
             className="bg-image-zoom"
             fallbackTitle={p.code || p.name}
@@ -1593,7 +1600,7 @@ export default function WebCatalog() {
           }}
         >
           <ProductImage
-            src={p.webImages?.[0]}
+            src={p.webImages?.[0] || p.images?.[0] || p.image || ""}
             alt={p.name}
             fallbackTitle={p.code || p.name}
             style={{
@@ -2012,7 +2019,7 @@ export default function WebCatalog() {
 
   // Load products with LocalStorage cache and real-time Firestore sync
   useEffect(() => {
-    const CACHE_KEY = 'tt_web_products_cache_v10'
+    const CACHE_KEY = 'tt_web_products_cache_v11'
     const CACHE_TIME_KEY = 'tt_web_products_cache_time_v10'
 
     const fetchCategories = async () => {
@@ -6000,7 +6007,7 @@ export default function WebCatalog() {
 
                 <div style={{ flex: '1 1 40%', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 8, padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, overflow: 'hidden' }}>
                   <ProductImage
-                    src={quickViewProduct.webImages?.[0]}
+                    src={quickViewProduct.webImages?.[0] || quickViewProduct.images?.[0] || quickViewProduct.image || ""}
                     alt={quickViewProduct.name}
                     fallbackTitle={quickViewProduct.code || quickViewProduct.name}
                     style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
@@ -7383,7 +7390,7 @@ export default function WebCatalog() {
                           {/* Image */}
                           <div style={{ width: 70, height: 70, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: '#fff' }}>
                             <ProductImage 
-                              src={p.webImages?.[0]} 
+                              src={p.webImages?.[0] || p.images?.[0] || p.image || ""} 
                               alt={p.name}
                               fallbackTitle={p.code || p.name}
                               style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
@@ -7734,6 +7741,110 @@ export default function WebCatalog() {
                       </a>
                     </div>
                   </div>
+
+                    {/* 1-CLICK SMART LEAD CAPTURE BOX */}
+                    <div style={{
+                      marginTop: 6,
+                      padding: '14px 16px',
+                      background: 'linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)',
+                      border: '1.5px dashed #0284C7',
+                      borderRadius: 10,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 10
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 20 }}>⚡</span>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: '#0369A1', textTransform: 'uppercase' }}>
+                            Nhận Báo Giá Chiết Khấu Đại Lý Qua SĐT / Zalo
+                          </div>
+                          <div style={{ fontSize: 11.5, color: '#0284C7', fontWeight: 550 }}>
+                            Chuyên viên T&amp;T sẽ gửi bảng giá chiết khấu tốt nhất cho model này trong 5 phút
+                          </div>
+                        </div>
+                      </div>
+
+                      {leadSubmitted ? (
+                        <div style={{
+                          background: '#ECFDF5', border: '1px solid #10B981', color: '#047857',
+                          padding: '10px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 700,
+                          display: 'flex', alignItems: 'center', gap: 8
+                        }}>
+                          <span>✅</span>
+                          <span>Đã gửi yêu cầu thành công! Chuyên viên T&amp;T sẽ liên hệ qua Zalo / SĐT ngay.</span>
+                        </div>
+                      ) : (
+                        <form
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!leadPhone.trim()) return;
+                            setLeadSubmitting(true);
+                            try {
+                              await saveWebLead({
+                                phone: leadPhone,
+                                name: leadCustomerName,
+                                productId: currentProduct.id,
+                                productName: currentProduct.name,
+                                productCode: currentProduct.code || '',
+                                note: 'Yêu cầu báo giá chiết khấu từ trang chi tiết sản phẩm'
+                              });
+                              setLeadSubmitted(true);
+                              setLeadPhone('');
+                            } catch (err) {
+                              alert('Không thể gửi yêu cầu: ' + err.message);
+                            } finally {
+                              setLeadSubmitting(false);
+                            }
+                          }}
+                          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+                        >
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <input
+                              type="tel"
+                              placeholder="Nhập số điện thoại nhận báo giá..."
+                              value={leadPhone}
+                              onChange={e => setLeadPhone(e.target.value)}
+                              required
+                              style={{
+                                flex: '1 1 180px',
+                                padding: '9px 12px',
+                                borderRadius: 6,
+                                border: '1px solid #BAE6FD',
+                                background: '#FFFFFF',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                color: '#0F172A',
+                                outline: 'none'
+                              }}
+                            />
+                            <button
+                              type="submit"
+                              disabled={leadSubmitting}
+                              style={{
+                                background: '#0284C7',
+                                color: '#FFFFFF',
+                                border: 'none',
+                                borderRadius: 6,
+                                padding: '9px 16px',
+                                fontSize: 12.5,
+                                fontWeight: 800,
+                                cursor: leadSubmitting ? 'not-allowed' : 'pointer',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.15s ease',
+                                boxShadow: '0 2px 6px rgba(2,132,199,0.3)'
+                              }}
+                            >
+                              {leadSubmitting ? 'ĐANG GỬI...' : 'NHẬN BÁO GIÁ NGAY'}
+                            </button>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span>🔒</span> Bảo mật thông tin tuyệt đối · Báo giá nhanh qua Zalo
+                          </div>
+                        </form>
+                      )}
+                    </div>
+
 
                 </div>
 
@@ -8644,6 +8755,8 @@ export default function WebCatalog() {
 
         /* Unified Product Card Style */
         .product-card {
+          content-visibility: auto;
+          contain-intrinsic-size: 340px;
           background: #FFFFFF;
           border: 1px solid #E2E8F0;
           border-radius: 12px;
@@ -9935,7 +10048,7 @@ export default function WebCatalog() {
                     onMouseOut={e => e.currentTarget.style.borderColor = '#e2e8f0'}
                   >
                     <div style={{ width: 44, height: 44, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: '1px solid #f1f5f9', background: '#fff' }}>
-                      <ProductImage src={item.webImages?.[0]} alt={item.name} fallbackTitle={item.code || item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <ProductImage src={item.webImages?.[0] || item.images?.[0] || item.image || ""} alt={item.name} fallbackTitle={item.code || item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                     <div style={{ flex: 1 }}>
                       <h5 style={{ fontSize: 11, fontWeight: 800, color: '#0878D9', margin: '0 0 2px 0', textTransform: 'uppercase' }}>{item.name}</h5>
@@ -10032,7 +10145,7 @@ export default function WebCatalog() {
                 {(cart || []).filter(item => item && item.product && item.product.id).map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', gap: 14, paddingBottom: 16, borderBottom: '1px solid #f1f5f9' }}>
                     <div style={{ width: 60, height: 60, borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <ProductImage src={item.product.webImages?.[0]} alt={item.product.name} fallbackTitle={item.product.code || item.product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <ProductImage src={item.product.webImages?.[0] || item.product.images?.[0] || item.product.image || ""} alt={item.product.name} fallbackTitle={item.product.code || item.product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                     <div style={{ flex: 1 }}>
                       <h4 style={{ fontSize: 12.5, fontWeight: 700, color: '#1e293b', margin: '0 0 4px 0', textTransform: 'uppercase', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.3 }}>

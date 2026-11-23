@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getPriceLists, getProducts, updateProduct, uploadProductImageFile, uploadWebCategoryImage, getProductDetail, getWebCategories, saveWebCategories, getWebHeroSlides, saveWebHeroSlides, subscribeWebOrders, updateWebOrderStatus, deleteWebOrder, ensureProductStorageUrls, getCloudStorageFiles, deleteCloudStorageFile, getWebAnalyticsSummary, subscribeWebAnalyticsLogs, refreshWebCatalogSnapshot } from '../firebase/firebase'
+import { getPriceLists, getProducts, updateProduct, uploadProductImageFile, uploadWebCategoryImage, getProductDetail, getWebCategories, saveWebCategories, getWebHeroSlides, saveWebHeroSlides, subscribeWebOrders, updateWebOrderStatus, deleteWebOrder, ensureProductStorageUrls, getCloudStorageFiles, deleteCloudStorageFile, getWebAnalyticsSummary, subscribeWebAnalyticsLogs, refreshWebCatalogSnapshot, saveWebLead, subscribeWebLeads, updateWebLead, deleteWebLead } from '../firebase/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import MobileTableWrap from '../components/MobileTableWrap'
@@ -405,6 +405,29 @@ export default function WebManagePage({ initialTab = 'products', onTabChange }) 
     }).catch(err => console.warn('Lỗi tải hero slides từ firebase:', err))
   }, [])
 
+
+  // Web Leads CRM states
+  const [leads, setLeads] = useState([])
+  const [loadingLeads, setLoadingLeads] = useState(false)
+  const [leadFilterStatus, setLeadFilterStatus] = useState('all') // 'all' | 'new' | 'contacted' | 'won' | 'lost'
+  const [leadSearch, setLeadSearch] = useState('')
+  const [editingLeadNoteId, setEditingLeadNoteId] = useState(null)
+  const [leadNoteText, setLeadNoteText] = useState('')
+  const [savingLeadNote, setSavingLeadNote] = useState(false)
+  const [copiedPhoneId, setCopiedPhoneId] = useState(null)
+
+  // Realtime subscribe to web leads
+  useEffect(() => {
+    setLoadingLeads(true)
+    const unsubscribe = subscribeWebLeads((items) => {
+      setLeads(items || [])
+      setLoadingLeads(false)
+    }, 150)
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
+  }, [])
+
   // Web Analytics States
   const [analyticsSummary, setAnalyticsSummary] = useState([])
   const [analyticsLogs, setAnalyticsLogs] = useState([])
@@ -801,6 +824,10 @@ export default function WebManagePage({ initialTab = 'products', onTabChange }) 
   const filteredProducts = useMemo(() => {
     const q = search.toLowerCase()
     return products.filter(p => {
+      const hasImg = (Array.isArray(p.webImages) && p.webImages.length > 0 && p.webImages[0]) || (Array.isArray(p.images) && p.images.length > 0 && p.images[0])
+      if (filterProductType === 'web_on' && !p.showOnWeb) return false
+      if (filterProductType === 'web_off' && p.showOnWeb) return false
+      if (filterProductType === 'missing_img' && (!p.showOnWeb || hasImg)) return false
       if (filterProductType === 'pump' && (p.productType || 'pump') === 'accessory') return false
       if (filterProductType === 'accessory' && (p.productType || 'pump') !== 'accessory') return false
       if (filterProductType === 'featured' && !p.featured) return false
@@ -1526,6 +1553,31 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
           🖼️ Banner Hero Carousel ({heroSlidesList.length} Banner)
         </button>
         <button 
+          onClick={() => setActiveAdminTab('leads')}
+          style={{
+            padding: '14px 20px', background: 'none', border: 'none',
+            borderBottom: activeAdminTab === 'leads' ? '2.5px solid var(--accent)' : '2.5px solid transparent',
+            color: activeAdminTab === 'leads' ? 'var(--accent)' : 'var(--text2)',
+            fontWeight: 'bold', fontSize: 13, cursor: 'pointer', transition: 'all 0.2s',
+            display: 'flex', alignItems: 'center', gap: 6, position: 'relative'
+          }}
+        >
+          🎯 Khách xem &amp; Bắt Lead
+          {leads.filter(l => l.status === 'new').length > 0 ? (
+            <span style={{
+              marginLeft: 4, background: '#ef4444', color: '#fff', fontSize: 9.5,
+              fontWeight: 800, padding: '2px 7px', borderRadius: 10,
+              boxShadow: '0 0 8px rgba(239,68,68,0.5)', animation: 'pulse 2s infinite'
+            }}>
+              {leads.filter(l => l.status === 'new').length} MỚI
+            </span>
+          ) : (
+            <span style={{ fontSize: 9.5, background: 'rgba(16,185,129,0.15)', color: '#10B981', padding: '1px 6px', borderRadius: 8, fontWeight: 700 }}>
+              {leads.length}
+            </span>
+          )}
+        </button>
+        <button 
           onClick={() => setActiveAdminTab('analytics')}
           style={{
             padding: '14px 20px', background: 'none', border: 'none',
@@ -1535,7 +1587,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
             display: 'flex', alignItems: 'center', gap: 6
           }}
         >
-          📊 Thống kê truy cập
+          📊 Thống kê &amp; Live Telemetry
           <span style={{ fontSize: 9.5, background: '#10B981', color: '#fff', padding: '1px 6px', borderRadius: 8, fontWeight: 800 }}>
             Live
           </span>
@@ -1577,7 +1629,32 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                     className={`btn xs ${filterProductType === 'all' ? 'primary' : 'ghost'}`}
                     onClick={() => setFilterProductType('all')}
                   >
-                    Tất cả
+                    Tất cả ({products.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn xs ${filterProductType === 'web_on' ? 'primary' : 'ghost'}`}
+                    onClick={() => setFilterProductType('web_on')}
+                    style={{ color: filterProductType === 'web_on' ? '#fff' : '#059669', fontWeight: 700 }}
+                  >
+                    🌐 Đang hiện ({products.filter(p => p.showOnWeb).length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn xs ${filterProductType === 'web_off' ? 'primary' : 'ghost'}`}
+                    onClick={() => setFilterProductType('web_off')}
+                    style={{ color: filterProductType === 'web_off' ? '#fff' : '#dc2626', fontWeight: 700 }}
+                  >
+                    🚫 Đang ẩn ({products.filter(p => !p.showOnWeb).length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn xs ${filterProductType === 'missing_img' ? 'primary' : 'ghost'}`}
+                    onClick={() => setFilterProductType('missing_img')}
+                    style={{ color: filterProductType === 'missing_img' ? '#fff' : '#d97706', fontWeight: 700 }}
+                    title="Các sản phẩm đang bật Đăng Web nhưng chưa có ảnh hoặc mất ảnh"
+                  >
+                    ⚠️ Thiếu ảnh ({products.filter(p => p.showOnWeb && (!p.webImages || p.webImages.length === 0) && (!p.images || p.images.length === 0)).length})
                   </button>
                   <button
                     type="button"
@@ -1621,6 +1698,7 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                       <tr>
                         <th style={{ width: 70, textAlign: 'center' }}>Đăng Web</th>
                         <th style={{ width: 85, textAlign: 'center' }}>⭐ Nổi bật</th>
+                        <th style={{ width: 56, textAlign: 'center' }}>Ảnh</th>
                         <th>Mã sản phẩm</th>
                         <th>Tên sản phẩm</th>
                         <th>Phân loại</th>
@@ -1659,6 +1737,33 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
                             >
                               {p.featured ? '⭐ Nổi bật' : '☆ Đặt'}
                             </button>
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '6px 4px' }}>
+                            {(() => {
+                              const img = (Array.isArray(p.webImages) && p.webImages[0]) || (Array.isArray(p.images) && p.images[0]) || p.image;
+                              if (img) {
+                                return (
+                                  <img
+                                    src={img.startsWith('product_images/') ? '/' + img : img}
+                                    alt={p.code}
+                                    style={{ width: 34, height: 34, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--border)', background: '#fff', display: 'inline-block' }}
+                                  />
+                                );
+                              }
+                              return (
+                                <span
+                                  style={{
+                                    fontSize: 9.5, padding: '2px 5px', borderRadius: 4,
+                                    background: p.showOnWeb ? '#FEE2E2' : 'var(--surface2)',
+                                    color: p.showOnWeb ? '#DC2626' : 'var(--text3)',
+                                    fontWeight: 700, display: 'inline-block', whiteSpace: 'nowrap'
+                                  }}
+                                  title={p.showOnWeb ? "Sản phẩm này đang bật Đăng Web nhưng CHƯA CÓ ẢNH!" : "Chưa có ảnh"}
+                                >
+                                  {p.showOnWeb ? '⚠️ Thiếu' : '—'}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="td-mono">{p.code}</td>
                           <td>
@@ -2735,6 +2840,453 @@ ${aiCustomInstruction ? `\n5. YÊU CẦU ĐẶC BIỆT CỦA ADMIN (HÃY TUÂN T
             )}
 
           </div>
+        ) : activeAdminTab === 'leads' ? (
+          <div>
+            {/* Top Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+              <div>
+                <h2 style={{ margin: '0 0 4px 0', fontSize: 18, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>🎯 Khách Hàng Tiềm Năng &amp; Yêu Cầu Báo Giá (Leads Live)</span>
+                  <span style={{ fontSize: 11, background: '#10B981', color: '#fff', padding: '2px 8px', borderRadius: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'inline-block' }} /> Live Realtime
+                  </span>
+                </h2>
+                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text3)' }}>
+                  Theo dõi số điện thoại khách để lại nhận báo giá chiết khấu, sản phẩm khách đang xem và liên hệ tư vấn chốt đơn 1 chạm.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>
+                  Tổng cộng: <strong>{leads.length}</strong> khách
+                </span>
+              </div>
+            </div>
+
+            {/* KPI METRIC CARDS */}
+            {(() => {
+              const totalLeads = leads.length;
+              const newLeads = leads.filter(l => l.status === 'new').length;
+              const contactedLeads = leads.filter(l => l.status === 'contacted').length;
+              const wonLeads = leads.filter(l => l.status === 'won').length;
+
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, marginBottom: 20 }}>
+                  
+                  {/* Card 1: Total Leads */}
+                  <div className="card" style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.08), rgba(37,99,235,0.02))', border: '1px solid rgba(37,99,235,0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tổng Yêu Cầu Báo Giá</span>
+                      <span style={{ fontSize: 20 }}>📋</span>
+                    </div>
+                    <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
+                      {totalLeads}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6 }}>
+                      Tất cả số điện thoại đã thu thập
+                    </div>
+                  </div>
+
+                  {/* Card 2: New Leads */}
+                  <div className="card" style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02))', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cần Gọi Ngay (Mới)</span>
+                      <span style={{ fontSize: 20 }}>🔴</span>
+                    </div>
+                    <div style={{ fontSize: 26, fontWeight: 900, color: '#dc2626', lineHeight: 1.2 }}>
+                      {newLeads}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: '#dc2626', marginTop: 6, fontWeight: 700 }}>
+                      Khách chưa được chuyên viên liên hệ
+                    </div>
+                  </div>
+
+                  {/* Card 3: In Contact */}
+                  <div className="card" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02))', border: '1px solid rgba(245,158,11,0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Đang Tư Vấn Báo Giá</span>
+                      <span style={{ fontSize: 20 }}>💬</span>
+                    </div>
+                    <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', lineHeight: 1.2 }}>
+                      {contactedLeads}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6 }}>
+                      Đang trao đổi Zalo / Điện thoại
+                    </div>
+                  </div>
+
+                  {/* Card 4: Won */}
+                  <div className="card" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02))', border: '1px solid rgba(16,185,129,0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Đã Chốt Thành Công</span>
+                      <span style={{ fontSize: 20 }}>🎉</span>
+                    </div>
+                    <div style={{ fontSize: 26, fontWeight: 900, color: '#059669', lineHeight: 1.2 }}>
+                      {wonLeads}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: '#059669', marginTop: 6, fontWeight: 700 }}>
+                      Khách đã đặt hàng máy bơm
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })()}
+
+            {/* SEARCH & FILTER CONTROLS */}
+            <div className="card" style={{ marginBottom: 20, padding: 14 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+                
+                {/* Search Box */}
+                <div style={{ position: 'relative', flex: '1 1 280px', minWidth: 240 }}>
+                  <input
+                    type="text"
+                    placeholder="🔍 Tìm SĐT, tên máy bơm, tỉnh thành, nhà mạng..."
+                    value={leadSearch}
+                    onChange={e => setLeadSearch(e.target.value)}
+                    style={{
+                      width: '100%', padding: '8px 14px', fontSize: 12.5, borderRadius: 8,
+                      border: '1px solid var(--border)', background: 'var(--surface2)',
+                      color: 'var(--text)', outline: 'none'
+                    }}
+                  />
+                  {leadSearch && (
+                    <button
+                      onClick={() => setLeadSearch('')}
+                      style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', fontSize: 13, color: 'var(--text3)', cursor: 'pointer' }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Status Filter Tabs */}
+                <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 2 }}>
+                  {[
+                    { key: 'all', label: `Tất cả (${leads.length})` },
+                    { key: 'new', label: `🔴 Mới (${leads.filter(l => l.status === 'new').length})` },
+                    { key: 'contacted', label: `🟡 Đang tư vấn (${leads.filter(l => l.status === 'contacted').length})` },
+                    { key: 'won', label: `🟢 Đã chốt (${leads.filter(l => l.status === 'won').length})` },
+                    { key: 'lost', label: `⚪ Đã hủy (${leads.filter(l => l.status === 'lost').length})` },
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setLeadFilterStatus(tab.key)}
+                      style={{
+                        padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                        border: leadFilterStatus === tab.key ? '1px solid var(--accent)' : '1px solid var(--border)',
+                        background: leadFilterStatus === tab.key ? 'var(--accent)' : 'var(--surface)',
+                        color: leadFilterStatus === tab.key ? '#fff' : 'var(--text2)',
+                        cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all .15s'
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+              </div>
+            </div>
+
+            {/* LEADS LIST */}
+            {(() => {
+              const filteredLeads = leads.filter(lead => {
+                if (leadFilterStatus !== 'all' && lead.status !== leadFilterStatus) return false;
+                if (!leadSearch.trim()) return true;
+                const q = leadSearch.toLowerCase().trim();
+                return (
+                  (lead.phone || '').toLowerCase().includes(q) ||
+                  (lead.name || '').toLowerCase().includes(q) ||
+                  (lead.productName || '').toLowerCase().includes(q) ||
+                  (lead.productCode || '').toLowerCase().includes(q) ||
+                  (lead.city || '').toLowerCase().includes(q) ||
+                  (lead.isp || '').toLowerCase().includes(q) ||
+                  (lead.source || '').toLowerCase().includes(q) ||
+                  (lead.note || '').toLowerCase().includes(q) ||
+                  (lead.adminNote || '').toLowerCase().includes(q)
+                );
+              });
+
+              if (filteredLeads.length === 0) {
+                return (
+                  <div className="card" style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text3)' }}>
+                    <div style={{ fontSize: 36, marginBottom: 12 }}>🎯</div>
+                    <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px 0' }}>
+                      {leads.length === 0 ? 'Chưa có yêu cầu báo giá nào' : 'Không có yêu cầu phù hợp với bộ lọc'}
+                    </h3>
+                    <p style={{ fontSize: 12.5, maxWidth: 460, margin: '0 auto', lineHeight: 1.5 }}>
+                      {leads.length === 0
+                        ? 'Khi khách hàng ghé thăm website và nhập số điện thoại tại form "Nhận báo giá chiết khấu qua Zalo" hoặc trang chi tiết sản phẩm, thông tin sẽ lập tức xuất hiện tại đây.'
+                        : 'Thử tìm kiếm với từ khóa khác hoặc chuyển sang tab "Tất cả".'}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
+                  {filteredLeads.map(lead => {
+                    const timeStr = lead.createdAt ? new Date(lead.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+                    const dateStr = lead.createdAt ? new Date(lead.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+                    
+                    // Relative time
+                    const diffMins = lead.createdAt ? Math.round((Date.now() - lead.createdAt) / 60000) : null;
+                    let relTime = '';
+                    if (diffMins != null) {
+                      if (diffMins < 1) relTime = 'Vừa xong';
+                      else if (diffMins < 60) relTime = `${diffMins} phút trước`;
+                      else if (diffMins < 1440) relTime = `${Math.round(diffMins / 60)} giờ trước`;
+                      else relTime = `${Math.round(diffMins / 1440)} ngày trước`;
+                    }
+
+                    const isNew = lead.status === 'new';
+                    const isWon = lead.status === 'won';
+                    const isContacted = lead.status === 'contacted';
+
+                    const cleanPhone = (lead.phone || '').replace(/\s+/g, '');
+
+                    return (
+                      <div
+                        key={lead.id}
+                        className="card"
+                        style={{
+                          padding: 18,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                          border: isNew ? '1.5px solid #ef4444' : '1px solid var(--border)',
+                          boxShadow: isNew ? '0 4px 16px rgba(239,68,68,0.1)' : 'none',
+                          position: 'relative',
+                          background: 'var(--surface)'
+                        }}
+                      >
+                        {/* Top: Phone & Quick Actions */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 18, fontWeight: 900, color: 'var(--text)', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                                {lead.phone}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  if (navigator.clipboard) {
+                                    navigator.clipboard.writeText(cleanPhone);
+                                    setCopiedPhoneId(lead.id);
+                                    setTimeout(() => setCopiedPhoneId(null), 1500);
+                                  }
+                                }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text3)' }}
+                                title="Copy số điện thoại"
+                              >
+                                {copiedPhoneId === lead.id ? '✅' : '📋'}
+                              </button>
+                            </div>
+                            {lead.name && (
+                              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--accent)', marginTop: 2 }}>
+                                👤 {lead.name}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Status Badge & Selector */}
+                          <select
+                            value={lead.status || 'new'}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value;
+                              try {
+                                await updateWebLead(lead.id, { status: newStatus });
+                                toast('Đã cập nhật trạng thái lead', 'success');
+                              } catch (err) {
+                                toast('Lỗi cập nhật: ' + err.message, 'error');
+                              }
+                            }}
+                            style={{
+                              padding: '4px 8px', borderRadius: 8, fontSize: 11.5, fontWeight: 800,
+                              background: isNew ? '#FEE2E2' : isWon ? '#DCFCE7' : isContacted ? '#FEF3C7' : 'var(--surface2)',
+                              color: isNew ? '#B91C1C' : isWon ? '#15803D' : isContacted ? '#B45309' : 'var(--text2)',
+                              border: 'none', cursor: 'pointer', outline: 'none'
+                            }}
+                          >
+                            <option value="new">🔴 Mới (Chưa gọi)</option>
+                            <option value="contacted">🟡 Đang tư vấn</option>
+                            <option value="won">🟢 Đã chốt đơn</option>
+                            <option value="lost">⚪ Đã hủy</option>
+                          </select>
+                        </div>
+
+                        {/* PRODUCT OF INTEREST */}
+                        <div style={{
+                          background: 'var(--surface2)',
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 4
+                        }}>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>
+                            Sản phẩm khách quan tâm:
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>💧</span>
+                            <span>{lead.productName || 'Yêu cầu tư vấn máy bơm'}</span>
+                          </div>
+                          {lead.productCode && (
+                            <div style={{ fontSize: 11.5, color: 'var(--accent)', fontWeight: 700 }}>
+                              Mã model: {lead.productCode}
+                            </div>
+                          )}
+                          {lead.note && (
+                            <div style={{ fontSize: 11.5, color: 'var(--text2)', fontStyle: 'italic', marginTop: 2 }}>
+                              "{lead.note}"
+                            </div>
+                          )}
+                        </div>
+
+                        {/* VISITOR TELEMETRY & NETWORK INFO */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 11 }}>
+                          {lead.city && (
+                            <span style={{ background: 'rgba(16,185,129,0.1)', color: '#059669', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+                              📍 {lead.city}{lead.region && lead.region !== lead.city ? `, ${lead.region}` : ''}
+                            </span>
+                          )}
+                          {lead.isp && (
+                            <span style={{ background: 'rgba(8,120,217,0.1)', color: 'var(--accent)', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }} title="Nhà mạng khách sử dụng">
+                              📶 {lead.isp}
+                            </span>
+                          )}
+                          <span style={{ background: 'var(--surface2)', color: 'var(--text2)', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>
+                            {lead.device === 'Mobile' ? '📱 Điện thoại' : '💻 Máy tính'}
+                          </span>
+                          {lead.source && (
+                            <span style={{ background: 'var(--surface2)', color: 'var(--text3)', padding: '2px 8px', borderRadius: 6 }}>
+                              🌐 {lead.source}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* INTERNAL NOTE */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
+                          {editingLeadNoteId === lead.id ? (
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <input
+                                type="text"
+                                placeholder="Ghi chú (VD: Hẹn chiều gọi lại, cần 2 máy...)"
+                                value={leadNoteText}
+                                onChange={e => setLeadNoteText(e.target.value)}
+                                style={{ flex: 1, padding: '5px 8px', fontSize: 11.5, borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--surface)', color: 'var(--text)' }}
+                              />
+                              <button
+                                disabled={savingLeadNote}
+                                onClick={async () => {
+                                  setSavingLeadNote(true);
+                                  try {
+                                    await updateWebLead(lead.id, { adminNote: leadNoteText });
+                                    setEditingLeadNoteId(null);
+                                    toast('Đã lưu ghi chú', 'success');
+                                  } catch (err) {
+                                    toast('Lỗi lưu ghi chú: ' + err.message, 'error');
+                                  } finally {
+                                    setSavingLeadNote(false);
+                                  }
+                                }}
+                                className="btn sm primary"
+                                style={{ padding: '4px 10px', fontSize: 11, fontWeight: 700 }}
+                              >
+                                Lưu
+                              </button>
+                              <button
+                                onClick={() => setEditingLeadNoteId(null)}
+                                className="btn sm"
+                                style={{ padding: '4px 8px', fontSize: 11 }}
+                              >
+                                Hủy
+                              </button>
+                            </div>
+                          ) : (
+                            <div
+                              onClick={() => {
+                                setEditingLeadNoteId(lead.id);
+                                setLeadNoteText(lead.adminNote || '');
+                              }}
+                              style={{
+                                fontSize: 11.5, color: lead.adminNote ? 'var(--text)' : 'var(--text3)',
+                                fontStyle: lead.adminNote ? 'normal' : 'italic', cursor: 'pointer',
+                                padding: '4px 8px', borderRadius: 6, background: lead.adminNote ? 'rgba(245,158,11,0.08)' : 'transparent',
+                                border: lead.adminNote ? '1px dashed rgba(245,158,11,0.3)' : '1px dashed var(--border)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                              }}
+                              title="Bấm để sửa ghi chú nội bộ"
+                            >
+                              <span>{lead.adminNote ? `📝 ${lead.adminNote}` : '+ Thêm ghi chú nội bộ...'}</span>
+                              <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 700 }}>Sửa</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* BOTTOM ACTIONS BAR */}
+                        <div style={{ display: 'flex', gap: 8, marginTop: 4, paddingTop: 10, borderTop: '1px solid var(--border)', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 550 }}>
+                            {relTime} {dateStr ? `(${timeStr} ${dateStr})` : ''}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <a
+                              href={`tel:${cleanPhone}`}
+                              className="btn sm"
+                              style={{
+                                background: '#10B981', color: '#fff', border: 'none',
+                                padding: '6px 12px', borderRadius: 6, fontWeight: 800, fontSize: 11.5,
+                                textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
+                                boxShadow: '0 2px 6px rgba(16,185,129,0.3)'
+                              }}
+                            >
+                              📞 Gọi ngay
+                            </a>
+                            <a
+                              href={`https://zalo.me/${cleanPhone}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn sm"
+                              style={{
+                                background: '#0284C7', color: '#fff', border: 'none',
+                                padding: '6px 12px', borderRadius: 6, fontWeight: 800, fontSize: 11.5,
+                                textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
+                                boxShadow: '0 2px 6px rgba(2,132,199,0.3)'
+                              }}
+                            >
+                              💬 Chat Zalo
+                            </a>
+                            <button
+                              onClick={async () => {
+                                if (window.confirm(`Xóa yêu cầu báo giá của SĐT ${lead.phone}?`)) {
+                                  try {
+                                    await deleteWebLead(lead.id);
+                                    toast('Đã xóa yêu cầu báo giá', 'success');
+                                  } catch (err) {
+                                    toast('Lỗi xóa: ' + err.message, 'error');
+                                  }
+                                }
+                              }}
+                              style={{
+                                background: 'transparent', border: 'none', color: 'var(--text3)',
+                                cursor: 'pointer', padding: '4px 6px', borderRadius: 6, fontSize: 12
+                              }}
+                              title="Xóa yêu cầu này"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+          </div>
+        
         ) : activeAdminTab === 'analytics' ? (
           <div>
             {/* Top Toolbar */}

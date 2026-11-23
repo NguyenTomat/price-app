@@ -13,19 +13,19 @@ import ExcelJS from 'exceljs'
 
 const fmt = n => n != null && !isNaN(n) ? Number(n).toLocaleString('vi-VN') + ' ₫' : '—'
 
-// Sample requirement images from customer
+// Customer requirement preset images
 const PRESET_IMAGES = [
   {
     id: 'req1',
     title: 'Ảnh 1: Cụm bơm MEP (6 hạng mục)',
-    subTitle: 'Cấp nước, tăng áp, thoát sàn, hố pít',
+    subTitle: 'Cấp nước sinh hoạt, tăng áp, thoát sàn, hố pít',
     src: '/samples/sample_req_1.jpg',
     rawText: SAMPLE_PROJECT_1_TEXT
   },
   {
     id: 'req2',
     title: 'Ảnh 2: Bể chứa & Tưới (3 hạng mục)',
-    subTitle: 'Bơm bể chứa, tăng áp, tưới cảnh quan',
+    subTitle: 'Bơm bể chứa, tăng áp biến tần, tưới cảnh quan',
     src: '/samples/sample_req_2.jpg',
     rawText: SAMPLE_PROJECT_2_TEXT
   }
@@ -45,27 +45,26 @@ export default function AiSolverPage({ setPage }) {
   const [mobileModalOpen, setMobileModalOpen] = useState(false)
   const [zoomImage, setZoomImage] = useState(null)
 
-  // Copy states
+  // Copy / Export states
   const [copiedImgKey, setCopiedImgKey] = useState(null)
   const [copiedZalo, setCopiedZalo] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
 
   // File upload input ref
   const fileInputRef = useRef(null)
+  const chatBottomRef = useRef(null)
 
   // ── CHAT ENGINE STATES (ChatGPT / Gemini style) ─────────────────────────
   const [chatMessages, setChatMessages] = useState([
     {
       id: 'welcome',
       sender: 'ai',
-      text: '👋 Xin chào! Tôi là **Trợ Lý Kỹ Thuật T&T**.\n\nTôi đã kết nối dữ liệu kho hàng với hơn **650 model máy bơm** (Bơm chìm nước thải WQ, SHM, bơm ly tâm trục đứng CDLF, ly tâm trục ngang CAM, bơm biến tần...).\n\n📌 **Bên cạnh là Ảnh yêu cầu của khách**. Bạn có thể bấm nút **"Bóc tách & giải toán"** ngay bên dưới ảnh, hoặc nhắn tin yêu cầu bất kỳ. Tôi sẽ phân loại chính xác **Bơm Cạn vs Bơm Chìm**, tính toán thông số $Q, H$ chuẩn $\\ge 90\\%$ và trích xuất sẵn ảnh thực tế để bạn copy gửi Zalo cho khách!',
+      text: '👋 Xin chào! Tôi là **Trợ Lý Kỹ Thuật T&T**.\n\nTôi đã kết nối dữ liệu kho hàng với hơn **650 model máy bơm** (Bơm chìm nước thải WQ, SHM, bơm ly tâm trục đứng CDLF, ly tâm trục ngang CAM, bơm biến tần...).\n\n📌 **Bên cạnh là Ảnh yêu cầu của khách**. Bạn có thể bấm nút **"Bóc tách & giải toán ảnh này"** ngay bên dưới ảnh, hoặc gõ tin nhắn bất kỳ. Tôi sẽ phân loại chính xác **Bơm Cạn vs Bơm Chìm**, tính toán thông số Q, H chuẩn ≥ 90% và trích xuất sẵn ảnh thực tế để bạn copy gửi Zalo cho khách!',
       timestamp: Date.now()
     }
   ])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
-  const chatBottomRef = useRef(null)
-  const textareaRef = useRef(null)
 
   // Load all products flat
   useEffect(() => {
@@ -164,7 +163,7 @@ export default function AiSolverPage({ setPage }) {
     const userMsg = {
       id: `user_${Date.now()}`,
       sender: 'user',
-      text: `Yêu cầu giải toán và đối chiếu kho cho: "${reqItem.title}".\nPhân biệt rõ bơm cạn và bơm chìm, lọc mã phù hợp trong kho T&T và trích xuất ảnh thật.`,
+      text: `Bóc tách và giải toán toàn bộ đề bài trong "${reqItem.title}".\nPhân biệt chính xác bơm cạn vs bơm chìm, lọc mã phù hợp trong kho T&T và trích xuất ảnh thật.`,
       attachedReq: {
         id: reqItem.id,
         title: reqItem.title,
@@ -176,10 +175,8 @@ export default function AiSolverPage({ setPage }) {
     setChatLoading(true)
 
     setTimeout(() => {
-      // Determine text to parse
       let textToParse = reqItem.rawText
       if (!textToParse) {
-        // Fallback or custom prompt text
         textToParse = SAMPLE_PROJECT_1_TEXT
       }
 
@@ -200,10 +197,10 @@ export default function AiSolverPage({ setPage }) {
           src: reqItem.src
         },
         solveResults: solved,
-        text: `Tôi đã hoàn thành giải toán và đối chiếu **${solved.length} hạng mục** từ bảng yêu cầu của khách với kho hàng T&T.\n\n` +
-          `• **Phân loại chủng loại**: 100% chính xác tuyệt đối giữa **Bơm Cạn** và **Bơm Chìm**.\n` +
-          `• **Độ phù hợp kỹ thuật**: Tất cả các mã đề xuất đều đạt từ **90% - 98%**, đảm bảo bù đủ ma sát đường ống và dư áp làm việc bền bỉ.\n` +
-          `• Bạn có thể bấm **[Sao chép ảnh]** ở từng mã để dán gửi Zalo cho khách ngay lập tức!`,
+        text: `Tôi đã hoàn thành giải toán và đối chiếu **${solved.length} hạng mục** từ bảng yêu cầu của khách với kho hàng T&T:\n\n` +
+          `• **Chủng loại**: Đảm bảo chính xác tuyệt đối 100% giữa **Bơm Cạn** và **Bơm Chìm**.\n` +
+          `• **Điểm làm việc (Q & H)**: Các mã đề xuất đạt độ phù hợp kỹ thuật từ **90% - 98%**, đảm bảo lưu lượng yêu cầu và bù đủ tổn thất áp lực đường ống.\n` +
+          `• Bạn có thể bấm **[Sao chép ảnh Zalo]** ở từng model bên dưới để dán (Ctrl+V) gửi cho khách ngay lập tức!`,
         timestamp: Date.now()
       }
 
@@ -228,7 +225,7 @@ export default function AiSolverPage({ setPage }) {
     setChatInput('')
     setChatLoading(true)
 
-    // Analyze query for pump model keywords
+    // Check catalog for pump keywords
     const catalog = allProducts.map(analyzeProductDetails)
     const tokenRegex = /\b([a-zA-Z]{2,}(?:\s*[-/]?\s*\d+)+|\d+[a-zA-Z]{1,}[a-zA-Z0-9\-/]*)\b/gi
     const tokens = []
@@ -293,7 +290,7 @@ export default function AiSolverPage({ setPage }) {
         aiText = `Dưới đây là thông tin kỹ thuật & model tương ứng với yêu cầu "${query}":\n\n` +
           `• **Model khớp nhất**: ${exactMatches.map(m => m.name).join(', ')}.\n` +
           (relatedMatches.length > 0 ? `• **Các mã cùng dòng liên quan**: ${relatedMatches.map(m => m.name).slice(0, 3).join(', ')}.\n\n` : '\n') +
-          `Hình ảnh thực tế từ kho và thông số đã được trích xuất bên dưới. Bạn có thể bấm **[Sao chép ảnh]** để dán gửi Zalo trực tiếp cho khách nhé!`
+          `Hình ảnh thực tế từ kho và thông số đã được trích xuất bên dưới. Bạn có thể bấm **[Sao chép ảnh Zalo]** để dán gửi trực tiếp cho khách nhé!`
       } else {
         aiText = `Tôi đã tiếp nhận câu hỏi của bạn về "${query}". Với hệ thống máy bơm T&T, tất cả các dòng Bơm Chìm hố móng / nước thải (WQ, SHM) và Bơm Cạn trục đứng / ly tâm (CDLF, CAM, CM) đều có sẵn hàng số lượng lớn kèm đầy đủ CO/CQ, catalogue và đường cong hiệu suất. Bạn có thể xem hình ảnh đính kèm hoặc hỏi thêm về bất kỳ mã cụ thể nào!`
       }
@@ -465,82 +462,148 @@ export default function AiSolverPage({ setPage }) {
     }
   }
 
-  // All available requirement images (Presets + User Custom uploads)
   const allReqImages = useMemo(() => {
     return [...PRESET_IMAGES, ...customReqList]
   }, [customReqList])
 
   return (
-    <div className="flex flex-col h-[calc(100vh-65px)] bg-slate-50 text-slate-800 font-sans" onPaste={handlePaste}>
-      {/* ── CLEAN TOP HEADER (Minimalist, Professional) ── */}
-      <header className="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 shadow-sm z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+    <div
+      onPaste={handlePaste}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        background: 'var(--bg)',
+        color: 'var(--text)',
+        fontFamily: 'var(--sans)',
+        overflow: 'hidden'
+      }}
+    >
+      {/* ── CLEAN TOP HEADER ── */}
+      <header
+        style={{
+          height: 52,
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
+          padding: '0 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0,
+          zIndex: 10
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: 'var(--accent)',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontSize: 13
+            }}
+          >
             T&T
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-semibold text-slate-900 tracking-tight">Trợ Lý Kỹ Thuật & Giải Toán Bơm</h1>
-              <span className="hidden sm:inline-block text-[11px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">
-                GPT / Gemini Pro
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                Trợ Lý Kỹ Thuật & Bóc Tách Máy Bơm
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: 'var(--surface2)',
+                  color: 'var(--accent)',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  border: '1px solid var(--border)'
+                }}
+              >
+                ChatGPT / Gemini
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 hidden sm:block">Đối chiếu điểm làm việc (Q, H, P) & phân biệt 100% Bơm Cạn vs Bơm Chìm</p>
+            <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+              Phân loại 100% Bơm Cạn vs Bơm Chìm • Độ chính xác ≥ 90%
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Mobile toggle button for Requirement Image */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Toggle side panel */}
           <button
-            onClick={() => setMobileModalOpen(true)}
-            className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
-          >
-            <span>🖼️</span>
-            <span>Ảnh yêu cầu</span>
-          </button>
-
-          {/* Desktop toggle for side panel */}
-          <button
+            className="btn sm"
             onClick={() => setShowSidePanel(!showSidePanel)}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors"
-            title="Thu gọn hoặc mở rộng bảng ảnh yêu cầu"
+            title="Ẩn hoặc hiện bảng ảnh yêu cầu"
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
           >
             <span>{showSidePanel ? '◀ Ẩn ảnh yêu cầu' : '▶ Hiện ảnh yêu cầu'}</span>
           </button>
 
           {/* New Chat Button */}
           <button
+            className="btn sm"
             onClick={() => {
               setChatMessages([
                 {
                   id: `welcome_${Date.now()}`,
                   sender: 'ai',
-                  text: 'Đã làm mới phiên hội thoại. Bạn có thể chọn ảnh yêu cầu bên cạnh để bóc tách hoặc gõ câu hỏi kỹ thuật mới!',
+                  text: 'Đã làm mới cuộc hội thoại. Bạn có thể chọn ảnh yêu cầu bên cạnh để bóc tách hoặc gõ câu hỏi kỹ thuật mới!',
                   timestamp: Date.now()
                 }
               ])
               toast('Đã làm mới cuộc hội thoại', 'default')
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors"
             title="Cuộc trò chuyện mới"
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span className="hidden sm:inline">Hội thoại mới</span>
+            <span>🔄 Làm mới chat</span>
           </button>
         </div>
       </header>
 
-      {/* ── MAIN WORKSPACE: 2-COLUMN SPLIT (Bên cạnh có thêm ảnh yêu cầu, sau rồi AI trả lời) ── */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* ── LEFT PANE: ẢNH YÊU CẦU CỦA KHÁCH (Desktop) ── */}
+      {/* ── MAIN WORKSPACE: 2-COLUMN SPLIT (Ảnh yêu cầu bên cạnh + Khung Chat) ── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        {/* ── LEFT PANE: ẢNH YÊU CẦU CỦA KHÁCH ── */}
         {showSidePanel && (
-          <aside className="hidden lg:flex w-[420px] xl:w-[460px] flex-col border-r border-slate-200 bg-white shrink-0 h-full overflow-hidden">
-            <div className="p-3 border-b border-slate-200 bg-slate-50/70 flex items-center justify-between">
+          <aside
+            style={{
+              width: 380,
+              minWidth: 320,
+              maxWidth: 420,
+              background: 'var(--surface)',
+              borderRight: '1px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              flexShrink: 0,
+              height: '100%',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Side pane top bar */}
+            <div
+              style={{
+                padding: '12px 16px',
+                borderBottom: '1px solid var(--border)',
+                background: 'var(--surface2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
               <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-700">Ảnh Bảng Yêu Cầu Của Khách</h2>
-                <p className="text-[11px] text-slate-500">Đối chiếu trực tiếp với câu trả lời AI</p>
+                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text)' }}>
+                  Bảng Yêu Cầu Của Khách
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                  Đối chiếu trực tiếp với câu trả lời AI
+                </div>
               </div>
 
               {/* Hidden file input */}
@@ -549,154 +612,291 @@ export default function AiSolverPage({ setPage }) {
                 ref={fileInputRef}
                 onChange={handleFileUpload}
                 accept="image/*"
-                className="hidden"
+                style={{ display: 'none' }}
               />
               <button
+                className="btn sm"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-md transition-colors"
+                style={{ fontSize: 11, padding: '4px 8px' }}
               >
-                <span>+ Tải ảnh mới</span>
+                + Tải ảnh mới
               </button>
             </div>
 
-            {/* Presets switcher pills */}
-            <div className="p-2.5 border-b border-slate-100 flex gap-1.5 overflow-x-auto bg-white">
-              {allReqImages.map((req, idx) => {
+            {/* Presets tabs */}
+            <div
+              style={{
+                padding: '8px 12px',
+                borderBottom: '1px solid var(--border)',
+                display: 'flex',
+                gap: 6,
+                overflowX: 'auto',
+                background: 'var(--surface)'
+              }}
+            >
+              {allReqImages.map((req) => {
                 const isActive = currentReq.id === req.id
                 return (
                   <button
                     key={req.id}
                     onClick={() => setCurrentReq(req)}
-                    className={`text-xs px-2.5 py-1.5 rounded-md font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${
-                      isActive
-                        ? 'bg-slate-900 text-white shadow-sm'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
+                    style={{
+                      padding: '6px 10px',
+                      fontSize: 11,
+                      fontWeight: isActive ? 700 : 500,
+                      borderRadius: 'var(--radius-sm)',
+                      border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+                      background: isActive ? 'var(--accent)' : 'var(--surface2)',
+                      color: isActive ? '#fff' : 'var(--text2)',
+                      whiteSpace: 'nowrap',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
                   >
-                    <span>🖼️</span>
-                    <span>{req.title}</span>
+                    🖼️ {req.title.split(':')[0]}
                   </button>
                 )
               })}
             </div>
 
-            {/* Image Viewer Container */}
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col bg-slate-50/50">
-              <div className="relative group rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+            {/* Image display container */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: 16,
+                display: 'flex',
+                flexDirection: 'column',
+                background: 'var(--bg)'
+              }}
+            >
+              <div
+                onClick={() => setZoomImage(currentReq.src)}
+                style={{
+                  borderRadius: 'var(--radius)',
+                  overflow: 'hidden',
+                  border: '1px solid var(--border)',
+                  background: '#ffffff',
+                  boxShadow: 'var(--shadow)',
+                  position: 'relative',
+                  cursor: 'zoom-in',
+                  textAlign: 'center'
+                }}
+                title="Nhấn để phóng to ảnh xem rõ số liệu"
+              >
                 <img
                   src={currentReq.src}
                   alt={currentReq.title}
-                  className="w-full h-auto object-contain max-h-[460px] cursor-zoom-in"
-                  onClick={() => setZoomImage(currentReq.src)}
+                  style={{
+                    width: '100%',
+                    maxHeight: 380,
+                    objectFit: 'contain',
+                    display: 'block'
+                  }}
                 />
                 <div
-                  onClick={() => setZoomImage(currentReq.src)}
-                  className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-zoom-in text-white text-xs font-medium gap-1.5 backdrop-blur-[1px]"
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    background: 'rgba(15, 23, 42, 0.75)',
+                    color: '#fff',
+                    textAlign: 'center'
+                  }}
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                  </svg>
-                  <span>Nhấn để phóng to xem rõ số</span>
+                  🔍 Nhấn vào ảnh để phóng to xem rõ bảng số
                 </div>
               </div>
 
-              <div className="mt-3 bg-white p-3 rounded-lg border border-slate-200 text-xs space-y-1">
-                <div className="font-semibold text-slate-900">{currentReq.title}</div>
-                <div className="text-slate-500 text-[11px]">{currentReq.subTitle}</div>
-                <div className="text-[11px] text-slate-400 pt-1">
-                  💡 Bạn có thể dán ảnh từ Zalo vào đây bằng <kbd className="px-1 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono text-[10px]">Ctrl + V</kbd>
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: 12,
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  fontSize: 12
+                }}
+              >
+                <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>
+                  {currentReq.title}
+                </div>
+                <div style={{ color: 'var(--text3)', fontSize: 11 }}>
+                  {currentReq.subTitle}
+                </div>
+                <div style={{ color: 'var(--text3)', fontSize: 11, marginTop: 6 }}>
+                  💡 Mẹo: Bạn có thể dán ảnh từ Zalo vào đây bằng phím <kbd style={{ background: 'var(--surface2)', border: '1px solid var(--border)', padding: '2px 5px', borderRadius: 4, fontFamily: 'monospace' }}>Ctrl + V</kbd>
                 </div>
               </div>
 
               {/* Big 1-click CTA in Side Panel */}
               <button
+                className="btn primary"
                 onClick={() => handleSolveImageReq(currentReq)}
                 disabled={chatLoading}
-                className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-sm transition-all disabled:opacity-50"
+                style={{
+                  marginTop: 14,
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  boxShadow: 'var(--shadow-md)'
+                }}
               >
-                <span>⚡ Bóc tách & giải toán ảnh này</span>
+                ⚡ Bóc tách & giải toán ảnh này ngay
               </button>
             </div>
           </aside>
         )}
 
         {/* ── RIGHT PANE: CHAT CONVERSATION (ChatGPT / Gemini Style) ── */}
-        <main className="flex-1 flex flex-col h-full bg-white overflow-hidden relative">
-          {/* Scrollable Chat Area */}
-          <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 py-6 space-y-6">
+        <main
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            background: 'var(--bg)',
+            overflow: 'hidden',
+            position: 'relative'
+          }}
+        >
+          {/* Messages scroll area */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '24px 28px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 20
+            }}
+          >
             {chatMessages.map(msg => {
               const isUser = msg.sender === 'user'
 
               return (
                 <div
                   key={msg.id}
-                  className={`flex gap-3 md:gap-4 max-w-4xl mx-auto ${
-                    isUser ? 'justify-end' : 'justify-start'
-                  }`}
+                  style={{
+                    display: 'flex',
+                    justifyContent: isUser ? 'flex-end' : 'flex-start',
+                    gap: 12,
+                    maxWidth: 960,
+                    width: '100%',
+                    margin: '0 auto'
+                  }}
                 >
                   {/* AI Avatar */}
                   {!isUser && (
-                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 shadow-sm">
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        background: 'var(--accent)',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: 12,
+                        flexShrink: 0,
+                        marginTop: 2
+                      }}
+                    >
                       AI
                     </div>
                   )}
 
-                  {/* Message Bubble Content */}
+                  {/* Message Bubble Container */}
                   <div
-                    className={`max-w-[85%] md:max-w-[78%] rounded-2xl p-4 md:p-5 text-sm ${
-                      isUser
-                        ? 'bg-slate-900 text-white'
-                        : 'bg-white border border-slate-200 text-slate-800 shadow-sm'
-                    }`}
+                    style={{
+                      maxWidth: isUser ? '78%' : '84%',
+                      borderRadius: isUser ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
+                      padding: '16px 20px',
+                      fontSize: 13.5,
+                      lineHeight: 1.6,
+                      background: isUser ? '#1e293b' : 'var(--surface)',
+                      color: isUser ? '#ffffff' : 'var(--text)',
+                      border: isUser ? 'none' : '1px solid var(--border)',
+                      boxShadow: 'var(--shadow)'
+                    }}
                   >
-                    {/* If user attached a requirement image to this prompt */}
+                    {/* Attached requirement thumbnail in User bubble */}
                     {isUser && msg.attachedReq && (
-                      <div className="mb-3 flex items-center gap-2.5 p-2 bg-slate-800/80 rounded-xl border border-slate-700">
+                      <div
+                        style={{
+                          marginBottom: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: 8,
+                          background: 'rgba(255,255,255,0.08)',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid rgba(255,255,255,0.15)'
+                        }}
+                      >
                         <img
                           src={msg.attachedReq.src}
                           alt={msg.attachedReq.title}
-                          className="w-12 h-12 object-cover rounded-lg border border-slate-600 cursor-pointer"
                           onClick={() => setZoomImage(msg.attachedReq.src)}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            objectFit: 'cover',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            flexShrink: 0
+                          }}
                         />
-                        <div className="text-xs">
-                          <div className="text-slate-300 font-medium">Bảng yêu cầu:</div>
-                          <div className="text-white font-semibold">{msg.attachedReq.title}</div>
+                        <div style={{ fontSize: 12 }}>
+                          <div style={{ opacity: 0.75 }}>Đang đối chiếu:</div>
+                          <div style={{ fontWeight: 700 }}>{msg.attachedReq.title}</div>
                         </div>
                       </div>
                     )}
 
                     {/* Text Body */}
-                    <div className="whitespace-pre-wrap leading-relaxed text-[13.5px]">
+                    <div style={{ whiteSpace: 'pre-wrap' }}>
                       {msg.text}
                     </div>
 
-                    {/* ── IF THIS AI MESSAGE HAS SOLVE RESULTS (Table Breakdown) ── */}
+                    {/* ── IF THIS AI MESSAGE HAS SOLVE RESULTS ── */}
                     {!isUser && msg.solveResults && msg.solveResults.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-slate-100 space-y-4">
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                          <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                      <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: 10,
+                            marginBottom: 12
+                          }}
+                        >
+                          <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text2)' }}>
                             Chi tiết {msg.solveResults.length} hạng mục máy bơm đã đối chiếu:
                           </span>
 
-                          <div className="flex items-center gap-2">
+                          <div style={{ display: 'flex', gap: 8 }}>
                             <button
+                              className="btn sm"
                               onClick={() => handleCopyZaloFromResults(msg.solveResults)}
-                              className="text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-md transition-colors flex items-center gap-1"
                             >
-                              <span>📋 {copiedZalo ? 'Đã copy!' : 'Copy báo giá Zalo'}</span>
+                              📋 {copiedZalo ? 'Đã copy!' : 'Copy báo giá Zalo'}
                             </button>
                             <button
-                              onClick={() => handleExportExcel(msg.solveResults, msg.attachedReq?.title || 'Bóc tách dự án')}
+                              className="btn sm primary"
+                              onClick={() => handleExportExcel(msg.solveResults, msg.attachedReq?.title || 'Báo giá dự án')}
                               disabled={exportingExcel}
-                              className="text-xs font-medium text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-md transition-colors flex items-center gap-1"
                             >
-                              <span>📥 Xuất Excel</span>
+                              📥 Xuất Excel
                             </button>
                           </div>
                         </div>
 
                         {/* Pump Items Cards */}
-                        <div className="space-y-3">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                           {msg.solveResults.map((res, idx) => {
                             const req = res.requirement
                             const m = res.bestMatch
@@ -705,77 +905,133 @@ export default function AiSolverPage({ setPage }) {
                             return (
                               <div
                                 key={idx}
-                                className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/70 hover:bg-slate-50 transition-colors"
+                                style={{
+                                  border: '1px solid var(--border)',
+                                  borderRadius: 'var(--radius)',
+                                  padding: 14,
+                                  background: 'var(--surface2)'
+                                }}
                               >
                                 {/* Header row of item */}
-                                <div className="flex items-start justify-between flex-wrap gap-2 mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center">
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    flexWrap: 'wrap',
+                                    gap: 8,
+                                    marginBottom: 6
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span
+                                      style={{
+                                        width: 22,
+                                        height: 22,
+                                        borderRadius: '50%',
+                                        background: 'var(--border2)',
+                                        color: 'var(--text)',
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                      }}
+                                    >
                                       {idx + 1}
                                     </span>
-                                    <span className="font-semibold text-slate-900 text-xs md:text-sm">
+                                    <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
                                       {req.title}
                                     </span>
                                   </div>
 
-                                  <div className="flex items-center gap-2">
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     {/* Mount Type Badge: Strict Cạn vs Chìm */}
                                     <span
-                                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
-                                        isSubmersible
-                                          ? 'bg-sky-50 text-sky-700 border-sky-200'
-                                          : 'bg-amber-50 text-amber-700 border-amber-200'
-                                      }`}
+                                      className={`badge ${isSubmersible ? 'badge-blue' : 'badge-amber'}`}
+                                      style={{ fontSize: 11, fontWeight: 700 }}
                                     >
                                       {isSubmersible ? '🌊 BƠM CHÌM' : '🏭 BƠM CẠN'}
                                     </span>
 
                                     {/* Quantity */}
-                                    <span className="text-[11px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">
+                                    <span className="badge badge-gray" style={{ fontSize: 11 }}>
                                       SL: {req.qty} máy
                                     </span>
                                   </div>
                                 </div>
 
                                 {/* Customer requirement specs */}
-                                <div className="text-xs text-slate-600 mb-3 pl-7">
-                                  Yêu cầu: <span className="font-medium text-slate-900">Q = {req.flow || '...'} m³/h</span> | <span className="font-medium text-slate-900">H = {req.head || '...'} m</span> ({req.config || 'Cụm tiêu chuẩn'})
+                                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10, paddingLeft: 30 }}>
+                                  Yêu cầu: <strong>Q = {req.flow || '...'} m³/h</strong> | <strong>H = {req.head || '...'} m</strong> ({req.config || 'Cụm tiêu chuẩn'})
                                 </div>
 
                                 {/* Matched T&T Product Card */}
                                 {m ? (
-                                  <div className="bg-white rounded-lg p-3 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center gap-3">
+                                  <div
+                                    style={{
+                                      background: 'var(--surface)',
+                                      borderRadius: 'var(--radius-sm)',
+                                      padding: 12,
+                                      border: '1px solid var(--border)',
+                                      boxShadow: 'var(--shadow)',
+                                      display: 'flex',
+                                      flexWrap: 'wrap',
+                                      alignItems: 'center',
+                                      gap: 14
+                                    }}
+                                  >
                                     {/* Product image */}
-                                    <div className="relative shrink-0 w-20 h-20 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center">
+                                    <div
+                                      style={{
+                                        width: 72,
+                                        height: 72,
+                                        borderRadius: 8,
+                                        border: '1px solid var(--border)',
+                                        background: '#f8fafc',
+                                        overflow: 'hidden',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0
+                                      }}
+                                    >
                                       <img
                                         src={m.image || '/logo.png'}
                                         alt={m.name}
-                                        className="w-full h-full object-contain p-1 cursor-pointer"
                                         onClick={() => setZoomImage(m.image || '/logo.png')}
                                         onError={(e) => { e.target.src = '/logo.png' }}
+                                        style={{
+                                          width: '100%',
+                                          height: '100%',
+                                          objectFit: 'contain',
+                                          cursor: 'pointer'
+                                        }}
                                       />
                                     </div>
 
                                     {/* Product Details */}
-                                    <div className="flex-1 min-w-0 text-xs">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="font-bold text-slate-900 text-xs md:text-sm truncate">
+                                    <div style={{ flex: 1, minWidth: 200, fontSize: 12 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
                                           {m.name}
                                         </span>
-                                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
+                                        <span className="badge badge-green" style={{ fontSize: 10, fontWeight: 700 }}>
                                           Khớp {m.accuracy}% kỹ thuật
                                         </span>
                                       </div>
 
-                                      <div className="text-slate-500 text-[11px] mt-0.5">
-                                        Hãng: <span className="font-medium text-slate-700">{m.brand || 'T&T'}</span> | Hmax: {m.calcHead || '...'}m | Qmax: {m.calcFlow || '...'}m³/h | {m.calcPower ? m.calcPower + 'kW' : ''} ({m.calcVoltage || '380V'})
+                                      <div style={{ color: 'var(--text3)', fontSize: 11, marginTop: 2 }}>
+                                        Hãng: <strong style={{ color: 'var(--text2)' }}>{m.brand || 'T&T'}</strong> | Hmax: {m.calcHead || '...'}m | Qmax: {m.calcFlow || '...'}m³/h | {m.calcPower ? m.calcPower + 'kW' : ''} ({m.calcVoltage || '380V'})
                                       </div>
 
-                                      <div className="mt-1 flex items-baseline gap-2">
-                                        <span className="text-xs font-bold text-blue-600">{fmt(m.price)}</span>
-                                        <span className="text-[11px] text-slate-400">/ máy</span>
+                                      <div style={{ marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                                        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)' }}>
+                                          {fmt(m.price)}
+                                        </span>
+                                        <span style={{ fontSize: 11, color: 'var(--text3)' }}>/ máy</span>
                                         {req.qty > 1 && (
-                                          <span className="text-[11px] text-slate-500 font-medium">
+                                          <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600 }}>
                                             (Tổng {req.qty} máy: {fmt((m.price || 0) * req.qty)})
                                           </span>
                                         )}
@@ -783,29 +1039,27 @@ export default function AiSolverPage({ setPage }) {
                                     </div>
 
                                     {/* Actions for product */}
-                                    <div className="flex sm:flex-col items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                                       <button
+                                        className="btn sm primary"
                                         onClick={() => handleCopyImage(m.image, `prod_${m.id}_${idx}`)}
-                                        className={`w-full text-[11px] font-medium py-1.5 px-2.5 rounded-lg border transition-all flex items-center justify-center gap-1 ${
-                                          copiedImgKey === `prod_${m.id}_${idx}`
-                                            ? 'bg-emerald-600 text-white border-emerald-600'
-                                            : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                                        }`}
+                                        style={{
+                                          background: copiedImgKey === `prod_${m.id}_${idx}` ? 'var(--success)' : undefined
+                                        }}
                                       >
-                                        <span>📋</span>
-                                        <span>{copiedImgKey === `prod_${m.id}_${idx}` ? 'Đã copy!' : 'Sao chép ảnh Zalo'}</span>
+                                        📋 {copiedImgKey === `prod_${m.id}_${idx}` ? 'Đã copy ảnh!' : 'Sao chép ảnh Zalo'}
                                       </button>
 
                                       <button
+                                        className="btn sm"
                                         onClick={() => downloadImage(m.image, `${m.name}.jpg`)}
-                                        className="w-full text-[11px] font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 py-1.5 px-2 rounded-lg transition-colors text-center"
                                       >
                                         Tải ảnh
                                       </button>
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="text-xs text-slate-500 italic p-2 bg-white rounded border border-slate-200">
+                                  <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic', padding: 8 }}>
                                     Đang rà soát model chuyên dụng từ catalogue kho...
                                   </div>
                                 )}
@@ -816,31 +1070,64 @@ export default function AiSolverPage({ setPage }) {
                       </div>
                     )}
 
-                    {/* ── IF THIS AI MESSAGE HAS EXACT MATCHES (from conversation query) ── */}
+                    {/* ── IF THIS AI MESSAGE HAS EXACT MATCHES FROM CHAT QUERY ── */}
                     {!isUser && msg.exactMatches && msg.exactMatches.length > 0 && (
-                      <div className="mt-4 pt-3 border-t border-slate-100 space-y-2.5">
-                        <div className="text-xs font-semibold text-slate-700">Mã sản phẩm đề xuất từ kho:</div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: 'var(--text2)' }}>
+                          Model máy bơm đề xuất từ kho T&T:
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
                           {msg.exactMatches.slice(0, 4).map((p, pIdx) => (
                             <div
                               key={p.id || pIdx}
-                              className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-2.5 text-xs"
+                              style={{
+                                padding: 10,
+                                background: 'var(--surface2)',
+                                borderRadius: 'var(--radius-sm)',
+                                border: '1px solid var(--border)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                                fontSize: 12
+                              }}
                             >
                               <img
                                 src={p.image || '/logo.png'}
                                 alt={p.name}
-                                className="w-14 h-14 object-contain bg-white rounded-lg border border-slate-200 shrink-0 cursor-pointer"
                                 onClick={() => setZoomImage(p.image || '/logo.png')}
                                 onError={(e) => { e.target.src = '/logo.png' }}
+                                style={{
+                                  width: 56,
+                                  height: 56,
+                                  objectFit: 'contain',
+                                  background: '#fff',
+                                  borderRadius: 6,
+                                  border: '1px solid var(--border)',
+                                  cursor: 'pointer',
+                                  flexShrink: 0
+                                }}
                               />
-                              <div className="flex-1 min-w-0">
-                                <div className="font-bold text-slate-900 truncate">{p.name}</div>
-                                <div className="text-[11px] text-slate-500">{p.brand} | {fmt(p.price)}</div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {p.name}
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                                  {p.brand} | {fmt(p.price)}
+                                </div>
                                 <button
                                   onClick={() => handleCopyImage(p.image, `match_${p.id}`)}
-                                  className="mt-1 text-[10px] font-medium text-blue-600 hover:underline flex items-center gap-0.5"
+                                  style={{
+                                    marginTop: 4,
+                                    fontSize: 11,
+                                    color: 'var(--accent)',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                    padding: 0
+                                  }}
                                 >
-                                  <span>📋 {copiedImgKey === `match_${p.id}` ? 'Đã copy ảnh!' : 'Sao chép ảnh Zalo'}</span>
+                                  📋 {copiedImgKey === `match_${p.id}` ? 'Đã copy ảnh!' : 'Sao chép ảnh Zalo'}
                                 </button>
                               </div>
                             </div>
@@ -850,14 +1137,36 @@ export default function AiSolverPage({ setPage }) {
                     )}
 
                     {/* Timestamp */}
-                    <div className={`text-[10px] mt-2 ${isUser ? 'text-slate-400 text-right' : 'text-slate-400'}`}>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        marginTop: 8,
+                        color: isUser ? 'rgba(255,255,255,0.6)' : 'var(--text3)',
+                        textAlign: isUser ? 'right' : 'left'
+                      }}
+                    >
                       {new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
 
                   {/* User Avatar */}
                   {isUser && (
-                    <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 shadow-sm">
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        background: '#334155',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: 12,
+                        flexShrink: 0,
+                        marginTop: 2
+                      }}
+                    >
                       Tôi
                     </div>
                   )}
@@ -865,17 +1174,50 @@ export default function AiSolverPage({ setPage }) {
               )
             })}
 
-            {/* AI Generating Indicator */}
+            {/* AI Loading State */}
             {chatLoading && (
-              <div className="flex gap-3 max-w-4xl mx-auto">
-                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm animate-pulse">
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  maxWidth: 960,
+                  width: '100%',
+                  margin: '0 auto'
+                }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: 12,
+                    flexShrink: 0
+                  }}
+                >
                   AI
                 </div>
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 rounded-full bg-blue-600 animate-bounce" style={{ animationDelay: '300ms' }} />
-                  <span className="text-xs text-slate-500 ml-1">Đang rà soát điểm làm việc và bóc tách kho T&T...</span>
+                <div
+                  style={{
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '4px 18px 18px 18px',
+                    padding: '14px 18px',
+                    fontSize: 12,
+                    color: 'var(--text3)',
+                    boxShadow: 'var(--shadow)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <span className="spinner" style={{ width: 14, height: 14 }} />
+                  <span>Đang bóc tách thông số và đối chiếu toàn bộ kho máy bơm T&T...</span>
                 </div>
               </div>
             )}
@@ -883,158 +1225,170 @@ export default function AiSolverPage({ setPage }) {
             <div ref={chatBottomRef} />
           </div>
 
-          {/* ── CHAT BOTTOM INPUT BAR (ChatGPT / Gemini Floating Prompt Bar) ── */}
-          <div className="border-t border-slate-200 bg-white p-3 md:p-4 shrink-0 shadow-lg">
-            <div className="max-w-4xl mx-auto space-y-2">
-              {/* Quick suggestion prompt chips */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-                <span className="text-slate-400 text-[11px] shrink-0 font-medium">Gợi ý nhanh:</span>
+          {/* ── CHAT BOTTOM INPUT BAR (ChatGPT / Gemini style) ── */}
+          <div
+            style={{
+              borderTop: '1px solid var(--border)',
+              background: 'var(--surface)',
+              padding: '12px 24px',
+              flexShrink: 0,
+              boxShadow: 'var(--shadow-md)'
+            }}
+          >
+            <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Quick suggestion chips */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
+                <span style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap' }}>Gợi ý nhanh:</span>
                 <button
+                  className="btn xs"
                   onClick={() => handleSolveImageReq(PRESET_IMAGES[0])}
-                  className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap transition-colors border border-slate-200 font-medium"
+                  style={{ borderRadius: 12 }}
                 >
                   ⚡ Giải toán Ảnh 1 (6 cụm MEP)
                 </button>
                 <button
+                  className="btn xs"
                   onClick={() => handleSolveImageReq(PRESET_IMAGES[1])}
-                  className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap transition-colors border border-slate-200 font-medium"
+                  style={{ borderRadius: 12 }}
                 >
                   ⚡ Giải toán Ảnh 2 (Bể chứa & tưới)
                 </button>
                 <button
-                  onClick={() => handleSendMessage('Cho tôi xin thông số kỹ thuật và ảnh thực tế của dòng bơm ly tâm trục đứng CDLF 16-12')}
-                  className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap transition-colors border border-slate-200"
+                  className="btn xs"
+                  onClick={() => handleSendMessage('Cho tôi xin ảnh thực tế và thông số con bơm CDLF 16-12')}
+                  style={{ borderRadius: 12 }}
                 >
                   💬 Ảnh thực tế CDLF 16-12
                 </button>
                 <button
-                  onClick={() => handleSendMessage('Tư vấn giúp anh 1 con bơm chìm nước thải hố móng Q=15m3/h H=20m có cánh cắt rác')}
-                  className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap transition-colors border border-slate-200"
+                  className="btn xs"
+                  onClick={() => handleSendMessage('Tư vấn giúp anh 1 con bơm chìm nước thải Q=15m3/h H=20m')}
+                  style={{ borderRadius: 12 }}
                 >
-                  💬 Bơm chìm cắt rác Q=15 H=20
+                  💬 Bơm chìm Q=15 H=20
                 </button>
               </div>
 
-              {/* Main Input Box (ChatGPT/Gemini style) */}
-              <div className="relative flex items-end gap-2 bg-slate-50 border border-slate-300 focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 rounded-2xl p-2 transition-all">
+              {/* Main Prompt Input Box */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: 'var(--surface2)',
+                  border: '1px solid var(--border2)',
+                  borderRadius: 24,
+                  padding: '6px 12px'
+                }}
+              >
                 {/* Upload Image Button */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors shrink-0"
-                  title="Tải ảnh bảng yêu cầu hoặc spec từ máy"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 6,
+                    fontSize: 16,
+                    color: 'var(--text2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%'
+                  }}
+                  title="Tải ảnh yêu cầu từ máy"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+                  📷
                 </button>
 
-                {/* Textarea */}
-                <textarea
-                  ref={textareaRef}
+                {/* Input Textarea */}
+                <input
+                  type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === 'Enter') {
                       e.preventDefault()
                       handleSendMessage()
                     }
                   }}
-                  rows={1}
                   placeholder="Hỏi kỹ thuật, bóc tách theo ảnh hoặc dán ảnh (Ctrl+V)..."
-                  className="flex-1 bg-transparent border-0 focus:ring-0 resize-none text-xs md:text-sm text-slate-900 placeholder-slate-400 max-h-32 py-1.5 outline-none"
+                  style={{
+                    flex: 1,
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    fontSize: 13,
+                    color: 'var(--text)',
+                    fontFamily: 'inherit'
+                  }}
                 />
 
                 {/* Send Button */}
                 <button
                   onClick={() => handleSendMessage()}
                   disabled={!chatInput.trim() || chatLoading}
-                  className="p-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 shadow-sm"
-                  title="Gửi tin nhắn (Enter)"
+                  className="btn primary"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    opacity: !chatInput.trim() || chatLoading ? 0.4 : 1
+                  }}
+                  title="Gửi tin nhắn"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
+                  ➤
                 </button>
               </div>
 
-              <div className="text-[11px] text-slate-400 text-center">
-                Trợ lý Kỹ thuật T&T • Đối chiếu chính xác 100% Bơm Cạn vs Bơm Chìm • Đạt chuẩn kỹ thuật $\ge 90\%$
+              <div style={{ fontSize: 11, color: 'var(--text3)', textAlign: 'center' }}>
+                Trợ lý Kỹ thuật T&T • Đối chiếu chính xác 100% Bơm Cạn vs Bơm Chìm • Đạt chuẩn kỹ thuật ≥ 90%
               </div>
             </div>
           </div>
         </main>
       </div>
 
-      {/* ── MOBILE MODAL: ẢNH YÊU CẦU CỦA KHÁCH (Khi xem trên điện thoại) ── */}
-      {mobileModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col p-4 lg:hidden">
-          <div className="bg-white rounded-2xl flex flex-col max-h-full overflow-hidden shadow-2xl">
-            <div className="p-3 border-b border-slate-200 flex items-center justify-between">
-              <span className="font-semibold text-xs text-slate-900">Bảng Yêu Cầu Của Khách</span>
-              <button
-                onClick={() => setMobileModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-sm"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-2 border-b border-slate-100 flex gap-1.5 overflow-x-auto">
-              {allReqImages.map((req) => (
-                <button
-                  key={req.id}
-                  onClick={() => setCurrentReq(req)}
-                  className={`text-xs px-2.5 py-1.5 rounded-md font-medium whitespace-nowrap ${
-                    currentReq.id === req.id
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-700'
-                  }`}
-                >
-                  {req.title}
-                </button>
-              ))}
-            </div>
-
-            <div className="p-3 overflow-y-auto flex-1 flex flex-col items-center">
-              <img
-                src={currentReq.src}
-                alt={currentReq.title}
-                className="w-full h-auto object-contain rounded-lg border border-slate-200"
-              />
-              <button
-                onClick={() => {
-                  setMobileModalOpen(false)
-                  handleSolveImageReq(currentReq)
-                }}
-                className="mt-3 w-full py-2.5 bg-blue-600 text-white rounded-xl font-medium text-xs shadow-sm"
-              >
-                ⚡ Giải toán & đối chiếu kho ngay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── LIGHTBOX ZOOM MODAL ── */}
       {zoomImage && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setZoomImage(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20
+          }}
         >
-          <div className="relative max-w-5xl max-h-[92vh] flex flex-col items-center">
-            <img
-              src={zoomImage}
-              alt="Zoomed"
-              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-            <button
-              onClick={() => setZoomImage(null)}
-              className="mt-3 px-4 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-medium rounded-full transition-colors"
-            >
-              Đóng (ESC hoặc click ra ngoài)
-            </button>
-          </div>
+          <img
+            src={zoomImage}
+            alt="Zoomed"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '92vw',
+              maxHeight: '88vh',
+              objectFit: 'contain',
+              borderRadius: 8,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+            }}
+          />
+          <button
+            onClick={() => setZoomImage(null)}
+            className="btn"
+            style={{ marginTop: 14, background: '#fff', color: '#0f172a' }}
+          >
+            Đóng (Click ra ngoài)
+          </button>
         </div>
       )}
     </div>

@@ -258,9 +258,12 @@ export default function AiSolverPage({ setPage }) {
 
         const promptText = `Bạn là chuyên gia bóc tách hồ sơ thầu cơ điện MEP và dự án máy bơm.
 Hãy đọc kỹ ảnh bảng yêu cầu thiết bị/máy bơm này.
+CHÚ Ý CÁC CỘT:
+- Cột có chữ "1 máy", "máy", "hệ", "cụm", "bộ" chính là SỐ LƯỢNG (Ví dụ "1 máy" -> SL: 1 máy. Tuyệt đối không được nhầm cột số 4,0 hay 8,0 thành số lượng máy!).
+- Cột có số thập phân như 4,0 hay 2,0 hay 8,0 hay 3,0 đó là CÔNG SUẤT kW của máy bơm (Ví dụ 4,0 -> Công suất: 4.0kW).
 Nhiệm vụ: Trích xuất TOÀN BỘ các dòng thiết bị/máy bơm có trong ảnh thành danh sách văn bản thuần.
 Mỗi máy bơm là một dòng riêng biệt, định dạng:
-[Tên hạng mục hoặc vị trí lắp đặt]: Q=[Lưu lượng]m3/h, H=[Cột áp]m, SL: [Số lượng] máy/hệ, [Ghi chú luân phiên, dự phòng, tủ điều khiển, bình áp nếu có].
+[Tên hạng mục hoặc vị trí lắp đặt]: Q=[Lưu lượng]m3/h, H=[Cột áp]m, Công suất: [Số]kW, SL: [Số lượng] máy/hệ, [Ghi chú luân phiên, dự phòng, tủ điều khiển, bình áp nếu có].
 Nếu trong ảnh có ghi rõ Bơm chìm hay Bơm cạn thì giữ nguyên.
 CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, không đánh số thứ tự rườm rà.`
 

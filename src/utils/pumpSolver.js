@@ -97,21 +97,29 @@ export function parseRequirementRow(rowText, index = 1) {
 
   // 3. Công suất P nếu có (kW hoặc HP)
   let power = null
-  const powerMatch = lower.match(/(?:p\s*[:=]?\s*|công suất\s*[:=]?\s*)(\d+(?:[.,]\d+)?)\s*(?:kw|hp|ngựa|ngua)\b/i)
+  const powerMatch = lower.match(/(?:p\s*[:=]?\s*|công suất(?:\s*1\s*bơm)?\s*[:=]?\s*)(\d+(?:[.,]\d+)?)\s*(?:kw|hp|ngựa|ngua)?\b/i)
   if (powerMatch) {
     let pVal = parseFloat(powerMatch[1].replace(',', '.'))
     if (/hp|ngựa|ngua/i.test(powerMatch[0])) {
       pVal = Number((pVal * 0.7457).toFixed(1))
     }
-    power = pVal
+    if (pVal >= 0.25 && pVal <= 160) {
+      power = pVal
+    }
   }
 
   // 4. Số lượng máy / hệ
+  // Bắt chính xác chữ "1 máy", "2 máy", "1 cụm", "1 hệ" làm số lượng
+  // Tuyệt đối không lấy nhầm số công suất 4.0 hay 8.0 làm số lượng máy
   let qty = 1
-  const qtyMatch = raw.match(/\b(?:sl|số lượng|so luong)\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i)
-    || raw.match(/(\d+)\s*(?:máy|bơm|hệ|cụm|bộ)\b/i)
-  if (qtyMatch) {
-    qty = parseInt(qtyMatch[1], 10) || 1
+  const machineMatch = raw.match(/(\d+)\s*(?:máy|bơm|hệ|cụm|bộ)\b/i)
+  if (machineMatch) {
+    qty = parseInt(machineMatch[1], 10) || 1
+  } else {
+    const qtyMatch = raw.match(/\b(?:sl|số lượng|so luong)\s*[:=]?\s*(\d+)\b/i)
+    if (qtyMatch) {
+      qty = parseInt(qtyMatch[1], 10) || 1
+    }
   }
 
   // 5. Cấu hình vận hành (Luân phiên, dự phòng, đồng thời)
@@ -216,19 +224,27 @@ export function analyzeProductDetails(p) {
           if (shmMatch) {
             head = parseFloat(shmMatch[2])
           } else {
-            // Bóc tách model CM đa tầng cánh: CM8-25 (H=25m), CM8-40 (H=40m), CM16-40 (H=40m)
-            const cmMulti = name.match(/\bCM(\d+)[-_](\d+)/i)
-            if (cmMulti) {
-              head = parseFloat(cmMulti[2])
+            // Bóc tách model CM công nghiệp hoặc đa tầng cánh: CM40-160, CM32-160, CM16-40
+            const cmInd = name.match(/\bCM(\d+)[-_](\d+)/i)
+            if (cmInd) {
+              const imp = parseInt(cmInd[2], 10)
+              head = imp === 160 ? 28 : imp === 200 ? 45 : imp === 250 ? 65 : imp
             } else {
-              // Bóc tách model CDLF: CDLF 16-12 (Q=16m3/h, 12 tầng cánh)
-              // CDLF 42-6 (Q=42m3/h, 6 tầng cánh)
-              const cdlfMatch = name.match(/CDLF\s*(\d+)[-_](\d+)/i)
-              if (cdlfMatch) {
-                const qNom = parseInt(cdlfMatch[1], 10)
-                const stages = parseInt(cdlfMatch[2], 10)
-                const stageHead = qNom >= 42 ? 16.5 : qNom >= 32 ? 15 : 13
-                head = Math.round(stages * stageHead)
+              // Bóc tách MHI tăng áp biến tần: MHI-1604, MHI-1602, MHI-804
+              const mhiM = name.match(/MHI[-_\s]*(\d{1,2})(\d{2})/i)
+              if (mhiM) {
+                const stages = parseInt(mhiM[2], 10)
+                head = stages * 10
+              } else {
+                // Bóc tách model CDLF: CDLF 16-12 (Q=16m3/h, 12 tầng cánh)
+                // CDLF 42-6 (Q=42m3/h, 6 tầng cánh)
+                const cdlfMatch = name.match(/CDLF\s*(\d+)[-_](\d+)/i)
+                if (cdlfMatch) {
+                  const qNom = parseInt(cdlfMatch[1], 10)
+                  const stages = parseInt(cdlfMatch[2], 10)
+                  const stageHead = qNom >= 42 ? 16.5 : qNom >= 32 ? 15 : 13
+                  head = Math.round(stages * stageHead)
+                }
               }
             }
           }
@@ -258,13 +274,21 @@ export function analyzeProductDetails(p) {
           if (shmMatch) {
             flow = parseFloat(shmMatch[1])
           } else {
-            const cmMulti = name.match(/\bCM(\d+)[-_]/i)
-            if (cmMulti) {
-              flow = parseFloat(cmMulti[1])
+            // Bóc tách model CM công nghiệp hoặc đa tầng cánh: CM40-160 (DN40 => Q=25), CM32-160 (DN32 => Q=15)
+            const cmInd = name.match(/\bCM(\d+)[-_](\d+)/i)
+            if (cmInd) {
+              const dn = parseInt(cmInd[1], 10)
+              flow = dn === 32 ? 15 : dn === 40 ? 25 : dn === 50 ? 40 : dn === 65 ? 60 : dn
             } else {
-              const cdlfMatch = name.match(/CDLF\s*(\d+)[-_]/i)
-              if (cdlfMatch) {
-                flow = parseFloat(cdlfMatch[1])
+              // Bóc tách MHI: MHI-1604 => Q=16, MHI-804 => Q=8
+              const mhiM = name.match(/MHI[-_\s]*(\d{1,2})(\d{2})/i)
+              if (mhiM) {
+                flow = parseInt(mhiM[1], 10)
+              } else {
+                const cdlfMatch = name.match(/CDLF\s*(\d+)[-_]/i)
+                if (cdlfMatch) {
+                  flow = parseFloat(cdlfMatch[1])
+                }
               }
             }
           }
@@ -341,8 +365,20 @@ export function calculateMatchScore(req, product) {
     }
   }
 
-  // ── TÍNH ĐIỂM CỘT ÁP HEAD (Trọng số 50%) ──────────────────────────────
-  let headScore = 80
+  // Tuyệt đối không dùng bơm hóa chất mini / bơm bể cá (MP-70...) cho hệ thống cơ điện tòa nhà MEP
+  const isMicroPump = /hóa chất mini|mini|bể cá|\bmp-\d|bơm màng mini/i.test(product.name + ' ' + (product.group || ''))
+  const isCivilBuildingReq = /cấp nước|tăng áp|sinh hoạt|thoát sàn|nước thải|tầng hầm|hố pít|hố móng|tưới|bể chứa/i.test((req.title || '') + ' ' + (req.rawText || ''))
+  if (isCivilBuildingReq && isMicroPump) {
+    return {
+      score: 0,
+      accuracy: 0,
+      isFit: false,
+      reason: '❌ Bơm mini/hóa chất không dùng cho hệ cơ điện tòa nhà'
+    }
+  }
+
+  // ── TÍNH ĐIỂM CỘT ÁP HEAD (Trọng số 45%) ──────────────────────────────
+  let headScore = 30
   if (req.head && product.calcHead) {
     const ratio = product.calcHead / req.head
     // Điểm làm việc lý tưởng trong ngành bơm: H_model trong khoảng 1.05 đến 1.25 lần H_req (bù hao tổn ma sát đường ống)
@@ -357,10 +393,12 @@ export function calculateMatchScore(req, product) {
     } else {
       headScore = Math.max(10, 70 - (ratio - 1.45) * 40)
     }
+  } else if (!req.head) {
+    headScore = 80
   }
 
   // ── TÍNH ĐIỂM LƯU LƯỢNG FLOW (Trọng số 40%) ───────────────────────────
-  let flowScore = 80
+  let flowScore = 30
   if (req.flow && product.calcFlow) {
     const ratio = product.calcFlow / req.flow
     if (ratio >= 0.95 && ratio <= 1.25) {
@@ -372,22 +410,36 @@ export function calculateMatchScore(req, product) {
     } else {
       flowScore = Math.max(15, 60 - Math.abs(ratio - 1.0) * 25)
     }
+  } else if (!req.flow) {
+    flowScore = 80
   }
 
-  // ── TÍNH ĐIỂM PHỤC VỤ CÔNG SUẤT & ĐẶC TÍNH (Trọng số 10%) ──────────────
-  let powerScore = 90
-  if (req.power && product.calcPower) {
-    const pDiff = Math.abs(product.calcPower - req.power)
-    if (pDiff <= 0.5) powerScore = 100
-    else if (pDiff <= 2.0) powerScore = 92
-    else powerScore = Math.max(60, 85 - pDiff * 4)
+  // ── TÍNH ĐIỂM PHỤC VỤ CÔNG SUẤT & ĐẶC TÍNH (Trọng số 15%) ──────────────
+  let powerScore = 80
+  if (req.power) {
+    if (product.calcPower) {
+      const pDiff = Math.abs(product.calcPower - req.power)
+      if (pDiff <= 0.5) powerScore = 100
+      else if (pDiff <= 1.5) powerScore = 92
+      else if (pDiff <= 3.0) powerScore = 75
+      else powerScore = Math.max(10, 60 - pDiff * 8)
+    } else {
+      powerScore = 40
+    }
+  }
+
+  // Điểm cộng theo ngành ứng dụng
+  let appBonus = 0
+  if (/tăng áp/i.test((req.title || '') + ' ' + (req.rawText || ''))) {
+    if (/tăng áp biến tần|mhi/i.test(product.name + ' ' + (product.group || ''))) appBonus += 8
+    else if (/cm40-160|cm32-160/i.test(product.name)) appBonus += 6
   }
 
   // Khuyến khích model có đầy đủ ảnh
   const hasImage = Boolean(product.resolvedImage && product.resolvedImage !== '/logo.png')
-  const bonus = hasImage ? 2 : 0
+  const bonus = (hasImage ? 2 : 0) + appBonus
 
-  let finalAccuracy = Math.round(headScore * 0.5 + flowScore * 0.4 + powerScore * 0.1 + bonus)
+  let finalAccuracy = Math.round(headScore * 0.45 + flowScore * 0.40 + powerScore * 0.15 + bonus)
   finalAccuracy = Math.min(99, Math.max(15, finalAccuracy))
 
   // Đánh giá kỹ thuật
@@ -468,12 +520,12 @@ export function solveProjectRequirements(requirementsList, allProducts = []) {
 /**
  * MẪU BÀI TOÁN THỰC TẾ 1 (Theo ảnh 1 của khách gửi)
  */
-export const SAMPLE_PROJECT_1_TEXT = `CỤM BƠM CẤP NƯỚC SINH HOẠT. 1 CỤM GỒM 2 BƠM HOẠT ĐỘNG LUÂN PHIÊN. CÔNG SUẤT 1 BƠM: Q=45M3/H, H=100M. SL: 4 MÁY
-CỤM BƠM TĂNG ÁP: Q=15M3/H, H=20M. 2 BƠM LÀM VIỆC LUÂN PHIÊN. SL: 4 MÁY
-MÁY BƠM CHÌM THOÁT NƯỚC THẢI SINH HOẠT RA HẠ TẦNG. 1 CỤM GỒM 2 BƠM HOẠT ĐỘNG LUÂN PHIÊN CÓ CHẾ ĐỘ HOẠT ĐỘNG ĐỒNG THỜI. Q=30M3/H, H=20M. SL: 2 MÁY
-MÁY BƠM CHÌM THOÁT NƯỚC SÀN TẦNG HẦM. 1 CỤM GỒM 2 BƠM HOẠT ĐỘNG LUÂN PHIÊN CÓ CHẾ ĐỘ HOẠT ĐỘNG ĐỒNG THỜI. CÔNG SUẤT 1 BƠM: Q=15M3/H, H=20M. SL: 8 MÁY
-MÁY BƠM CHÌM THOÁT NƯỚC SÀN TẦNG HẦM. 1 CỤM GỒM 2 BƠM HOẠT ĐỘNG LUÂN PHIÊN CÓ CHẾ ĐỘ HOẠT ĐỘNG ĐỒNG THỜI. CÔNG SUẤT 1 BƠM: Q=20M3/H, H=20M. SL: 3 MÁY
-MÁY BƠM CHÌM THOÁT NƯỚC HỐ PÍT. 1 CỤM GỒM 1 BƠM HOẠT ĐỘNG. CÔNG SUẤT 1 BƠM: Q=5M3/H, H=15M. SL: 8 MÁY`
+export const SAMPLE_PROJECT_1_TEXT = `CỤM BƠM CẤP NƯỚC SINH HOẠT. 1 CỤM GỒM 2 BƠM HOẠT ĐỘNG LUÂN PHIÊN. CÔNG SUẤT 1 BƠM: Q=45M3/H, H=100M. Công suất: 4.0kW. 1 máy
+CỤM BƠM TĂNG ÁP: Q=15M3/H, H=20M. 2 BƠM LÀM VIỆC LUÂN PHIÊN. Công suất: 4.0kW. 1 máy
+MÁY BƠM CHÌM THOÁT NƯỚC THẢI SINH HOẠT RA HẠ TẦNG. 1 CỤM GỒM 2 BƠM HOẠT ĐỘNG LUÂN PHIÊN CÓ CHẾ ĐỘ HOẠT ĐỘNG ĐỒNG THỜI. Q=30M3/H, H=20M. Công suất: 2.0kW. 1 máy
+MÁY BƠM CHÌM THOÁT NƯỚC SÀN TẦNG HẦM. 1 CỤM GỒM 2 BƠM HOẠT ĐỘNG LUÂN PHIÊN CÓ CHẾ ĐỘ HOẠT ĐỘNG ĐỒNG THỜI. CÔNG SUẤT 1 BƠM: Q=15M3/H, H=20M. Công suất: 8.0kW. 1 máy
+MÁY BƠM CHÌM THOÁT NƯỚC SÀN TẦNG HẦM. 1 CỤM GỒM 2 BƠM HOẠT ĐỘNG LUÂN PHIÊN CÓ CHẾ ĐỘ HOẠT ĐỘNG ĐỒNG THỜI. CÔNG SUẤT 1 BƠM: Q=20M3/H, H=20M. Công suất: 3.0kW. 1 máy
+MÁY BƠM CHÌM THOÁT NƯỚC HỐ PÍT. 1 CỤM GỒM 1 BƠM HOẠT ĐỘNG. CÔNG SUẤT 1 BƠM: Q=5M3/H, H=15M. Công suất: 8.0kW. 1 máy`
 
 /**
  * MẪU BÀI TOÁN THỰC TẾ 2 (Theo ảnh 2 của khách gửi)

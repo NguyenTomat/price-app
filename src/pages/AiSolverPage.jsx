@@ -520,106 +520,241 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
     try {
       const wb = new ExcelJS.Workbook()
       wb.creator = 'Máy Bơm T&T'
-      const ws = wb.addWorksheet('Báo Giá Dự Án', { views: [{ showGridLines: true }] })
+      const ws = wb.addWorksheet('Báo Giá Dự Án', { views: [{ showGridLines: false }] })
 
-      ws.columns = [
-        { key: 'stt', width: 6 },
-        { key: 'req_title', width: 34 },
-        { key: 'mount_type', width: 14 },
-        { key: 'req_specs', width: 20 },
-        { key: 'model_name', width: 32 },
-        { key: 'model_specs', width: 28 },
-        { key: 'accuracy', width: 14 },
-        { key: 'qty', width: 8 },
-        { key: 'price', width: 16 },
-        { key: 'total', width: 18 },
-        { key: 'notes', width: 36 }
-      ]
-
-      ws.mergeCells('A1:K1')
-      const tCell = ws.getCell('A1')
-      tCell.value = 'CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT BỊ ĐIỆN T&T'
-      tCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF0878D9' } }
-      tCell.alignment = { horizontal: 'center', vertical: 'middle' }
-
-      ws.mergeCells('A2:K2')
-      const subCell = ws.getCell('A2')
-      subCell.value = `${title.toUpperCase()} - ĐỐI CHIẾU THÔNG SỐ KỸ THUẬT`
-      subCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FF0F172A' } }
-      subCell.alignment = { horizontal: 'center', vertical: 'middle' }
-
-      ws.mergeCells('A3:K3')
-      const dateCell = ws.getCell('A3')
-      dateCell.value = `Ngày lập: ${new Date().toLocaleDateString('vi-VN')} | Đơn vị tư vấn: Máy Bơm T&T (Hotline: 0984.273.806)`
-      dateCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF64748B' } }
-      dateCell.alignment = { horizontal: 'center', vertical: 'middle' }
-
-      const headerRow = ws.getRow(5)
-      headerRow.values = [
-        'STT', 'Hạng mục yêu cầu', 'Chủng loại', 'Thông số Q & H yêu cầu',
-        'Model T&T đối chiếu', 'Thông số kỹ thuật T&T', 'Độ khớp (%)',
-        'Số lượng', 'Đơn giá (VNĐ)', 'Thành tiền (VNĐ)', 'Phụ kiện & Đề xuất'
-      ]
-      headerRow.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
-      headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-      headerRow.height = 30
-      for (let c = 1; c <= 11; c++) {
-        headerRow.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } }
+      // ── Helper styles ──────────────────────────────────────────
+      const thinBorder = {
+        top:    { style: 'thin', color: { argb: 'FFB0C4D8' } },
+        left:   { style: 'thin', color: { argb: 'FFB0C4D8' } },
+        bottom: { style: 'thin', color: { argb: 'FFB0C4D8' } },
+        right:  { style: 'thin', color: { argb: 'FFB0C4D8' } },
+      }
+      const medBorder = {
+        top:    { style: 'medium', color: { argb: 'FF1E3A5F' } },
+        left:   { style: 'medium', color: { argb: 'FF1E3A5F' } },
+        bottom: { style: 'medium', color: { argb: 'FF1E3A5F' } },
+        right:  { style: 'medium', color: { argb: 'FF1E3A5F' } },
+      }
+      const solidFill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } })
+      const applyBorder = (row, cols, border) => {
+        for (let c = 1; c <= cols; c++) row.getCell(c).border = border
       }
 
+      // ── Column widths ──────────────────────────────────────────
+      ws.columns = [
+        { key: 'stt',        width: 5  },
+        { key: 'req_title',  width: 26 },
+        { key: 'mount_type', width: 13 },
+        { key: 'req_specs',  width: 22 },
+        { key: 'model_name', width: 24 },
+        { key: 'model_specs',width: 26 },
+        { key: 'accuracy',   width: 11 },
+        { key: 'qty',        width: 7  },
+        { key: 'price',      width: 16 },
+        { key: 'total',      width: 18 },
+        { key: 'notes',      width: 38 },
+      ]
+
+      // ── ROW 1: Company name ────────────────────────────────────
+      ws.mergeCells('A1:K1')
+      ws.getRow(1).height = 28
+      const compCell = ws.getCell('A1')
+      compCell.value = 'CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT BỊ ĐIỆN T&T'
+      compCell.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } }
+      compCell.fill = solidFill('FF1E3A5F')
+      compCell.alignment = { horizontal: 'center', vertical: 'middle' }
+
+      // ── ROW 2: Title ───────────────────────────────────────────
+      ws.mergeCells('A2:K2')
+      ws.getRow(2).height = 24
+      const titleCell = ws.getCell('A2')
+      titleCell.value = `${title.toUpperCase()} - ĐỐI CHIẾU THÔNG SỐ KỸ THUẬT`
+      titleCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } }
+      titleCell.fill = solidFill('FF2563A8')
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+
+      // ── ROW 3: Date / hotline ──────────────────────────────────
+      ws.mergeCells('A3:K3')
+      ws.getRow(3).height = 18
+      const dateCell = ws.getCell('A3')
+      dateCell.value = `Ngày lập: ${new Date().toLocaleDateString('vi-VN')}     |     Đơn vị tư vấn: Máy Bơm T&T     |     Hotline: 0984.273.806`
+      dateCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF374151' } }
+      dateCell.fill = solidFill('FFE8F0F8')
+      dateCell.alignment = { horizontal: 'center', vertical: 'middle' }
+
+      // ── ROW 4: Blank spacer ────────────────────────────────────
+      ws.getRow(4).height = 6
+
+      // ── ROW 5: Header ─────────────────────────────────────────
+      const headerRow = ws.getRow(5)
+      headerRow.height = 36
+      headerRow.values = [
+        'STT',
+        'Hạng mục yêu cầu',
+        'Chủng loại',
+        'Thông số Q & H yêu cầu',
+        'Model T&T đề xuất',
+        'Thông số kỹ thuật T&T',
+        'Độ khớp',
+        'SL',
+        'Đơn giá (VNĐ)',
+        'Thành tiền (VNĐ)',
+        'Phụ kiện & Đề xuất',
+      ]
+      for (let c = 1; c <= 11; c++) {
+        const cell = headerRow.getCell(c)
+        cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
+        cell.fill = solidFill('FF1E3A5F')
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+        cell.border = {
+          top:    { style: 'medium', color: { argb: 'FFFFFFFF' } },
+          left:   { style: 'thin',   color: { argb: 'FF4A6FA5' } },
+          bottom: { style: 'medium', color: { argb: 'FFFFFFFF' } },
+          right:  { style: 'thin',   color: { argb: 'FF4A6FA5' } },
+        }
+      }
+
+      // ── Data rows ──────────────────────────────────────────────
       let rIndex = 6
       let grandTotal = 0
+      const isSubmersible = (label) => label && (label.toLowerCase().includes('chìm') || label.toLowerCase().includes('submers'))
 
       results.forEach((res, i) => {
         const req = res.requirement
-        const m = res.bestMatch
+        const m   = res.bestMatch
         const unitPrice = m?.price || 0
-        const total = unitPrice * (req.qty || 1)
+        const qty       = req.qty || 1
+        const total     = unitPrice * qty
         grandTotal += total
+        const acc = m?.accuracy || 0
+        const isEven = i % 2 === 1
 
         const row = ws.getRow(rIndex)
+        row.height = 42
         row.values = [
           i + 1,
-          req.title,
-          req.mountLabel,
-          `Q=${req.flow || '...'} m³/h, H=${req.head || '...'} m`,
+          req.title || '',
+          req.mountLabel || '',
+          `Q=${req.flow ?? '...'} m³/h\nH=${req.head ?? '...'} m${req.config ? '\n' + req.config : ''}`,
           m?.name || 'Đang cập nhật',
-          m ? `${m.calcPower ? m.calcPower + 'kW' : ''} - Hmax: ${m.calcHead || '...'}m - Qmax: ${m.calcFlow || '...'}m³/h` : '—',
-          m ? `${m.accuracy}%` : '—',
-          req.qty,
+          m
+            ? [
+                m.calcPower  ? `P: ${m.calcPower}kW`         : '',
+                m.calcHead   ? `Hmax: ${m.calcHead}m`         : '',
+                m.calcFlow   ? `Qmax: ${m.calcFlow}m³/h`      : '',
+                m.calcVoltage? `${m.calcVoltage}`             : '',
+              ].filter(Boolean).join(' | ')
+            : '—',
+          m ? (acc >= 90 ? `${acc}% ✓` : `${acc}%`) : '—',
+          qty,
           unitPrice,
           total,
-          req.accessories?.join('; ') || 'Cụm tiêu chuẩn'
+          req.accessories?.length ? req.accessories.join('\n') : 'Cụm tiêu chuẩn',
         ]
 
-        row.font = { name: 'Arial', size: 10 }
-        row.alignment = { vertical: 'middle' }
+        // Row fill: alternating
+        const rowFill = isEven ? solidFill('FFF0F5FB') : solidFill('FFFFFFFF')
+        for (let c = 1; c <= 11; c++) {
+          const cell = row.getCell(c)
+          cell.fill = rowFill
+          cell.border = thinBorder
+          cell.font = { name: 'Arial', size: 10 }
+          cell.alignment = { vertical: 'middle', wrapText: true }
+        }
+
+        // STT center
         row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
-        row.getCell(3).alignment = { horizontal: 'center', vertical: 'middle' }
-        row.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' }
+        row.getCell(1).font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF1E3A5F' } }
+
+        // Chủng loại: color by type
+        const mountCell = row.getCell(3)
+        mountCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+        if (isSubmersible(req.mountLabel)) {
+          mountCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF0891B2' } }
+          mountCell.fill = solidFill('FFE0F7FA')
+        } else {
+          mountCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFD97706' } }
+          mountCell.fill = solidFill('FFFEF9EC')
+        }
+
+        // Q&H specs
+        row.getCell(4).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+        row.getCell(4).font = { name: 'Arial', size: 10, color: { argb: 'FF374151' } }
+
+        // Model name bold
+        row.getCell(5).font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF1E3A5F' } }
+        row.getCell(5).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+
+        // Accuracy cell color
+        const accCell = row.getCell(7)
+        accCell.alignment = { horizontal: 'center', vertical: 'middle' }
+        accCell.font = {
+          name: 'Arial', size: 10, bold: true,
+          color: { argb: acc >= 90 ? 'FF059669' : 'FFD97706' },
+        }
+
+        // SL center
         row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' }
+        row.getCell(8).font = { name: 'Arial', size: 10, bold: true }
+
+        // Price + Total format
         row.getCell(9).numFmt = '#,##0'
+        row.getCell(9).alignment = { horizontal: 'right', vertical: 'middle' }
+        row.getCell(9).font = { name: 'Arial', size: 10, color: { argb: 'FF1D4ED8' } }
+
         row.getCell(10).numFmt = '#,##0'
+        row.getCell(10).alignment = { horizontal: 'right', vertical: 'middle' }
+        row.getCell(10).font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF1D4ED8' } }
+
+        // Notes
+        row.getCell(11).font = { name: 'Arial', size: 9, color: { argb: 'FF4B5563' }, italic: true }
+        row.getCell(11).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
 
         rIndex++
       })
 
+      // ── Total row ──────────────────────────────────────────────
       const totalRow = ws.getRow(rIndex)
+      totalRow.height = 28
       ws.mergeCells(`A${rIndex}:I${rIndex}`)
-      totalRow.getCell(1).value = 'TỔNG CỘNG TIỀN THIẾT BỊ (CHƯA VAT):'
-      totalRow.getCell(1).font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF0F172A' } }
-      totalRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' }
-      totalRow.getCell(10).value = grandTotal
-      totalRow.getCell(10).font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF059669' } }
-      totalRow.getCell(10).numFmt = '#,##0 "₫"'
-      totalRow.height = 25
+      const totalLabelCell = totalRow.getCell(1)
+      totalLabelCell.value = 'TỔNG CỘNG TIỀN THIẾT BỊ (CHƯA VAT):'
+      totalLabelCell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E3A5F' } }
+      totalLabelCell.alignment = { horizontal: 'right', vertical: 'middle' }
+      totalLabelCell.fill = solidFill('FFFEF3C7')
+      totalLabelCell.border = medBorder
 
+      const totalValueCell = totalRow.getCell(10)
+      totalValueCell.value = grandTotal
+      totalValueCell.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FF059669' } }
+      totalValueCell.numFmt = '#,##0 "₫"'
+      totalValueCell.alignment = { horizontal: 'right', vertical: 'middle' }
+      totalValueCell.fill = solidFill('FFFEF3C7')
+      totalValueCell.border = medBorder
+
+      totalRow.getCell(11).fill = solidFill('FFFEF3C7')
+      totalRow.getCell(11).border = medBorder
+
+      // ── Notes row ─────────────────────────────────────────────
+      const noteRow = ws.getRow(rIndex + 1)
+      noteRow.height = 18
+      ws.mergeCells(`A${rIndex + 1}:K${rIndex + 1}`)
+      const noteCell = noteRow.getCell(1)
+      noteCell.value = 'Ghi chú: Đơn giá trên chưa bao gồm VAT (10%). Hàng có sẵn kho — Giao hàng trong 24h tại Hà Nội & TP.HCM.'
+      noteCell.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF6B7280' } }
+      noteCell.alignment = { horizontal: 'left', vertical: 'middle' }
+      noteCell.fill = solidFill('FFF9FAFB')
+
+      // ── Freeze panes ───────────────────────────────────────────
+      ws.views = [{ state: 'frozen', ySplit: 5, showGridLines: false }]
+
+      // ── Download ───────────────────────────────────────────────
       const buf = await wb.xlsx.writeBuffer()
       const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `Bao-gia-du-an-${Date.now()}.xlsx`
+      a.download = `BaoGia-MayBomTT-${new Date().toISOString().slice(0,10)}.xlsx`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

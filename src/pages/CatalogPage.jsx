@@ -18,6 +18,9 @@ const toEmbedUrl = (raw) => {
   // https://drive.google.com/open?id=FILE_ID
   const m2 = raw.match(/[?&]id=([^&\s]+)/)
   if (m2) return `https://drive.google.com/file/d/${m2[1]}/preview`
+  // folder
+  const mFolder = raw.match(/\/folders\/([^/?\s]+)/)
+  if (mFolder) return `https://drive.google.com/embeddedfolderview?id=${mFolder[1]}#grid`
   if (raw.includes('drive.google.com') && raw.includes('/view')) {
     return raw.replace(/\/view.*$/, '/preview')
   }
@@ -270,62 +273,76 @@ export default function CatalogPage() {
             {isAdmin && catalogs.length === 0 && <div className="text-muted text-sm" style={{ marginTop: 4 }}>Upload file PDF để thêm catalog</div>}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 16 }}>
             {filtered.map(cat => (
               <div key={cat.id} style={{
                 background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)', overflow: 'hidden', cursor: 'pointer',
+                borderRadius: 'var(--radius)', overflow: 'hidden',
                 transition: 'box-shadow .15s, transform .15s',
-                display: 'flex', flexDirection: 'column',
+                display: 'flex', flexDirection: 'column', height: '100%', minHeight: 310,
               }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.1)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.08)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = ''; e.currentTarget.style.transform = '' }}
               >
                 {/* PDF preview area */}
                 <div
                   onClick={() => openCatalog(cat)}
                   style={{
-                    height: 160, background: 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)',
+                    height: 140, background: 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%)',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    gap: 8, position: 'relative',
+                    gap: 6, position: 'relative', cursor: 'pointer', flexShrink: 0
                   }}>
-                  <div style={{ fontSize: 48 }}>📋</div>
+                  <div style={{ fontSize: 44 }}>📋</div>
                   <div style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 500 }}>PDF Catalog</div>
                   <div style={{ position: 'absolute', top: 8, right: 8, background: cat.isExternalLink ? '#e8f5e9' : 'rgba(0,0,0,.06)', borderRadius: 4, padding: '2px 6px', fontSize: 10, color: cat.isExternalLink ? '#2e7d32' : 'var(--text2)', fontWeight: cat.isExternalLink ? 600 : 400 }}>
                     {cat.isExternalLink ? '🔗 Drive' : fmtSize(cat.fileSize)}
                   </div>
                 </div>
 
-                {/* Info */}
-                <div style={{ padding: '10px 12px', flex: 1 }} onClick={() => openCatalog(cat)}>
-                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3, lineHeight: 1.3 }}>{cat.name}</div>
-                  {cat.brand && (
-                    <div style={{ display: 'inline-block', background: 'var(--accent-s)', color: 'var(--accent)', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
-                      {cat.brand}
-                    </div>
-                  )}
-                  {cat.note && <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>{cat.note}</div>}
+                {/* Info (fixed height title & tags for neat grid alignment) */}
+                <div style={{ padding: '12px 12px 6px', flex: 1, display: 'flex', flexDirection: 'column', cursor: 'pointer' }} onClick={() => openCatalog(cat)}>
+                  <div style={{
+                    fontWeight: 600, fontSize: 13, lineHeight: '18px', height: 36,
+                    overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                    color: 'var(--text)', marginBottom: 6
+                  }} title={cat.name}>
+                    {cat.name}
+                  </div>
+                  <div style={{ height: 22, display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                    {cat.brand ? (
+                      <div style={{ display: 'inline-block', background: 'var(--accent-s)', color: 'var(--accent)', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 600 }}>
+                        {cat.brand}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div style={{
+                    fontSize: 11, color: 'var(--text2)', height: 18,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                  }}>
+                    {cat.note || ''}
+                  </div>
                 </div>
 
-                {/* Actions */}
-                <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', display: 'flex', gap: 6 }}>
+                {/* Actions strictly locked at the bottom */}
+                <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', display: 'flex', gap: 6, marginTop: 'auto', background: 'var(--surface)' }}>
                   <button
                     className="btn sm primary"
-                    style={{ flex: 1, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                    style={{ flex: 1, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, whiteSpace: 'nowrap', padding: '6px 8px' }}
                     onClick={() => openCatalog(cat)}
+                    title="Mở tài liệu trên Google Drive / Tab mới"
                   >
-                    <span>👁</span> Mở Catalog
+                    <span>📁</span> Mở trên GG Drive
                   </button>
                   <button
                     className="btn sm"
-                    style={{ fontSize: 12 }}
+                    style={{ fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', padding: '6px 8px' }}
                     onClick={() => handleOpenViewing(cat)}
                     title="Xem nhanh trong App"
                   >
-                    🔍 Xem nhanh
+                    <span>🔍</span> Xem nhanh
                   </button>
                   {isAdmin && (
-                    <button className="btn sm ghost" style={{ color: 'var(--danger)', fontSize: 12 }} onClick={() => handleDelete(cat)} title="Xóa">
+                    <button className="btn sm ghost" style={{ color: 'var(--danger)', fontSize: 12, padding: '6px 8px' }} onClick={() => handleDelete(cat)} title="Xóa">
                       🗑
                     </button>
                   )}
@@ -355,25 +372,29 @@ export default function CatalogPage() {
                 className="btn sm primary"
                 style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
               >
-                <span>↗</span> Mở tab ngoài / Tải về
+                <span>📁</span> Mở trên Google Drive ↗
               </button>
               <button className="btn ghost sm" onClick={handleCloseViewing} style={{ fontSize: 16, padding: '4px 10px' }}>✕</button>
             </div>
-            <div style={{ padding: '8px 16px', background: '#f8fafc', borderBottom: '1px solid var(--border)', fontSize: 12, color: 'var(--text2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>💡 Nếu file PDF tải chậm hoặc hiển thị trắng:</span>
+            
+            {/* Direct fallback banner if Google Drive SAMEORIGIN blocks iframe */}
+            <div style={{ padding: '9px 18px', background: '#eff6ff', borderBottom: '1px solid var(--border)', fontSize: 12, color: '#1e40af', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <span>💡 Nếu khung xem bên dưới bị trình duyệt chặn (ký hiệu 🚫 hoặc yêu cầu quyền Drive):</span>
               <button
                 onClick={() => openCatalog(viewing)}
-                style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 700, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                className="btn sm primary"
+                style={{ fontSize: 11, padding: '3px 10px', background: '#2563eb' }}
               >
-                Bấm vào đây để mở trực tiếp trên Trình duyệt ↗
+                📁 Bấm vào đây để mở trực tiếp trên Google Drive ↗
               </button>
             </div>
-            <div style={{ flex: 1, position: 'relative', background: '#1e293b' }}>
+
+            <div style={{ flex: 1, position: 'relative', background: '#f8fafc' }}>
               <iframe
                 src={toEmbedUrl(viewing.url)}
                 style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none', background: '#ffffff' }}
                 title={viewing.name}
-                allow="autoplay; encrypted-media"
+                allow="autoplay; encrypted-media; fullscreen"
               />
             </div>
           </div>

@@ -167,11 +167,15 @@ export function analyzeProductDetails(p) {
   const allText = `${nameLower} ${groupLower} ${descLower}`
 
   // 1. Bơm Chìm vs Bơm Cạn
-  // Sản phẩm là BƠM CHÌM nếu có từ khóa chìm/nước thải/wq/shm/hỏa tiễn... và KHÔNG PHẢI là trục đứng CDLF
+  // Sản phẩm là BƠM CHÌM nếu có từ khóa chìm/nước thải/wq/shm/dwmt/hỏa tiễn... và KHÔNG PHẢI là trục đứng CDLF
   const isSubmersible = (/chìm|chim|submersible|thải|thai|hố pít|ho pit|hố móng|ho mong|hút bùn|hut bun|cánh cắt|cat rac|wq|shm|dwmt|kbz|krs|4slm|6slm|r95|r 150|giếng|gieng|hỏa tiễn|hoa tien/i.test(allText)
     || /\b\d*wq\b/i.test(nameLower)
-    || /\bshm\d/i.test(nameLower))
+    || /\bshm?\d/i.test(nameLower)
+    || /\bdwmt\d/i.test(nameLower))
     && !/trục đứng|truc dung|cdlf|tăng áp|tang ap|mhi|bơm cạn|bom can|thổi khí|gb/i.test(nameLower)
+
+  // Phân biệt rõ bơm thả giếng khoan / hỏa tiễn (4SLM, 6SP, R95, R150) để không match nhầm vào hố nước thải / thoát sàn
+  const isDeepWell = /giếng|gieng|hỏa tiễn|hoa tien|4slm|6slm|6sp|r95|r 150/i.test(allText)
 
   // 2. Công suất kW
   let powerKw = null
@@ -198,23 +202,35 @@ export function analyzeProductDetails(p) {
       head = parseFloat(hMatch[1].replace(',', '.'))
     } else {
       // Bóc tách theo quy chuẩn model WQ: ví dụ 50WQ15-20-2.2 => Q=15, H=20m, P=2.2kW
-      const wqMatch = name.match(/\b\d*WQ(\d+)[-_](\d+)[-_](\d+(?:[.,]\d+)?)/i)
+      const wqMatch = name.match(/\b\d*WQ(\d+)[-_](\d+)/i)
       if (wqMatch) {
         head = parseFloat(wqMatch[2])
       } else {
-        // Bóc tách model SHM: SHM15-10-0.75F => Q=15, H=10m
-        const shmMatch = name.match(/SHM(\d+)[-_](\d+)/i)
-        if (shmMatch) {
-          head = parseFloat(shmMatch[2])
+        // Bóc tách model DWMT: DWMT30-22-5,5 => Q=30, H=22m
+        const dwmtMatch = name.match(/DWMT(\d+)[-_](\d+)/i)
+        if (dwmtMatch) {
+          head = parseFloat(dwmtMatch[2])
         } else {
-          // Bóc tách model CDLF: CDLF 16-12 (Q=16m3/h, 12 tầng cánh)
-          // CDLF 42-60 (Q=42m3/h, 6 tầng cánh)
-          const cdlfMatch = name.match(/CDLF\s*(\d+)[-_](\d+)/i)
-          if (cdlfMatch) {
-            const qNom = parseInt(cdlfMatch[1], 10)
-            const stages = parseInt(cdlfMatch[2], 10)
-            const stageHead = qNom >= 42 ? 16.5 : qNom >= 32 ? 15 : 13
-            head = Math.round(stages * stageHead)
+          // Bóc tách model SHM / SH: SHM15-10-0.75F, SH15-40-3.0 => Q=15, H=10/40m
+          const shmMatch = name.match(/SHM?(\d+)[-_](\d+)/i)
+          if (shmMatch) {
+            head = parseFloat(shmMatch[2])
+          } else {
+            // Bóc tách model CM đa tầng cánh: CM8-25 (H=25m), CM8-40 (H=40m), CM16-40 (H=40m)
+            const cmMulti = name.match(/\bCM(\d+)[-_](\d+)/i)
+            if (cmMulti) {
+              head = parseFloat(cmMulti[2])
+            } else {
+              // Bóc tách model CDLF: CDLF 16-12 (Q=16m3/h, 12 tầng cánh)
+              // CDLF 42-6 (Q=42m3/h, 6 tầng cánh)
+              const cdlfMatch = name.match(/CDLF\s*(\d+)[-_](\d+)/i)
+              if (cdlfMatch) {
+                const qNom = parseInt(cdlfMatch[1], 10)
+                const stages = parseInt(cdlfMatch[2], 10)
+                const stageHead = qNom >= 42 ? 16.5 : qNom >= 32 ? 15 : 13
+                head = Math.round(stages * stageHead)
+              }
+            }
           }
         }
       }
@@ -230,17 +246,27 @@ export function analyzeProductDetails(p) {
     if (qMatch) {
       flow = parseFloat(qMatch[1].replace(',', '.'))
     } else {
-      const wqMatch = name.match(/\b\d*WQ(\d+)[-_](\d+)/i)
+      const wqMatch = name.match(/\b\d*WQ(\d+)[-_]/i)
       if (wqMatch) {
         flow = parseFloat(wqMatch[1])
       } else {
-        const shmMatch = name.match(/SHM(\d+)[-_]/i)
-        if (shmMatch) {
-          flow = parseFloat(shmMatch[1])
+        const dwmtMatch = name.match(/DWMT(\d+)[-_]/i)
+        if (dwmtMatch) {
+          flow = parseFloat(dwmtMatch[1])
         } else {
-          const cdlfMatch = name.match(/CDLF\s*(\d+)[-_]/i)
-          if (cdlfMatch) {
-            flow = parseFloat(cdlfMatch[1])
+          const shmMatch = name.match(/SHM?(\d+)[-_]/i)
+          if (shmMatch) {
+            flow = parseFloat(shmMatch[1])
+          } else {
+            const cmMulti = name.match(/\bCM(\d+)[-_]/i)
+            if (cmMulti) {
+              flow = parseFloat(cmMulti[1])
+            } else {
+              const cdlfMatch = name.match(/CDLF\s*(\d+)[-_]/i)
+              if (cdlfMatch) {
+                flow = parseFloat(cdlfMatch[1])
+              }
+            }
           }
         }
       }
@@ -269,6 +295,7 @@ export function analyzeProductDetails(p) {
     image,
     resolvedImage: image,
     isSubmersible,
+    isDeepWell,
     mountType: isSubmersible ? 'submersible' : 'surface',
     mountLabel: isSubmersible ? 'Bơm chìm' : 'Bơm cạn',
     calcHead: head,
@@ -300,6 +327,17 @@ export function calculateMatchScore(req, product) {
       accuracy: 0,
       isFit: false,
       reason: '❌ Sai chủng loại (Khách cần BƠM CẠN, model này là Bơm chìm)'
+    }
+  }
+
+  // Tuyệt đối không dùng bơm hỏa tiễn / giếng khoan (4SLM, 6SP, R95, R150) cho các hạng mục thoát sàn, hố móng, nước thải
+  const isSewageReq = /thải|thai|thoát|thoat|hố pít|ho pit|hố móng|ho mong|tầng hầm|tang ham|hạ tầng|ha tang|nước đọng/i.test((req.title || '') + ' ' + (req.rawText || ''))
+  if (isSewageReq && product.isDeepWell) {
+    return {
+      score: 0,
+      accuracy: 0,
+      isFit: false,
+      reason: '❌ Không phù hợp (Bơm hỏa tiễn/giếng khoan không thể dùng cho hố gom nước thải/thoát sàn)'
     }
   }
 

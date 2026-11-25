@@ -43,6 +43,31 @@ export default function CatalogPage() {
   const [search, setSearch]           = useState('')
   const [brandFilter, setBrandFilter] = useState('')
   const [viewing, setViewing]         = useState(null)   // catalog đang xem PDF
+
+  // Hỗ trợ nút Back của trình duyệt / điện thoại khi đang mở xem PDF
+  const handleOpenViewing = (cat) => {
+    setViewing(cat)
+    try {
+      window.history.pushState({ modal: 'catalog-viewer', id: cat.id }, '', window.location.href)
+    } catch {}
+  }
+
+  const handleCloseViewing = () => {
+    setViewing(null)
+    if (window.history.state?.modal === 'catalog-viewer') {
+      window.history.back()
+    }
+  }
+
+  useEffect(() => {
+    const handlePop = (e) => {
+      if (viewing) {
+        setViewing(null)
+      }
+    }
+    window.addEventListener('popstate', handlePop)
+    return () => window.removeEventListener('popstate', handlePop)
+  }, [viewing])
   const [uploading, setUploading]     = useState(false)
   const [showForm, setShowForm]       = useState(false)
   const [addMode, setAddMode]         = useState('file') // 'file' | 'link'
@@ -294,7 +319,7 @@ export default function CatalogPage() {
                   <button
                     className="btn sm"
                     style={{ fontSize: 12 }}
-                    onClick={() => setViewing(cat)}
+                    onClick={() => handleOpenViewing(cat)}
                     title="Xem nhanh trong App"
                   >
                     🔍 Xem nhanh
@@ -313,7 +338,7 @@ export default function CatalogPage() {
 
       {/* PDF Viewer Modal */}
       {viewing && (
-        <div className="overlay" onClick={e => e.target === e.currentTarget && setViewing(null)}>
+        <div className="overlay" onClick={e => e.target === e.currentTarget && handleCloseViewing()}>
           <div style={{
             width: '94vw', height: '92vh', background: 'var(--surface)',
             borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column',
@@ -332,7 +357,7 @@ export default function CatalogPage() {
               >
                 <span>↗</span> Mở tab ngoài / Tải về
               </button>
-              <button className="btn ghost sm" onClick={() => setViewing(null)} style={{ fontSize: 16, padding: '4px 10px' }}>✕</button>
+              <button className="btn ghost sm" onClick={handleCloseViewing} style={{ fontSize: 16, padding: '4px 10px' }}>✕</button>
             </div>
             <div style={{ padding: '8px 16px', background: '#f8fafc', borderBottom: '1px solid var(--border)', fontSize: 12, color: 'var(--text2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>💡 Nếu file PDF tải chậm hoặc hiển thị trắng:</span>

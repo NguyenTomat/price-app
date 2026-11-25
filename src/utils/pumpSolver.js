@@ -252,22 +252,29 @@ export function analyzeProductDetails(p) {
   const voltage = is3Phase ? '380V (3 pha)' : '220V (1 pha)'
 
   // Ảnh sản phẩm
-  let image = '/logo.png'
+  let image = null
   if (Array.isArray(p.webImages) && p.webImages.length > 0 && p.webImages[0]) image = p.webImages[0]
   else if (Array.isArray(p.images) && p.images.length > 0 && p.images[0]) image = p.images[0]
-  else if (typeof p.image === 'string' && p.image) image = p.image
-  else if (typeof p.imageUrl === 'string' && p.imageUrl) image = p.imageUrl
+  else if (typeof p.image === 'string' && p.image && p.image !== '/logo.png') image = p.image
+  else if (typeof p.imageUrl === 'string' && p.imageUrl && p.imageUrl !== '/logo.png') image = p.imageUrl
+
+  if (!image) {
+    if (isSubmersible) image = '/pump_submersible.jpg'
+    else if (/cdlf|trục đứng|truc dung/i.test(nameLower)) image = '/pump_vertical_cdlf.jpg'
+    else image = '/pump_horizontal_blue.jpg'
+  }
 
   return {
     ...p,
+    image,
+    resolvedImage: image,
     isSubmersible,
     mountType: isSubmersible ? 'submersible' : 'surface',
     mountLabel: isSubmersible ? 'Bơm chìm' : 'Bơm cạn',
     calcHead: head,
     calcFlow: flow,
     calcPower: powerKw,
-    calcVoltage: voltage,
-    resolvedImage: image
+    calcVoltage: voltage
   }
 }
 
@@ -403,12 +410,14 @@ export function solveProjectRequirements(requirementsList, allProducts = []) {
       requirement: req,
       bestMatch: bestMatch ? {
         ...bestMatch.product,
+        image: bestMatch.product.image || bestMatch.product.resolvedImage || (bestMatch.product.isSubmersible ? '/pump_submersible.jpg' : '/pump_vertical_cdlf.jpg'),
         accuracy: bestMatch.accuracy,
         isHighMatch: bestMatch.isHighMatch,
         reason: bestMatch.reason
       } : null,
       altMatch: altMatch ? {
         ...altMatch.product,
+        image: altMatch.product.image || altMatch.product.resolvedImage || (altMatch.product.isSubmersible ? '/pump_submersible.jpg' : '/pump_vertical_cdlf.jpg'),
         accuracy: altMatch.accuracy,
         isHighMatch: altMatch.isHighMatch,
         reason: altMatch.reason

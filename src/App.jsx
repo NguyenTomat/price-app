@@ -29,9 +29,43 @@ import './index.css'
 
 function AppContent() {
   const { user, loading } = useAuth()
-  const [page, setPage] = useState(() => {
+
+  // Đồng bộ trang với URL hash và browser history để nút Back hoạt động chính xác
+  const [page, setPageInternal] = useState(() => {
+    const hash = window.location.hash.replace(/^#\/?/, '')
+    const validPages = [
+      'dashboard', 'lists', 'my-prices', 'orders', 'ai-solver', 'cost-prices',
+      'inventory', 'catalog', 'technical-dossiers', 'revenue', 'bus',
+      'web-manage', 'admin-import', 'admin-users', 'account'
+    ]
+    if (hash && validPages.includes(hash)) return hash
     return localStorage.getItem('price_app_page') || 'dashboard'
   })
+
+  const setPage = useCallback((newPage) => {
+    setPageInternal(prev => {
+      if (prev === newPage) return prev
+      try {
+        window.history.pushState({ page: newPage }, '', '#' + newPage)
+      } catch (e) {
+        console.warn('history pushState error:', e)
+      }
+      return newPage
+    })
+  }, [])
+
+  // Xử lý nút Back/Forward của trình duyệt và điện thoại
+  useEffect(() => {
+    const handlePopState = (e) => {
+      if (e.state?.modal) return
+      const hash = window.location.hash.replace(/^#\/?/, '')
+      const target = e.state?.page || hash || 'dashboard'
+      setPageInternal(target)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
   const [spotlightOpen, setSpotlightOpen] = useState(false)
   const [allProducts, setAllProducts] = useState([])
   // extra = product to auto-open from spotlight
@@ -42,7 +76,7 @@ function AppContent() {
   const handleOpenWebOrder = useCallback((order) => {
     setWebManageTab('orders')
     setPage('web-manage')
-  }, [])
+  }, [setPage])
 
   // Lưu trang hiện tại vào localStorage để không bị nhảy về dashboard khi reload/memory sleep trên điện thoại
   useEffect(() => {

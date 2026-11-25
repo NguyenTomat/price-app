@@ -12,6 +12,18 @@ import ExcelJS from 'exceljs'
 
 const fmt = n => n != null && !isNaN(n) ? Number(n).toLocaleString('vi-VN') + ' ₫' : '—'
 
+// Helper lấy ảnh sản phẩm chính xác, fallback theo chủng loại bơm
+const getProductImage = (p) => {
+  if (!p) return '/pump_vertical_cdlf.jpg'
+  if (p.image && typeof p.image === 'string' && p.image !== '/logo.png') return p.image
+  if (p.resolvedImage && typeof p.resolvedImage === 'string' && p.resolvedImage !== '/logo.png') return p.resolvedImage
+  if (Array.isArray(p.webImages) && p.webImages.length > 0 && p.webImages[0]) return p.webImages[0]
+  if (Array.isArray(p.images) && p.images.length > 0 && p.images[0]) return p.images[0]
+  if (typeof p.imageUrl === 'string' && p.imageUrl && p.imageUrl !== '/logo.png') return p.imageUrl
+  if (p.isSubmersible || /chìm|chim|wq|shm|dwmt/i.test(p.name || '')) return '/pump_submersible.jpg'
+  return '/pump_vertical_cdlf.jpg'
+}
+
 export default function AiSolverPage({ setPage }) {
   const toast = useToast()
 
@@ -26,6 +38,7 @@ export default function AiSolverPage({ setPage }) {
   // Side panel & Modal & Zoom states
   const [showSidePanel, setShowSidePanel] = useState(true)
   const [zoomImage, setZoomImage] = useState(null)
+  const [selectedProductDetail, setSelectedProductDetail] = useState(null)
 
   // Copy / Export states
   const [copiedImgKey, setCopiedImgKey] = useState(null)
@@ -1238,8 +1251,8 @@ export default function AiSolverPage({ setPage }) {
                                     {/* Product image */}
                                     <div
                                       style={{
-                                        width: 72,
-                                        height: 72,
+                                        width: 76,
+                                        height: 76,
                                         borderRadius: 8,
                                         border: '1px solid var(--border)',
                                         background: '#f8fafc',
@@ -1251,10 +1264,13 @@ export default function AiSolverPage({ setPage }) {
                                       }}
                                     >
                                       <img
-                                        src={m.image || '/logo.png'}
+                                        src={getProductImage(m)}
                                         alt={m.name}
-                                        onClick={() => setZoomImage(m.image || '/logo.png')}
-                                        onError={(e) => { e.target.src = '/logo.png' }}
+                                        onClick={() => setZoomImage(getProductImage(m))}
+                                        onError={(e) => {
+                                          e.target.onerror = null
+                                          e.target.src = m.isSubmersible ? '/pump_submersible.jpg' : '/pump_vertical_cdlf.jpg'
+                                        }}
                                         style={{
                                           width: '100%',
                                           height: '100%',
@@ -1275,38 +1291,36 @@ export default function AiSolverPage({ setPage }) {
                                         </span>
                                       </div>
 
-                                      <div style={{ color: 'var(--text3)', fontSize: 11, marginTop: 2 }}>
+                                      <div style={{ color: 'var(--text3)', fontSize: 11, marginTop: 3 }}>
                                         Hãng: <strong style={{ color: 'var(--text2)' }}>{m.brand || 'T&T'}</strong> | Hmax: {m.calcHead || '...'}m | Qmax: {m.calcFlow || '...'}m³/h | {m.calcPower ? m.calcPower + 'kW' : ''} ({m.calcVoltage || '380V'})
-                                      </div>
-
-                                      <div style={{ marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                                        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)' }}>
-                                          {fmt(m.price)}
-                                        </span>
-                                        <span style={{ fontSize: 11, color: 'var(--text3)' }}>/ máy</span>
-                                        {req.qty > 1 && (
-                                          <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600 }}>
-                                            (Tổng {req.qty} máy: {fmt((m.price || 0) * req.qty)})
-                                          </span>
-                                        )}
                                       </div>
                                     </div>
 
-                                    {/* Actions for product */}
-                                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                                    {/* Actions for product - Xem giá gốc & thông số, Sao chép ảnh, Tải ảnh */}
+                                    <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
+                                      <button
+                                        className="btn sm"
+                                        onClick={() => setSelectedProductDetail({ product: m, req })}
+                                        style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: 'var(--surface2)' }}
+                                        title="Xem chi tiết thông số kỹ thuật và đơn giá gốc niêm yết"
+                                      >
+                                        <span>🔍</span>
+                                        <span>Xem thông số & giá gốc</span>
+                                      </button>
+
                                       <button
                                         className="btn sm primary"
-                                        onClick={() => handleCopyImage(m.image, `prod_${m.id}_${idx}`)}
+                                        onClick={() => handleCopyImage(getProductImage(m), `prod_${m.id}_${idx}`)}
                                         style={{
                                           background: copiedImgKey === `prod_${m.id}_${idx}` ? 'var(--success)' : undefined
                                         }}
                                       >
-                                        📋 {copiedImgKey === `prod_${m.id}_${idx}` ? 'Đã copy ảnh!' : 'Sao chép ảnh Zalo'}
+                                        📋 {copiedImgKey === `prod_${m.id}_${idx}` ? 'Đã copy!' : 'Sao chép ảnh Zalo'}
                                       </button>
 
                                       <button
                                         className="btn sm"
-                                        onClick={() => downloadImage(m.image, `${m.name}.jpg`)}
+                                        onClick={() => downloadImage(getProductImage(m), `${m.name}.jpg`)}
                                       >
                                         Tải ảnh
                                       </button>
@@ -1330,7 +1344,7 @@ export default function AiSolverPage({ setPage }) {
                         <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: 'var(--text2)' }}>
                           Model máy bơm đề xuất từ kho T&T:
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 10 }}>
                           {msg.exactMatches.slice(0, 4).map((p, pIdx) => (
                             <div
                               key={p.id || pIdx}
@@ -1346,13 +1360,16 @@ export default function AiSolverPage({ setPage }) {
                               }}
                             >
                               <img
-                                src={p.image || '/logo.png'}
+                                src={getProductImage(p)}
                                 alt={p.name}
-                                onClick={() => setZoomImage(p.image || '/logo.png')}
-                                onError={(e) => { e.target.src = '/logo.png' }}
+                                onClick={() => setZoomImage(getProductImage(p))}
+                                onError={(e) => {
+                                  e.target.onerror = null
+                                  e.target.src = p.isSubmersible ? '/pump_submersible.jpg' : '/pump_vertical_cdlf.jpg'
+                                }}
                                 style={{
-                                  width: 56,
-                                  height: 56,
+                                  width: 58,
+                                  height: 58,
                                   objectFit: 'contain',
                                   background: '#fff',
                                   borderRadius: 6,
@@ -1366,23 +1383,39 @@ export default function AiSolverPage({ setPage }) {
                                   {p.name}
                                 </div>
                                 <div style={{ fontSize: 11, color: 'var(--text3)' }}>
-                                  {p.brand} | {fmt(p.price)}
+                                  {p.brand || 'T&T'}
                                 </div>
-                                <button
-                                  onClick={() => handleCopyImage(p.image, `match_${p.id}`)}
-                                  style={{
-                                    marginTop: 4,
-                                    fontSize: 11,
-                                    color: 'var(--accent)',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    fontWeight: 600,
-                                    padding: 0
-                                  }}
-                                >
-                                  📋 {copiedImgKey === `match_${p.id}` ? 'Đã copy ảnh!' : 'Sao chép ảnh Zalo'}
-                                </button>
+                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                  <button
+                                    onClick={() => setSelectedProductDetail({ product: p, req: null })}
+                                    style={{
+                                      fontSize: 11,
+                                      color: 'var(--accent)',
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      fontWeight: 600,
+                                      padding: 0
+                                    }}
+                                  >
+                                    🔍 Xem giá gốc
+                                  </button>
+                                  <span style={{ color: 'var(--border2)' }}>•</span>
+                                  <button
+                                    onClick={() => handleCopyImage(getProductImage(p), `match_${p.id}`)}
+                                    style={{
+                                      fontSize: 11,
+                                      color: 'var(--text2)',
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      fontWeight: 600,
+                                      padding: 0
+                                    }}
+                                  >
+                                    📋 {copiedImgKey === `match_${p.id}` ? 'Đã copy!' : 'Copy ảnh'}
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -1697,6 +1730,190 @@ export default function AiSolverPage({ setPage }) {
           >
             Đóng (Click ra ngoài)
           </button>
+        </div>
+      )}
+
+      {/* ── MODAL: CHI TIẾT THÔNG SỐ VÀ GIÁ GỐC NIÊM YẾT ── */}
+      {selectedProductDetail && (
+        <div
+          onClick={(e) => e.target === e.currentTarget && setSelectedProductDetail(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9998,
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(2px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              maxWidth: 620,
+              width: '100%',
+              maxHeight: '92vh',
+              overflowY: 'auto',
+              background: 'var(--surface)',
+              padding: 0,
+              borderRadius: 'var(--radius)',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+              border: '1px solid var(--border)'
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '14px 20px',
+                borderBottom: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--surface2)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16 }}>🔍</span>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                  Thông Số Kỹ Thuật & Đơn Giá Gốc Niêm Yết
+                </span>
+              </div>
+              <button
+                className="btn sm ghost"
+                onClick={() => setSelectedProductDetail(null)}
+                style={{ fontSize: 16, padding: '4px 8px' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: 20 }}>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', marginBottom: 18 }}>
+                <div
+                  style={{
+                    width: 110,
+                    height: 110,
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: '#f8fafc',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    flexShrink: 0
+                  }}
+                >
+                  <img
+                    src={getProductImage(selectedProductDetail.product)}
+                    alt=""
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 220 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
+                    {selectedProductDetail.product.name}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                    <span className={`badge ${selectedProductDetail.product.isSubmersible ? 'badge-blue' : 'badge-amber'}`}>
+                      {selectedProductDetail.product.isSubmersible ? '🌊 Bơm chìm' : '🏭 Bơm cạn'}
+                    </span>
+                    <span className="badge badge-green">
+                      Khớp {selectedProductDetail.product.accuracy || 90}% kỹ thuật
+                    </span>
+                    {selectedProductDetail.product.brand && (
+                      <span className="badge badge-gray">{selectedProductDetail.product.brand}</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+                    Mã sản phẩm: <strong>{selectedProductDetail.product.code || selectedProductDetail.product.id || 'T&T-STANDARD'}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bảng giá gốc niêm yết (Bảo mật - chỉ hiện trong modal này) */}
+              <div
+                style={{
+                  background: 'var(--surface2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: 14,
+                  marginBottom: 16
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 8, letterSpacing: 0.5 }}>
+                  💰 BẢNG GIÁ GỐC NIÊM YẾT KHO T&T:
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, color: 'var(--text2)' }}>Đơn giá gốc niêm yết:</span>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent)' }}>
+                    {fmt(selectedProductDetail.product.price)}
+                  </span>
+                </div>
+                {selectedProductDetail.req && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, color: 'var(--text2)' }}>Số lượng theo dự án:</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                        {selectedProductDetail.req.qty} máy
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingTop: 8,
+                        borderTop: '1px dashed var(--border2)'
+                      }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Tổng thành tiền dự toán:</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--success)' }}>
+                        {fmt((selectedProductDetail.product.price || 0) * (selectedProductDetail.req.qty || 1))}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Thông số kỹ thuật chi tiết */}
+              <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.8 }}>
+                <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+                  ⚙️ THÔNG SỐ VẬN HÀNH THỰC TẾ:
+                </div>
+                <div>• Cột áp tối đa (Hmax): <strong>{selectedProductDetail.product.calcHead || '...'} m</strong></div>
+                <div>• Lưu lượng tối đa (Qmax): <strong>{selectedProductDetail.product.calcFlow || '...'} m³/h</strong></div>
+                <div>• Công suất động cơ: <strong>{selectedProductDetail.product.calcPower ? selectedProductDetail.product.calcPower + ' kW' : 'Chuẩn hãng'}</strong></div>
+                <div>• Điện áp sử dụng: <strong>{selectedProductDetail.product.calcVoltage || '380V / 220V'}</strong></div>
+                {selectedProductDetail.req && (
+                  <div style={{ marginTop: 8, padding: 8, background: '#eff6ff', borderRadius: 6, border: '1px solid #bfdbfe', color: '#1e40af' }}>
+                    📌 <strong>Đề bài khách yêu cầu:</strong> Q={selectedProductDetail.req.flow || '...'} m³/h, H={selectedProductDetail.req.head || '...'} m ({selectedProductDetail.req.config})
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
+                <button
+                  className="btn primary"
+                  onClick={() => {
+                    handleCopyImage(getProductImage(selectedProductDetail.product), 'modal_img')
+                  }}
+                >
+                  📋 Sao chép ảnh Zalo
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => setSelectedProductDetail(null)}
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

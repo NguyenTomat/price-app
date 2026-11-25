@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { getAllProductsFlat } from '../firebase/firebase'
+import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
+import UserAvatar from '../components/UserAvatar'
 import { copyImageToClipboard, downloadImage } from '../utils/imageClipboard'
 import {
   parseRequirementRow,
   solveProjectRequirements,
   analyzeProductDetails,
-  SAMPLE_PROJECT_1_TEXT
+  SAMPLE_PROJECT_1_TEXT,
+  SAMPLE_PROJECT_2_TEXT
 } from '../utils/pumpSolver'
 import ExcelJS from 'exceljs'
 
@@ -25,6 +28,7 @@ const getProductImage = (p) => {
 }
 
 export default function AiSolverPage({ setPage }) {
+  const { user, profile } = useAuth()
   const toast = useToast()
 
   // Flat product catalog from Firebase
@@ -1524,23 +1528,16 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
 
                   {/* User Avatar */}
                   {isUser && (
-                    <div
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: '50%',
-                        background: '#334155',
-                        color: '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        fontSize: 12,
-                        flexShrink: 0,
-                        marginTop: 2
-                      }}
-                    >
-                      Tôi
+                    <div style={{ marginTop: 2, flexShrink: 0 }}>
+                      <UserAvatar
+                        user={{
+                          ...user,
+                          ...profile,
+                          photoURL: profile?.photoURL || user?.photoURL,
+                          displayName: profile?.displayName || user?.displayName || 'Tôi'
+                        }}
+                        size={32}
+                      />
                     </div>
                   )}
                 </div>

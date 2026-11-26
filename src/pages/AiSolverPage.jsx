@@ -60,18 +60,107 @@ export default function AiSolverPage({ setPage }) {
   const multiFileInputRef = useRef(null)
   const chatAttachInputRef = useRef(null)
   const chatBottomRef = useRef(null)
+  const chatTextareaRef = useRef(null)
+
+  // ── SESSIONS MANAGEMENT (Lịch sử cuộc trò chuyện) ──────────────────────
+  const [chatSessions, setChatSessions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tt_pump_chat_sessions')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+  const [currentSessionId, setCurrentSessionId] = useState(() => `sess_${Date.now()}`)
+  const [showSessionMenu, setShowSessionMenu] = useState(false)
 
   // ── CHAT ENGINE STATES (ChatGPT / Gemini style) ─────────────────────────
   const [chatMessages, setChatMessages] = useState([
     {
       id: 'welcome',
       sender: 'ai',
-      text: '👋 Xin chào! Tôi là **Trợ Lý Kỹ Thuật T&T**.\n\nTôi đã kết nối toàn bộ dữ liệu kho hàng thực tế của hơn **650 model máy bơm** (Bơm chìm nước thải WQ, SHM, bơm ly tâm trục đứng CDLF, ly tâm trục ngang CAM, bơm biến tần...).\n\n📌 **Bạn hãy bấm "+ Thêm ảnh" hoặc nhấn Ctrl + V để dán ảnh bảng yêu cầu của khách ở cột bên cạnh**.\nTôi sẽ tự động phân loại chính xác 100% **Bơm Cạn vs Bơm Chìm**, tính toán thông số Q, H chuẩn ≥ 90% và trích xuất sẵn ảnh thực tế để bạn copy gửi Zalo cho khách!',
+      text: '👋 Xin chào! Tôi là **Trợ Lý Kỹ Thuật T&T**.\n\nTôi đã kết nối toàn bộ dữ liệu kho hàng thực tế của hơn **650 model máy bơm** (Bơm chìm nước thải WQ, SHM, bơm ly tâm trục đứng CDLF, ly tâm trục ngang CAM, bơm biến tần...).\n\n📌 **Bạn hãy bấm "+ Thêm ảnh" hoặc nhấn Ctrl + V để dán ảnh bảng yêu cầu của khách ở cột bên cạnh**, hoặc **gõ trực tiếp thông số (Q, H, kW) / tên model vào ô chat bên dưới**.\nTôi sẽ tự động phân loại chính xác 100% **Bơm Cạn vs Bơm Chìm**, tính toán thông số Q, H chuẩn ≥ 90% và trích xuất sẵn ảnh thực tế để bạn copy gửi Zalo cho khách!',
       timestamp: Date.now()
     }
   ])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
+
+  // Auto-save active chat to sessions in localStorage
+  useEffect(() => {
+    if (chatMessages && chatMessages.length > 1) {
+      setChatSessions(prev => {
+        const firstUserMsg = chatMessages.find(m => m.sender === 'user')
+        const rawTitle = firstUserMsg ? firstUserMsg.text.replace(/\n+/g, ' ').slice(0, 36) : 'Cuộc trò chuyện mới'
+        const title = rawTitle.length >= 36 ? rawTitle + '...' : rawTitle
+        const existingIdx = prev.findIndex(s => s.id === currentSessionId)
+        const sessionObj = {
+          id: currentSessionId,
+          title: title || 'Bóc tách dự án',
+          messages: chatMessages,
+          timestamp: Date.now()
+        }
+        let next
+        if (existingIdx >= 0) {
+          next = [...prev]
+          next[existingIdx] = sessionObj
+        } else {
+          next = [sessionObj, ...prev].slice(0, 20)
+        }
+        try {
+          localStorage.setItem('tt_pump_chat_sessions', JSON.stringify(next))
+        } catch {}
+        return next
+      })
+    }
+  }, [chatMessages, currentSessionId])
+
+  // Tạo cuộc trò chuyện mới
+  const handleCreateNewChat = () => {
+    const newId = `sess_${Date.now()}`
+    setCurrentSessionId(newId)
+    setChatMessages([
+      {
+        id: `welcome_${Date.now()}`,
+        sender: 'ai',
+        text: '👋 Cuộc trò chuyện mới đã sẵn sàng!\n\nBạn có thể dán ảnh yêu cầu, hoặc gõ thông số kỹ thuật (Ví dụ: *Q=30m3/h, H=45m, 1 máy*), hoặc hỏi thông tin bất kỳ model máy bơm nào.',
+        timestamp: Date.now()
+      }
+    ])
+    setChatInput('')
+    setStagedChatImages([])
+    setSelectedModels({})
+    setExpandedAlts(new Set())
+    setShowSessionMenu(false)
+    if (chatTextareaRef.current) {
+      chatTextareaRef.current.style.height = 'auto'
+      chatTextareaRef.current.focus()
+    }
+    toast('✨ Đã tạo cuộc trò chuyện mới!', 'success')
+  }
+
+  // Chuyển sang cuộc trò chuyện cũ
+  const handleLoadSession = (sess) => {
+    setCurrentSessionId(sess.id)
+    setChatMessages(sess.messages || [])
+    setShowSessionMenu(false)
+    toast(`Đã mở cuộc trò chuyện: ${sess.title}`, 'default')
+  }
+
+  // Xóa cuộc trò chuyện
+  const handleDeleteSession = (sessId, e) => {
+    e.stopPropagation()
+    setChatSessions(prev => {
+      const next = prev.filter(s => s.id !== sessId)
+      try {
+        localStorage.setItem('tt_pump_chat_sessions', JSON.stringify(next))
+      } catch {}
+      return next
+    })
+    if (currentSessionId === sessId) {
+      handleCreateNewChat()
+    }
+  }
 
   // Load all products flat (ưu tiên nạp siêu tốc từ /web_catalog.json và đồng bộ Firestore)
   useEffect(() => {
@@ -381,101 +470,256 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
     }
   }
 
+  // Kiến thức cơ điện MEP chuyên sâu cho trợ lý máy bơm T&T
+  const getMepKnowledgeAnswer = (q) => {
+    const query = (q || '').toLowerCase()
+
+    // 1. Cách tính cột áp (Head)
+    if (/cột áp|cot ap|đẩy cao|day cao|tính h|tinh h\b|head/i.test(query)) {
+      return `### 📐 HƯỚNG DẪN TÍNH CỘT ÁP BƠM ($H$) CHUẨN KỸ THUẬT MEP:\n\n` +
+        `Cột áp tổng của máy bơm được tính theo công thức:\n` +
+        `$$\\mathbf{H = H_{đh} + H_{ms} + H_{td}}$$\n\n` +
+        `Trong đó:\n` +
+        `• $\\mathbf{H_{đh}}$ **(Cột áp địa hình)**: Độ chênh cao từ mực nước thấp nhất của bể hút/hố pit đến điểm xả cao nhất (tính bằng mét).\n` +
+        `• $\\mathbf{H_{ms}}$ **(Tổn thất cột áp do ma sát dọc đường & cục bộ)**:\n` +
+        `  - Thường tính bằng $10\\% - 20\\%$ của $H_{đh}$ đối với đường ống tiêu chuẩn.\n` +
+        `  - Bao gồm ma sát trong ống + tổn thất qua van 1 chiều, van cổng, tê, cút, co lơ, lọc y.\n` +
+        `• $\\mathbf{H_{td}}$ **(Áp lực tự do tại đầu vòi/thiết bị vệ sinh)**:\n` +
+        `  - Với vòi sen, lavabo, bồn cầu tầng mái: lấy từ $5 - 10$ m (tương đương $0.5 - 1$ bar).\n` +
+        `  - Với hệ thống tưới cảnh quan, đầu phun: lấy từ $15 - 25$ m.\n\n` +
+        `💡 **Ví dụ thực tế**: Tòa nhà cao 10 tầng (cao 33m), đặt bơm cạn CDLF tại tầng hầm hút từ bể ngầm. Tổn thất ống ma sát $15\\% \\times 33 = 5$m, áp lực vòi tầng mái $7$m $\\rightarrow$ Cột áp bơm cần chọn: $H = 33 + 5 + 7 = 45$m.`
+    }
+
+    // 2. Cách tính lưu lượng (Flow)
+    if (/lưu lượng|luu luong|tính q|tinh q\b|flow/i.test(query)) {
+      return `### 💧 HƯỚNG DẪN TÍNH LƯU LƯỢNG MÁY BƠM ($Q$) CHUẨN TCVN 4513:\n\n` +
+        `Lưu lượng bơm phụ thuộc vào mục đích sử dụng:\n\n` +
+        `1. **Bơm cấp nước lên bể mái (Bơm trung chuyển)**:\n` +
+        `   $$Q = \\frac{V_{bể}}{T_{bơm}}$$\n` +
+        `   - $V_{bể}$: Dung tích hữu ích của bể nước mái ($m^3$).\n` +
+        `   - $T_{bơm}$: Thời gian bơm đầy bể, tiêu chuẩn chọn $T = 1.5 - 2.5$ giờ/lần bơm.\n\n` +
+        `2. **Cụm bơm tăng áp trực tiếp (Booster Pump)**:\n` +
+        `   Tính theo tổng đương lượng thiết bị vệ sinh đồng thời theo TCVN 4513:1988.\n` +
+        `   - Căn hộ 2 phòng tắm: $Q \\approx 1.5 - 2.0$ $m^3/h$.\n` +
+        `   - Biệt thự / nhà phố 4 tầng: $Q \\approx 3.0 - 5.0$ $m^3/h$.\n` +
+        `   - Tòa nhà chung cư / khách sạn: $Q = 15 - 50$ $m^3/h$ (dùng cụm 2 hoặc 3 bơm biến tần luân phiên).\n\n` +
+        `3. **Bơm thoát sàn / hố thu tầng hầm (Sewage/Drainage)**:\n` +
+        `   Tính theo lưu lượng nước mưa tràn dốc hầm kết hợp nước rửa sàn, thông thường chọn $Q = 10 - 30$ $m^3/h$.`
+    }
+
+    // 3. Phân biệt Bơm Cạn vs Bơm Chìm
+    if (/chìm.*cạn|cạn.*chìm|khác nhau|phân biệt|khi nào dùng chìm|khi nào dùng cạn/i.test(query)) {
+      return `### ⚡ SO SÁNH & PHÂN BIỆT CHÍNH XÁC: BƠM CẠN VS BƠM CHÌM\n\n` +
+        `| Tiêu chí | 🏭 Bơm Cạn (Surface/Dry) | 🌊 Bơm Chìm (Submersible) |\n` +
+        `|---|---|---|\n` +
+        `| **Vị trí lắp đặt** | Khô ráo trên cạn, phòng kỹ thuật, bệ bơm | Ngập hoàn toàn trong chất lỏng / hố ga |\n` +
+        `| **Cấp bảo vệ động cơ** | IP55 (chống bụi, tia nước) | IP68 (kín nước 100%, ngâm sâu dưới nước) |\n` +
+        `| **Các model tiêu biểu T&T** | CDLF (trục đứng), CAM, CM, MHI, MP | WQ, DWMT, SHM, SL220, 100HSW |\n` +
+        `| **Ứng dụng chính** | Cấp nước sinh hoạt, tăng áp biến tần, nồi hơi, RO | Thoát sàn tầng hầm, hố pit, nước thải, giếng khoan |\n` +
+        `| **Khả năng đẩy cao (H)** | Rất cao ($20m - 250m$) | Trung bình ($5m - 35m$) |\n` +
+        `| **Cảnh báo an toàn** | ⚠️ **Tuyệt đối không để ngập nước** (cháy động cơ) | ⚠️ **Không để chạy khô** (cháy phốt ngâm dầu) |\n\n` +
+        `📌 **Quy tắc vàng MEP**: Nước thải, hố pit, sàn tầng hầm $\\rightarrow$ **100% bắt buộc dùng Bơm Chìm**; Cấp nước sinh hoạt lên mái, tăng áp căn hộ $\\rightarrow$ **Dùng Bơm Cạn trục đứng CDLF hoặc cụm biến tần MHI/CAM**.`
+    }
+
+    // 4. Bình tích áp
+    if (/bình tích áp|binh tich ap|bình áp|binh ap|pressure tank/i.test(query)) {
+      return `### 🎈 VAI TRÒ & NGUYÊN LÝ BÌNH TÍCH ÁP TRONG HỆ THỐNG BƠM:\n\n` +
+        `1. **Tác dụng cốt lõi**:\n` +
+        `   • **Giảm số lần khởi động máy bơm**: Bù áp khi rò rỉ nước nhỏ ở vòi, tránh đóng ngắt liên tục làm cháy rơ le và động cơ (tiêu chuẩn $\\le 20$ lần/giờ).\n` +
+        `   • **Triệt tiêu hiện tượng Búa nước (Water Hammer)**: Bảo vệ đường ống không bị vỡ hoặc rò rỉ ren khi bơm ngắt đột ngột.\n` +
+        `   • Duy trì áp lực dự trữ trong đường ống khi cúp điện nhẹ.\n\n` +
+        `2. **Lưu ý cài đặt áp lực nạp khí (Pre-charge pressure)**:\n` +
+        `   $$P_{nạp} = P_{cài\\_đặt\\_bật\\_bơm} - 0.2 \\text{ bar}$$\n` +
+        `   *(Ví dụ: Rơ le cài bật bơm ở 2.0 bar thì áp suất khí nạp vào bình phải là 1.8 bar khi hệ thống chưa có nước)*.\n\n` +
+        `3. **Dung tích thông dụng**: 24L, 50L, 100L, 200L, 300L, 500L (màng EPDM chịu nhiệt và an toàn nước ăn uống).`
+    }
+
+    // 5. Cụm bơm biến tần (Inverter)
+    if (/biến tần|bien tan|inverter/i.test(query)) {
+      return `### ⚡ LỢI ÍCH CỦA CỤM BƠM TĂNG ÁP BIẾN TẦN T&T:\n\n` +
+        `• **Ổn định áp suất tuyệt đối**: Dù mở 1 vòi hay 10 vòi cùng lúc, áp lực nước tại đầu vòi hoa sen vẫn luôn êm ái và đồng đều.\n` +
+        `• **Tiết kiệm điện 30% - 50%**: Biến tần tự động điều chỉnh tốc độ vòng tua động cơ (Hz) theo nhu cầu thực tế; dùng ít nước chạy chậm, dùng nhiều chạy nhanh.\n` +
+        `• **Khởi động mềm (Soft-start)**: Bơm tăng tốc từ từ, không gây sụt áp lưới điện và triệt tiêu hoàn toàn tiếng ồn búa nước giật đường ống.\n` +
+        `• **Tuổi thọ vượt trội**: Giảm mài mòn cơ khí trục bơm, cánh bơm và phốt kín nước.`
+    }
+
+    // 6. Hố thu / hố pit / tầng hầm
+    if (/hố pit|ho pit|tầng hầm|tang ham|nước thải|nuoc thai/i.test(query)) {
+      return `### 🏗️ QUY CHUẨN LẮP ĐẶT BƠM CHÌM THOÁT NƯỚC THẢI & HỐ PIT TẦNG HẦM:\n\n` +
+        `1. **Thiết bị bắt buộc**:\n` +
+        `   • Máy bơm chìm nước thải chuẩn IP68 (Dòng **WQ, DWMT, SHM** của T&T).\n` +
+        `   • Khớp nối nhanh tự động (**Auto-coupling**) kèm 2 thanh trượt inox: Giúp nâng hạ bơm lên khỏi hố sâu để bảo trì mà công nhân không cần chui xuống hố ga ngập nước độc hại.\n` +
+        `   • Cặp phao báo mức nước: Phao tự động bật khi nước dâng và ngắt khi nước cạn (bảo vệ chống chạy khô).\n` +
+        `2. **Cơ chế vận hành**:\n` +
+        `   • Luôn thiết kế cụm 2 bơm chạy **luân phiên 1 hoạt động + 1 dự phòng**.\n` +
+        `   • Tủ điện có chế độ kích hoạt chạy đồng thời cả 2 bơm khi mưa to hoặc sự cố ngập đột ngột.`
+    }
+
+    // 7. Bơm cắt rác & hút bùn
+    if (/cắt rác|cat rac|hút bùn|hut bun|cánh cắt/i.test(query)) {
+      return `### ✂️ BƠM CHÌM CÁNH CẮT RÁC & HÚT BÙN T&T:\n\n` +
+        `• **Cơ chế cánh cắt**: Đầu hút được trang bị dao cắt bằng hợp kim Tungsten Carbide cứng cáp, quay với tốc độ cao để băm nhỏ rác thải hữu cơ, giẻ lau, xơ sợi, bao nilon trước khi đẩy vào buồng bơm.\n` +
+        `• **Ứng dụng**: Nước thải bệnh viện, trường học, nhà máy dệt nhuộm, trại chăn nuôi, trạm xử lý nước thải tập trung.\n` +
+        `• **Dòng bơm khuyến nghị**: Dòng bơm chìm cánh xoáy hở vortex hoặc cánh cắt WQ/DWMT chuyên dụng.`
+    }
+
+    return null
+  }
+
   // Handle conversational user queries
   const handleSendMessage = async (customText = null) => {
     const query = (customText || chatInput).trim()
-    if (!query && stagedChatImages.length === 0) return
+    const attached = stagedChatImages.length > 0 ? [...stagedChatImages] : []
+    if (!query && attached.length === 0) return
 
     const userMsg = {
       id: `user_${Date.now()}`,
       sender: 'user',
       text: query || 'Nhờ bạn bóc tách và đối chiếu kho các ảnh đính kèm này.',
-      attachedImages: stagedChatImages.length > 0 ? [...stagedChatImages] : null,
+      attachedImages: attached.length > 0 ? attached : null,
       timestamp: Date.now()
     }
 
     setChatMessages(prev => [...prev, userMsg])
     setChatInput('')
     setStagedChatImages([])
+    if (chatTextareaRef.current) {
+      chatTextareaRef.current.style.height = 'auto'
+    }
     setChatLoading(true)
 
-    // Check catalog for pump keywords
-    const catalog = allProducts.map(analyzeProductDetails)
-    const tokenRegex = /\b([a-zA-Z]{2,}(?:\s*[-/]?\s*\d+)+|\d+[a-zA-Z]{1,}[a-zA-Z0-9\-/]*)\b/gi
-    const tokens = []
-    let mMatch
-    while ((mMatch = tokenRegex.exec(query)) !== null) {
-      tokens.push(mMatch[0].trim())
-    }
-
-    let exactMatches = []
-    let relatedMatches = []
-
-    if (tokens.length > 0) {
-      exactMatches = catalog.filter(p => {
-        const pName = (p.name || '').toLowerCase()
-        const pCode = (p.code || '').toLowerCase()
-        return tokens.some(tok => {
-          const tLow = tok.toLowerCase().replace(/\s+/g, '')
-          return pName.replace(/\s+/g, '').includes(tLow) || pCode.replace(/\s+/g, '').includes(tLow)
-        })
-      })
-
-      if (exactMatches.length > 0) {
-        const primary = exactMatches[0]
-        const prefixMatch = primary.name.match(/^[a-zA-Z]+/i)
-        const prefix = prefixMatch ? prefixMatch[0].toLowerCase() : ''
-        relatedMatches = catalog.filter(p => {
-          if (exactMatches.some(em => em.id === p.id)) return false
-          const pName = (p.name || '').toLowerCase()
-          return prefix && prefix.length >= 2 && pName.startsWith(prefix)
-        }).slice(0, 4)
-      }
-    }
-
-    let aiText = ''
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${atob('QVEuQWI4Uk42SWVYb05mSjI0ZTh3RmVFR3JJXy1OS1JrWWZjSUprZS1NZENqTzRzUDN6RGc=')}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `Bạn là Trợ lý Kỹ thuật & Bóc tách dự án máy bơm của Công ty Máy Bơm T&T. Trả lời câu hỏi sau của nhân viên/khách hàng: "${query}".\n\nHãy trả lời chuyên nghiệp, súc tích, chuẩn kỹ thuật cơ điện MEP (về lưu lượng Q, cột áp H, công suất, cách phân biệt bơm cạn/bơm chìm, phương án kinh tế hoặc kỹ thuật). Nếu có model cụ thể khớp, hãy nhắc nhân viên có thể bấm nút [Sao chép ảnh] để dán gửi Zalo cho khách.`
-                  }
-                ]
-              }
-            ]
-          })
+    // Đảm bảo nạp kho sản phẩm
+    let pool = allProducts
+    if (!pool || pool.length === 0) {
+      try {
+        const localData = await fetch('/web_catalog.json').then(r => r.json())
+        if (Array.isArray(localData) && localData.length > 0) {
+          pool = localData
+          setAllProducts(localData)
         }
-      )
-      const resData = await response.json()
-      aiText = resData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    } catch (e) {
-      console.warn('Lỗi gọi Gemini cho chat:', e)
+      } catch {}
+    }
+    const catalog = (pool || []).map(analyzeProductDetails)
+
+    // ── NHÁNH 1: CÓ ẢNH ĐÍNH KÈM TRONG TIN NHẮN CHAT ──────────────────────
+    if (attached.length > 0) {
+      try {
+        const textPromises = attached.map((img, idx) => extractSpecsFromImage(img, idx))
+        const texts = await Promise.all(textPromises)
+        let combinedRows = []
+        texts.forEach((text) => {
+          const parsed = (text || '')
+            .split('\n')
+            .map((l) => parseRequirementRow(l, combinedRows.length + 1))
+            .filter(Boolean)
+          combinedRows = [...combinedRows, ...parsed]
+        })
+        if (combinedRows.length > 0) {
+          combinedRows = combinedRows.map((r, i) => ({ ...r, index: i + 1 }))
+          const solved = solveProjectRequirements(combinedRows, pool)
+          const aiMsg = {
+            id: `ai_${Date.now()}`,
+            sender: 'ai',
+            attachedImages: attached.map(t => ({ id: t.id, title: t.title, src: t.src })),
+            solveResults: solved,
+            text: `Tôi đã hoàn thành bóc tách và đối chiếu **${solved.length} hạng mục máy bơm** từ ảnh đính kèm trong chat:\n\n` +
+              `• **Phân loại chính xác 100%**: Tách bạch tuyệt đối giữa **Bơm Cạn** (cấp nước, tăng áp) và **Bơm Chìm** (thoát sàn hầm, hố pit, nước thải).\n` +
+              `• **Độ khớp kỹ thuật $\\ge 90\\%$**: Điểm làm việc Q & H đều đạt chuẩn an toàn cơ điện MEP.\n` +
+              `• Bạn có thể bấm nút **[Đổi model]** để chọn phương án khác, hoặc bấm **[📥 Xuất Excel]** và **[📋 Copy báo giá Zalo]** bên dưới!`,
+            timestamp: Date.now()
+          }
+          setChatMessages(prev => [...prev, aiMsg])
+          setChatLoading(false)
+          return
+        }
+      } catch (err) {
+        console.warn('Lỗi xử lý ảnh trong chat:', err)
+      }
     }
 
-    if (!aiText) {
-      if (exactMatches.length > 0) {
-        aiText = `Dưới đây là thông tin kỹ thuật & model tương ứng với yêu cầu "${query}":\n\n` +
-          `• **Model khớp nhất**: ${exactMatches.map(m => m.name).join(', ')}.\n` +
-          (relatedMatches.length > 0 ? `• **Các mã cùng dòng liên quan**: ${relatedMatches.map(m => m.name).slice(0, 3).join(', ')}.\n\n` : '\n') +
-          `Hình ảnh thực tế từ kho và thông số đã được trích xuất bên dưới. Bạn có thể bấm **[Sao chép ảnh Zalo]** để dán gửi trực tiếp cho khách nhé!`
-      } else {
-        aiText = `Tôi đã tiếp nhận câu hỏi của bạn về "${query}". Với hệ thống máy bơm T&T, tất cả các dòng Bơm Chìm hố móng / nước thải (WQ, SHM) và Bơm Cạn trục đứng / ly tâm (CDLF, CAM, CM) đều có sẵn hàng số lượng lớn kèm đầy đủ CO/CQ, catalogue và đường cong hiệu suất. Bạn có thể xem hình ảnh đính kèm hoặc hỏi thêm về bất kỳ mã cụ thể nào!`
+    // ── NHÁNH 2: NGƯỜI DÙNG NHẬP / DÁN VĂN BẢN YÊU CẦU DỰ ÁN (Có Q, H hoặc công suất) ──
+    const textLines = query.split('\n').map(l => l.trim()).filter(Boolean)
+    const detectedReqs = textLines
+      .map((line, idx) => parseRequirementRow(line, idx + 1))
+      .filter(Boolean)
+
+    if (detectedReqs.length > 0 && detectedReqs.some(r => r.flow || r.head || r.power)) {
+      const solved = solveProjectRequirements(detectedReqs, pool)
+      const aiMsg = {
+        id: `ai_${Date.now()}`,
+        sender: 'ai',
+        solveResults: solved,
+        text: `Tôi đã phân tích các yêu cầu kỹ thuật và đối chiếu kho với **${solved.length} hạng mục máy bơm**:\n\n` +
+          `• **Đã chuẩn hóa thông số**: Lưu lượng Q, cột áp H, công suất kW và số lượng máy theo đúng tiêu chuẩn MEP.\n` +
+          `• **Đề xuất model tối ưu nhất**: Phù hợp chính xác 100% chủng loại (Bơm Cạn vs Bơm Chìm) với độ khớp kỹ thuật cao nhất.\n` +
+          `• Bạn có thể chọn model đề xuất khác bằng nút **[Đổi model]**, hoặc xuất file Excel báo giá chuẩn ngay bên dưới!`,
+        timestamp: Date.now()
       }
+      setChatMessages(prev => [...prev, aiMsg])
+      setChatLoading(false)
+      return
+    }
+
+    // ── NHÁNH 3: TRA CỨU MODEL SẢN PHẨM CỤ THỂ ────────────────────────────
+    const cleanQ = query.toLowerCase()
+    let matchedProducts = []
+
+    // 1. Tìm theo tên/mã model chính xác
+    matchedProducts = catalog.filter(p => {
+      const name = (p.name || '').toLowerCase()
+      const code = (p.code || '').toLowerCase()
+      if (cleanQ.includes(name) || (name.length > 3 && cleanQ.includes(name.replace(/\s+/g, '')))) return true
+      if (code && cleanQ.includes(code.toLowerCase())) return true
+      return false
+    })
+
+    // 2. Nếu chưa thấy, tìm theo các tiền tố dòng bơm phổ biến
+    if (matchedProducts.length === 0) {
+      const pumpSeries = ['cdlf', 'dwmt', 'shm', 'wq', 'mhi', 'cam', 'cm', 'sl220', '100hsw', 'mp-70', '4slm', '6sp', 'r95', 'r150']
+      const foundSeries = pumpSeries.filter(s => cleanQ.includes(s))
+      if (foundSeries.length > 0) {
+        matchedProducts = catalog.filter(p => {
+          const name = (p.name || '').toLowerCase()
+          return foundSeries.some(s => name.includes(s))
+        }).slice(0, 8)
+      }
+    }
+
+    // ── NHÁNH 4: CÂU HỎI KỸ THUẬT MEP (Cột áp, lưu lượng, biến tần, bình tích áp...) ──
+    const techKnowledge = getMepKnowledgeAnswer(query)
+
+    let replyText = ''
+    if (matchedProducts.length > 0) {
+      const topP = matchedProducts.slice(0, 4)
+      replyText = `Dưới đây là thông tin chi tiết các model máy bơm T&T phù hợp với câu hỏi của bạn:\n\n`
+      topP.forEach((p, i) => {
+        const isChim = p.isSubmersible || /chìm|chim|wq|shm|dwmt/i.test(p.name || '')
+        replyText += `**${i + 1}. Model: ${p.name}**\n`
+        replyText += `• Chủng loại: **${isChim ? 'Bơm Chìm nước thải / hố móng' : 'Bơm Cạn ly tâm'}**\n`
+        replyText += `• Thông số: ${p.calcPower ? `Công suất ${p.calcPower}kW | ` : ''}Cột áp Hmax: ${p.calcHead || '...'}m | Lưu lượng Qmax: ${p.calcFlow || '...'}m³/h | Điện áp: ${p.calcVoltage || '380V'}\n`
+        if (p.price) {
+          replyText += `• Đơn giá niêm yết: **${fmt(p.price)}** (chưa VAT)\n`
+        }
+        replyText += `• Hãng sản xuất: ${p.brand || 'T&T'}\n\n`
+      })
+      replyText += `👉 Bạn có thể xem hình ảnh thực tế và bấm nút **[Sao chép ảnh Zalo]** để dán gửi khách hàng ngay bên dưới nhé!`
+    } else if (techKnowledge) {
+      replyText = techKnowledge
+    } else {
+      replyText = `Chào bạn! Tôi là **Trợ lý Kỹ thuật & Bóc tách máy bơm T&T**.\n\n` +
+        `Tôi có thể hỗ trợ bạn:\n` +
+        `1. **Bóc tách & Giải toán dự án**: Bạn dán ảnh bảng yêu cầu hoặc gõ thông số (ví dụ: *Q=45m3/h, H=100m, 1 máy*) để tự động chọn model và xuất file Excel.\n` +
+        `2. **Tra cứu thông số & Báo giá nhanh**: Gõ tên model (ví dụ: *CDLF 42-6, MHI 1602, DWMT 30-22, SHM 6-15...*) để lấy hình ảnh, thông số P, Q, H và giá gốc.\n` +
+        `3. **Tư vấn kỹ thuật MEP**: Giải thích cách tính cột áp, chọn bơm tăng áp biến tần, tính bình tích áp, quy chuẩn bơm thoát sàn tầng hầm/hố pit.\n\n` +
+        `Bạn hãy gõ câu hỏi cụ thể hoặc thông số kỹ thuật cần giải đáp nhé!`
     }
 
     const aiMsg = {
       id: `ai_${Date.now()}`,
       sender: 'ai',
-      text: aiText,
-      exactMatches,
-      relatedMatches,
+      text: replyText,
+      exactMatches: matchedProducts.slice(0, 4),
+      relatedMatches: matchedProducts.slice(4, 8),
       timestamp: Date.now()
     }
 
@@ -863,24 +1107,104 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
             <span>{showSidePanel ? '◀ Ẩn ảnh yêu cầu' : '▶ Hiện ảnh yêu cầu'}</span>
           </button>
 
+          {/* Lịch sử chat dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              className="btn sm"
+              onClick={() => setShowSessionMenu(!showSessionMenu)}
+              title="Xem danh sách các cuộc trò chuyện trước đây"
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <span>💬 Lịch sử ({chatSessions.length})</span>
+              <span>{showSessionMenu ? '▴' : '▾'}</span>
+            </button>
+
+            {showSessionMenu && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: 6,
+                  width: 320,
+                  maxHeight: 380,
+                  overflowY: 'auto',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius)',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.18)',
+                  zIndex: 99,
+                  padding: 8,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4
+                }}
+              >
+                <div style={{ padding: '6px 8px', fontSize: 12, fontWeight: 700, color: 'var(--text)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Các cuộc hội thoại đã lưu</span>
+                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>{chatSessions.length} đoạn chat</span>
+                </div>
+
+                {chatSessions.length === 0 ? (
+                  <div style={{ padding: '16px 8px', textAlign: 'center', fontSize: 12, color: 'var(--text3)' }}>
+                    Chưa có lịch sử cuộc trò chuyện nào
+                  </div>
+                ) : (
+                  chatSessions.map(sess => (
+                    <div
+                      key={sess.id}
+                      onClick={() => handleLoadSession(sess)}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        background: sess.id === currentSessionId ? 'rgba(8, 120, 217, 0.12)' : 'var(--surface2)',
+                        border: sess.id === currentSessionId ? '1px solid var(--primary)' : '1px solid transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: sess.id === currentSessionId ? 700 : 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {sess.title || 'Cuộc trò chuyện'}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
+                          {new Date(sess.timestamp).toLocaleString('vi-VN')} • {sess.messages?.length || 0} tin
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => handleDeleteSession(sess.id, e)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--text3)',
+                          padding: '2px 6px',
+                          fontSize: 13,
+                          borderRadius: 4
+                        }}
+                        title="Xóa đoạn chat này"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
           {/* New Chat Button */}
           <button
-            className="btn sm"
-            onClick={() => {
-              setChatMessages([
-                {
-                  id: `welcome_${Date.now()}`,
-                  sender: 'ai',
-                  text: 'Đã làm mới cuộc hội thoại. Bạn có thể thêm ảnh yêu cầu bên cạnh để bóc tách hoặc gõ câu hỏi kỹ thuật mới!',
-                  timestamp: Date.now()
-                }
-              ])
-              toast('Đã làm mới cuộc hội thoại', 'default')
-            }}
-            title="Cuộc trò chuyện mới"
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            className="btn sm primary"
+            onClick={handleCreateNewChat}
+            title="Bắt đầu cuộc trò chuyện mới"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
           >
-            <span>🔄 Làm mới chat</span>
+            <span>➕ Tạo chat mới</span>
           </button>
         </div>
       </header>
@@ -2010,11 +2334,11 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
               <div
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'flex-end',
                   gap: 8,
                   background: 'var(--surface2)',
                   border: '1px solid var(--border2)',
-                  borderRadius: 24,
+                  borderRadius: 20,
                   padding: '6px 12px'
                 }}
               >
@@ -2033,31 +2357,37 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    padding: 6,
+                    padding: '6px 4px',
                     fontSize: 16,
                     color: 'var(--text2)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderRadius: '50%'
+                    borderRadius: '50%',
+                    marginBottom: 2
                   }}
                   title="Đính kèm một hoặc nhiều ảnh vào câu hỏi"
                 >
                   📷
                 </button>
 
-                {/* Input Textarea */}
-                <input
-                  type="text"
+                {/* Input Textarea - Hỗ trợ xuống dòng Shift + Enter */}
+                <textarea
+                  ref={chatTextareaRef}
+                  rows={1}
                   value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
+                  onChange={(e) => {
+                    setChatInput(e.target.value)
+                    e.target.style.height = 'auto'
+                    e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'
+                  }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
                       handleSendMessage()
                     }
                   }}
-                  placeholder="Hỏi kỹ thuật, bóc tách theo ảnh hoặc dán ảnh (Ctrl+V)..."
+                  placeholder="Nhập thông số (Q, H...), câu hỏi kỹ thuật hoặc dán ảnh (Ctrl+V)... [Shift+Enter để xuống dòng]"
                   style={{
                     flex: 1,
                     background: 'transparent',
@@ -2065,7 +2395,12 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
                     outline: 'none',
                     fontSize: 13,
                     color: 'var(--text)',
-                    fontFamily: 'inherit'
+                    fontFamily: 'inherit',
+                    resize: 'none',
+                    maxHeight: 140,
+                    lineHeight: '1.45',
+                    padding: '6px 0',
+                    margin: 0
                   }}
                 />
 
@@ -2083,9 +2418,10 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
+                    marginBottom: 2,
                     opacity: (!chatInput.trim() && stagedChatImages.length === 0) || chatLoading ? 0.4 : 1
                   }}
-                  title="Gửi tin nhắn"
+                  title="Gửi tin nhắn (Enter)"
                 >
                   ➤
                 </button>

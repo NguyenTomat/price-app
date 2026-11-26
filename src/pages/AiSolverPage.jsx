@@ -48,6 +48,10 @@ export default function AiSolverPage({ setPage }) {
   const [copiedImgKey, setCopiedImgKey] = useState(null)
   const [copiedZalo, setCopiedZalo] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
+  // Model selection per message per requirement: { [msgId_reqIdx]: candidateObj }
+  const [selectedModels, setSelectedModels] = useState({})
+  // Expanded alternatives panel: Set of "msgId_reqIdx"
+  const [expandedAlts, setExpandedAlts] = useState(new Set())
 
   // Staged images in chat input (like ChatGPT / Gemini)
   const [stagedChatImages, setStagedChatImages] = useState([])
@@ -480,21 +484,27 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
   }
 
   // Copy full Zalo Quote from solved results
-  const handleCopyZaloFromResults = (results) => {
+  const handleCopyZaloFromResults = (results, msgId = null) => {
     if (!results || results.length === 0) return
     let text = `🌊 BÁO GIÁ ĐỐI CHIẾU KỸ THUẬT CỤM BƠM DỰ ÁN\n`
     text += `🏢 Đối chiếu theo bảng thông số yêu cầu\n`
     text += `──────────────────────\n`
     results.forEach((res, i) => {
       const req = res.requirement
-      const m = res.bestMatch
+      const selKey = `${msgId}_${i}`
+      const selected = msgId ? selectedModels[selKey] : null
+      const m = selected
+        ? (selected.product
+            ? { ...selected.product, accuracy: selected.accuracy, calcHead: selected.product.calcHead || selected.calcHead, calcFlow: selected.product.calcFlow || selected.calcFlow, calcPower: selected.product.calcPower || selected.calcPower, calcVoltage: selected.product.calcVoltage || selected.calcVoltage }
+            : selected)
+        : res.bestMatch
+
       text += `${i + 1}. ${req.title.toUpperCase()}\n`
       text += `   • Yêu cầu: Q=${req.flow || '...'}m³/h, H=${req.head || '...'}m | SL: ${req.qty} máy (${req.mountLabel})\n`
       if (m) {
         text += `   👉 T&T đề xuất: ${m.name}\n`
         text += `   • Thông số: ${m.calcPower ? m.calcPower + 'kW' : ''} | Hmax=${m.calcHead || '...'}m | Qmax=${m.calcFlow || '...'}m³/h | ${m.calcVoltage || '380V'}\n`
         text += `   • Độ phù hợp: ⭐ ${m.accuracy}% kỹ thuật\n`
-        text += `   • Đơn giá: ${fmt(m.price)}/máy\n`
       }
       text += `\n`
     })
@@ -511,7 +521,7 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
   }
 
   // Export Excel Spreadsheet
-  const handleExportExcel = async (results, title = 'Bảng Bóc Tách Dự Án') => {
+  const handleExportExcel = async (results, title = 'Bảng Bóc Tách Dự Án', msgId = null) => {
     if (!results || results.length === 0) {
       toast('Chưa có dữ liệu để xuất Excel', 'warning')
       return
@@ -536,72 +546,106 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
         right:  { style: 'medium', color: { argb: 'FF1E3A5F' } },
       }
       const solidFill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } })
-      const applyBorder = (row, cols, border) => {
-        for (let c = 1; c <= cols; c++) row.getCell(c).border = border
-      }
 
-      // ── Column widths ──────────────────────────────────────────
+      // ── COLS: 9 cột (bỏ Đơn giá & Thành tiền) ─────────────────
+      // A=STT B=HạngMục C=ChủngLoại D=Q&H E=Model F=ThôngSốKT G=ĐộKhớp H=SL I=PhụKiện
       ws.columns = [
         { key: 'stt',        width: 5  },
-        { key: 'req_title',  width: 26 },
-        { key: 'mount_type', width: 13 },
-        { key: 'req_specs',  width: 22 },
-        { key: 'model_name', width: 24 },
-        { key: 'model_specs',width: 26 },
+        { key: 'req_title',  width: 30 },
+        { key: 'mount_type', width: 14 },
+        { key: 'req_specs',  width: 24 },
+        { key: 'model_name', width: 26 },
+        { key: 'model_specs',width: 28 },
         { key: 'accuracy',   width: 11 },
         { key: 'qty',        width: 7  },
-        { key: 'price',      width: 16 },
-        { key: 'total',      width: 18 },
-        { key: 'notes',      width: 38 },
+        { key: 'notes',      width: 42 },
       ]
+      const NCOLS = 9
 
-      // ── ROW 1: Company name ────────────────────────────────────
-      ws.mergeCells('A1:K1')
-      ws.getRow(1).height = 28
-      const compCell = ws.getCell('A1')
-      compCell.value = 'CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT BỊ ĐIỆN T&T'
-      compCell.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } }
-      compCell.fill = solidFill('FF1E3A5F')
-      compCell.alignment = { horizontal: 'center', vertical: 'middle' }
+      // ── ROW 1-3: Logo + Thông tin công ty (Đúng theo mẫu T&T) ──
+      ws.getRow(1).height = 24
+      ws.getRow(2).height = 18
+      ws.getRow(3).height = 18
 
-      // ── ROW 2: Title ───────────────────────────────────────────
-      ws.mergeCells('A2:K2')
-      ws.getRow(2).height = 24
-      const titleCell = ws.getCell('A2')
-      titleCell.value = `${title.toUpperCase()} - ĐỐI CHIẾU THÔNG SỐ KỸ THUẬT`
-      titleCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } }
-      titleCell.fill = solidFill('FF2563A8')
+      ws.mergeCells('A1:B3')
+      const logoCell = ws.getCell('A1')
+      logoCell.value = 'T&T\nMÁY BƠM CÔNG NGHIỆP'
+      logoCell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } }
+      logoCell.fill = solidFill('FF1E3A5F')
+      logoCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+
+      ws.mergeCells('C1:I1')
+      const compCell = ws.getCell('C1')
+      compCell.value = 'CÔNG TY TNHH TM MÁY CÔNG NGHIỆP T&T'
+      compCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF1E3A5F' } }
+      compCell.alignment = { horizontal: 'left', vertical: 'middle' }
+      compCell.fill = solidFill('FFE8F0F8')
+
+      ws.mergeCells('C2:I2')
+      const addrCell = ws.getCell('C2')
+      addrCell.value = 'Địa chỉ: Số 3 ngõ 61 đường Chùa Võ, TDP Thống Nhất, P. Dương Nội, TP Hà Nội'
+      addrCell.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF374151' } }
+      addrCell.alignment = { horizontal: 'left', vertical: 'middle' }
+      addrCell.fill = solidFill('FFE8F0F8')
+
+      ws.mergeCells('C3:E3')
+      const mstCell = ws.getCell('C3')
+      mstCell.value = 'MST: 0106888466'
+      mstCell.font = { name: 'Arial', size: 9, color: { argb: 'FF374151' } }
+      mstCell.alignment = { horizontal: 'left', vertical: 'middle' }
+      mstCell.fill = solidFill('FFE8F0F8')
+
+      ws.mergeCells('F3:I3')
+      const stkCell = ws.getCell('F3')
+      stkCell.value = 'STK: 8600888688888 – MB Tây Hà Nội'
+      stkCell.font = { name: 'Arial', size: 9, color: { argb: 'FF374151' } }
+      stkCell.alignment = { horizontal: 'left', vertical: 'middle' }
+      stkCell.fill = solidFill('FFE8F0F8')
+
+      // ── ROW 4: Blank ────────────────────────────────────────────
+      ws.getRow(4).height = 8
+
+      // ── ROW 5-7: Title block ────────────────────────────────────
+      ws.getRow(5).height = 22
+      ws.mergeCells('A5:I5')
+      const titleCell = ws.getCell('A5')
+      titleCell.value = 'BÁO GIÁ TỔNG HỢP DỰ ÁN'
+      titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FF1E3A5F' } }
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
 
-      // ── ROW 3: Date / hotline ──────────────────────────────────
-      ws.mergeCells('A3:K3')
-      ws.getRow(3).height = 18
-      const dateCell = ws.getCell('A3')
+      ws.getRow(6).height = 18
+      ws.mergeCells('A6:I6')
+      const subTitleCell = ws.getCell('A6')
+      subTitleCell.value = 'ĐỐI CHIẾU NHU CẦU KỸ THUẬT & ĐỀ XUẤT THIẾT BỊ'
+      subTitleCell.font = { name: 'Arial', size: 11, bold: false, color: { argb: 'FF374151' } }
+      subTitleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+
+      ws.getRow(7).height = 16
+      ws.mergeCells('A7:I7')
+      const dateCell = ws.getCell('A7')
       dateCell.value = `Ngày lập: ${new Date().toLocaleDateString('vi-VN')}     |     Đơn vị tư vấn: Máy Bơm T&T     |     Hotline: 0984.273.806`
-      dateCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF374151' } }
-      dateCell.fill = solidFill('FFE8F0F8')
+      dateCell.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF6B7280' } }
       dateCell.alignment = { horizontal: 'center', vertical: 'middle' }
 
-      // ── ROW 4: Blank spacer ────────────────────────────────────
-      ws.getRow(4).height = 6
+      // ── ROW 8: Blank spacer ────────────────────────────────────
+      ws.getRow(8).height = 6
 
-      // ── ROW 5: Header ─────────────────────────────────────────
-      const headerRow = ws.getRow(5)
-      headerRow.height = 36
+      // ── ROW 9: Header ─────────────────────────────────────────
+      const DATA_START = 10
+      const headerRow = ws.getRow(9)
+      headerRow.height = 38
       headerRow.values = [
         'STT',
-        'Hạng mục yêu cầu',
-        'Chủng loại',
-        'Thông số Q & H yêu cầu',
-        'Model T&T đề xuất',
-        'Thông số kỹ thuật T&T',
-        'Độ khớp',
+        'HẠNG MỤC YÊU CẦU',
+        'CHỦNG LOẠI',
+        'THÔNG SỐ Q & H\nYÊU CẦU',
+        'MODEL T&T\nĐỐI CHIẾU',
+        'THÔNG SỐ KỸ THUẬT T&T',
+        'ĐỘ KHỚP',
         'SL',
-        'Đơn giá (VNĐ)',
-        'Thành tiền (VNĐ)',
-        'Phụ kiện & Đề xuất',
+        'PHỤ KIỆN & ĐỀ XUẤT',
       ]
-      for (let c = 1; c <= 11; c++) {
+      for (let c = 1; c <= NCOLS; c++) {
         const cell = headerRow.getCell(c)
         cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
         cell.fill = solidFill('FF1E3A5F')
@@ -615,22 +659,25 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
       }
 
       // ── Data rows ──────────────────────────────────────────────
-      let rIndex = 6
-      let grandTotal = 0
-      const isSubmersible = (label) => label && (label.toLowerCase().includes('chìm') || label.toLowerCase().includes('submers'))
+      let rIndex = DATA_START
+      const isSubmersibleLabel = (label) => label && (label.toLowerCase().includes('chìm') || label.toLowerCase().includes('submers'))
 
       results.forEach((res, i) => {
         const req = res.requirement
-        const m   = res.bestMatch
-        const unitPrice = m?.price || 0
-        const qty       = req.qty || 1
-        const total     = unitPrice * qty
-        grandTotal += total
+        // Dùng model đã chọn (nếu có) hoặc bestMatch mặc định
+        const selKey = `${msgId}_${i}`
+        const selected = msgId ? selectedModels[selKey] : null
+        const m = selected
+          ? (selected.product
+              ? { ...selected.product, accuracy: selected.accuracy, calcHead: selected.product.calcHead || selected.calcHead, calcFlow: selected.product.calcFlow || selected.calcFlow, calcPower: selected.product.calcPower || selected.calcPower, calcVoltage: selected.product.calcVoltage || selected.calcVoltage }
+              : selected)
+          : res.bestMatch
+        const qty = req.qty || 1
         const acc = m?.accuracy || 0
         const isEven = i % 2 === 1
 
         const row = ws.getRow(rIndex)
-        row.height = 42
+        row.height = 44
         row.values = [
           i + 1,
           req.title || '',
@@ -639,22 +686,19 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
           m?.name || 'Đang cập nhật',
           m
             ? [
-                m.calcPower  ? `P: ${m.calcPower}kW`         : '',
-                m.calcHead   ? `Hmax: ${m.calcHead}m`         : '',
-                m.calcFlow   ? `Qmax: ${m.calcFlow}m³/h`      : '',
-                m.calcVoltage? `${m.calcVoltage}`             : '',
+                m.calcPower   ? `P: ${m.calcPower}kW`    : '',
+                m.calcHead    ? `Hmax: ${m.calcHead}m`   : '',
+                m.calcFlow    ? `Qmax: ${m.calcFlow}m³/h`: '',
+                m.calcVoltage ? `${m.calcVoltage}`        : '',
               ].filter(Boolean).join(' | ')
             : '—',
           m ? (acc >= 90 ? `${acc}% ✓` : `${acc}%`) : '—',
           qty,
-          unitPrice,
-          total,
           req.accessories?.length ? req.accessories.join('\n') : 'Cụm tiêu chuẩn',
         ]
 
-        // Row fill: alternating
         const rowFill = isEven ? solidFill('FFF0F5FB') : solidFill('FFFFFFFF')
-        for (let c = 1; c <= 11; c++) {
+        for (let c = 1; c <= NCOLS; c++) {
           const cell = row.getCell(c)
           cell.fill = rowFill
           cell.border = thinBorder
@@ -662,14 +706,14 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
           cell.alignment = { vertical: 'middle', wrapText: true }
         }
 
-        // STT center
+        // STT
         row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
         row.getCell(1).font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF1E3A5F' } }
 
-        // Chủng loại: color by type
+        // Chủng loại badge
         const mountCell = row.getCell(3)
         mountCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-        if (isSubmersible(req.mountLabel)) {
+        if (isSubmersibleLabel(req.mountLabel)) {
           mountCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF0891B2' } }
           mountCell.fill = solidFill('FFE0F7FA')
         } else {
@@ -677,45 +721,28 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
           mountCell.fill = solidFill('FFFEF9EC')
         }
 
-        // Q&H specs
         row.getCell(4).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
         row.getCell(4).font = { name: 'Arial', size: 10, color: { argb: 'FF374151' } }
 
-        // Model name bold
         row.getCell(5).font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF1E3A5F' } }
         row.getCell(5).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
 
-        // Accuracy cell color
         const accCell = row.getCell(7)
         accCell.alignment = { horizontal: 'center', vertical: 'middle' }
-        accCell.font = {
-          name: 'Arial', size: 10, bold: true,
-          color: { argb: acc >= 90 ? 'FF059669' : 'FFD97706' },
-        }
+        accCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: acc >= 90 ? 'FF059669' : 'FFD97706' } }
 
-        // SL center
         row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' }
         row.getCell(8).font = { name: 'Arial', size: 10, bold: true }
 
-        // Price + Total format
-        row.getCell(9).numFmt = '#,##0'
-        row.getCell(9).alignment = { horizontal: 'right', vertical: 'middle' }
-        row.getCell(9).font = { name: 'Arial', size: 10, color: { argb: 'FF1D4ED8' } }
-
-        row.getCell(10).numFmt = '#,##0'
-        row.getCell(10).alignment = { horizontal: 'right', vertical: 'middle' }
-        row.getCell(10).font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF1D4ED8' } }
-
-        // Notes
-        row.getCell(11).font = { name: 'Arial', size: 9, color: { argb: 'FF4B5563' }, italic: true }
-        row.getCell(11).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+        row.getCell(9).font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF4B5563' } }
+        row.getCell(9).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
 
         rIndex++
       })
 
-      // ── Total row ──────────────────────────────────────────────
+      // ── Total row (ghi chú thay thế tổng tiền do bỏ giá) ──────
       const totalRow = ws.getRow(rIndex)
-      totalRow.height = 28
+      totalRow.height = 24
       ws.mergeCells(`A${rIndex}:I${rIndex}`)
       const totalLabelCell = totalRow.getCell(1)
       totalLabelCell.value = 'TỔNG CỘNG TIỀN THIẾT BỊ (CHƯA VAT):'
@@ -724,29 +751,18 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
       totalLabelCell.fill = solidFill('FFFEF3C7')
       totalLabelCell.border = medBorder
 
-      const totalValueCell = totalRow.getCell(10)
-      totalValueCell.value = grandTotal
-      totalValueCell.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FF059669' } }
-      totalValueCell.numFmt = '#,##0 "₫"'
-      totalValueCell.alignment = { horizontal: 'right', vertical: 'middle' }
-      totalValueCell.fill = solidFill('FFFEF3C7')
-      totalValueCell.border = medBorder
-
-      totalRow.getCell(11).fill = solidFill('FFFEF3C7')
-      totalRow.getCell(11).border = medBorder
-
-      // ── Notes row ─────────────────────────────────────────────
+      // ── Lưu ý cuối ────────────────────────────────────────────
       const noteRow = ws.getRow(rIndex + 1)
-      noteRow.height = 18
-      ws.mergeCells(`A${rIndex + 1}:K${rIndex + 1}`)
+      noteRow.height = 20
+      ws.mergeCells(`A${rIndex + 1}:I${rIndex + 1}`)
       const noteCell = noteRow.getCell(1)
-      noteCell.value = 'Ghi chú: Đơn giá trên chưa bao gồm VAT (10%). Hàng có sẵn kho — Giao hàng trong 24h tại Hà Nội & TP.HCM.'
+      noteCell.value = 'Lưu ý: Thông số đối chiếu mang tính tham khảo theo dữ liệu hiện có; vui lòng xác nhận điểm làm việc thực tế trước khi chốt model.'
       noteCell.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF6B7280' } }
       noteCell.alignment = { horizontal: 'left', vertical: 'middle' }
       noteCell.fill = solidFill('FFF9FAFB')
 
       // ── Freeze panes ───────────────────────────────────────────
-      ws.views = [{ state: 'frozen', ySplit: 5, showGridLines: false }]
+      ws.views = [{ state: 'frozen', ySplit: 9, showGridLines: false }]
 
       // ── Download ───────────────────────────────────────────────
       const buf = await wb.xlsx.writeBuffer()
@@ -1376,13 +1392,13 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button
                               className="btn sm"
-                              onClick={() => handleCopyZaloFromResults(msg.solveResults)}
+                              onClick={() => handleCopyZaloFromResults(msg.solveResults, msg.id)}
                             >
                               📋 {copiedZalo ? 'Đã copy!' : 'Copy báo giá Zalo'}
                             </button>
                             <button
                               className="btn sm primary"
-                              onClick={() => handleExportExcel(msg.solveResults, 'Báo Giá Tổng Hợp Dự Án')}
+                              onClick={() => handleExportExcel(msg.solveResults, 'Báo Giá Tổng Hợp Dự Án', msg.id)}
                               disabled={exportingExcel}
                             >
                               📥 Xuất Excel
@@ -1394,8 +1410,21 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                           {msg.solveResults.map((res, idx) => {
                             const req = res.requirement
-                            const m = res.bestMatch
+                            const itemKey = `${msg.id || 'curr'}_${idx}`
+                            const selected = selectedModels[itemKey]
+                            const m = selected
+                              ? (selected.product
+                                  ? { ...selected.product, accuracy: selected.accuracy, calcHead: selected.product.calcHead || selected.calcHead, calcFlow: selected.product.calcFlow || selected.calcFlow, calcPower: selected.product.calcPower || selected.calcPower, calcVoltage: selected.product.calcVoltage || selected.calcVoltage }
+                                  : selected)
+                              : res.bestMatch
                             const isSubmersible = req.mountType === 'submersible'
+                            const isExpanded = expandedAlts.has(itemKey)
+                            const candidates = (res.topCandidates && res.topCandidates.length > 0)
+                              ? res.topCandidates
+                              : [
+                                  res.bestMatch ? { product: res.bestMatch, accuracy: res.bestMatch.accuracy } : null,
+                                  res.altMatch ? { product: res.altMatch, accuracy: res.altMatch.accuracy } : null
+                                ].filter(Boolean)
 
                             return (
                               <div
@@ -1463,97 +1492,251 @@ CHỈ trả về các dòng dữ liệu máy bơm, không thêm lời chào, kh�
 
                                 {/* Matched T&T Product Card */}
                                 {m ? (
-                                  <div
-                                    style={{
-                                      background: 'var(--surface)',
-                                      borderRadius: 'var(--radius-sm)',
-                                      padding: 12,
-                                      border: '1px solid var(--border)',
-                                      boxShadow: 'var(--shadow)',
-                                      display: 'flex',
-                                      flexWrap: 'wrap',
-                                      alignItems: 'center',
-                                      gap: 14
-                                    }}
-                                  >
-                                    {/* Product image */}
+                                  <>
                                     <div
                                       style={{
-                                        width: 76,
-                                        height: 76,
-                                        borderRadius: 8,
+                                        background: 'var(--surface)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        padding: 12,
                                         border: '1px solid var(--border)',
-                                        background: '#f8fafc',
-                                        overflow: 'hidden',
+                                        boxShadow: 'var(--shadow)',
                                         display: 'flex',
+                                        flexWrap: 'wrap',
                                         alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexShrink: 0
+                                        gap: 14
                                       }}
                                     >
-                                      <img
-                                        src={getProductImage(m)}
-                                        alt={m.name}
-                                        onClick={() => setZoomImage(getProductImage(m))}
-                                        onError={(e) => {
-                                          e.target.onerror = null
-                                          e.target.src = m.isSubmersible ? '/pump_submersible.jpg' : '/pump_vertical_cdlf.jpg'
-                                        }}
+                                      {/* Product image */}
+                                      <div
                                         style={{
-                                          width: '100%',
-                                          height: '100%',
-                                          objectFit: 'contain',
-                                          cursor: 'pointer'
+                                          width: 76,
+                                          height: 76,
+                                          borderRadius: 8,
+                                          border: '1px solid var(--border)',
+                                          background: '#f8fafc',
+                                          overflow: 'hidden',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          flexShrink: 0
                                         }}
-                                      />
-                                    </div>
-
-                                    {/* Product Details */}
-                                    <div style={{ flex: 1, minWidth: 200, fontSize: 12 }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
-                                          {m.name}
-                                        </span>
-                                        <span className="badge badge-green" style={{ fontSize: 10, fontWeight: 700 }}>
-                                          Khớp {m.accuracy}% kỹ thuật
-                                        </span>
+                                      >
+                                        <img
+                                          src={getProductImage(m)}
+                                          alt={m.name}
+                                          onClick={() => setZoomImage(getProductImage(m))}
+                                          onError={(e) => {
+                                            e.target.onerror = null
+                                            e.target.src = m.isSubmersible ? '/pump_submersible.jpg' : '/pump_vertical_cdlf.jpg'
+                                          }}
+                                          style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: 'contain',
+                                            cursor: 'pointer'
+                                          }}
+                                        />
                                       </div>
 
-                                      <div style={{ color: 'var(--text3)', fontSize: 11, marginTop: 3 }}>
-                                        Hãng: <strong style={{ color: 'var(--text2)' }}>{m.brand || 'T&T'}</strong> | Hmax: {m.calcHead || '...'}m | Qmax: {m.calcFlow || '...'}m³/h | {m.calcPower ? m.calcPower + 'kW' : ''} ({m.calcVoltage || '380V'})
+                                      {/* Product Details */}
+                                      <div style={{ flex: 1, minWidth: 200, fontSize: 12 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                                            {m.name}
+                                          </span>
+                                          <span className="badge badge-green" style={{ fontSize: 10, fontWeight: 700 }}>
+                                            Khớp {m.accuracy}% kỹ thuật
+                                          </span>
+                                        </div>
+
+                                        <div style={{ color: 'var(--text3)', fontSize: 11, marginTop: 3 }}>
+                                          Hãng: <strong style={{ color: 'var(--text2)' }}>{m.brand || 'T&T'}</strong> | Hmax: {m.calcHead || '...'}m | Qmax: {m.calcFlow || '...'}m³/h | {m.calcPower ? m.calcPower + 'kW' : ''} ({m.calcVoltage || '380V'})
+                                        </div>
+                                      </div>
+
+                                      {/* Actions for product */}
+                                      <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
+                                        {candidates.length > 1 && (
+                                          <button
+                                            className="btn sm"
+                                            onClick={() => {
+                                              setExpandedAlts(prev => {
+                                                const next = new Set(prev)
+                                                if (next.has(itemKey)) next.delete(itemKey)
+                                                else next.add(itemKey)
+                                                return next
+                                              })
+                                            }}
+                                            style={{
+                                              fontWeight: 600,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: 4,
+                                              background: isExpanded ? 'rgba(8, 120, 217, 0.15)' : 'var(--surface2)',
+                                              borderColor: isExpanded ? 'var(--primary)' : undefined,
+                                              color: isExpanded ? 'var(--primary)' : 'var(--text)'
+                                            }}
+                                            title="Xem các model thay thế tương đương và chọn model xuất Excel"
+                                          >
+                                            <span>{isExpanded ? '▴' : '▾'}</span>
+                                            <span>{isExpanded ? 'Đóng' : `Đổi model (${candidates.length})`}</span>
+                                          </button>
+                                        )}
+
+                                        <button
+                                          className="btn sm"
+                                          onClick={() => setSelectedProductDetail({ product: m, req })}
+                                          style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: 'var(--surface2)' }}
+                                          title="Xem chi tiết thông số kỹ thuật và đơn giá gốc niêm yết"
+                                        >
+                                          <span>🔍</span>
+                                          <span>Xem thông số & giá gốc</span>
+                                        </button>
+
+                                        <button
+                                          className="btn sm primary"
+                                          onClick={() => handleCopyImage(getProductImage(m), `prod_${m.id}_${idx}`)}
+                                          style={{
+                                            background: copiedImgKey === `prod_${m.id}_${idx}` ? 'var(--success)' : undefined
+                                          }}
+                                        >
+                                          📋 {copiedImgKey === `prod_${m.id}_${idx}` ? 'Đã copy!' : 'Sao chép ảnh Zalo'}
+                                        </button>
+
+                                        <button
+                                          className="btn sm"
+                                          onClick={() => downloadImage(getProductImage(m), `${m.name}.jpg`)}
+                                        >
+                                          Tải ảnh
+                                        </button>
                                       </div>
                                     </div>
 
-                                    {/* Actions for product - Xem giá gốc & thông số, Sao chép ảnh, Tải ảnh */}
-                                    <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
-                                      <button
-                                        className="btn sm"
-                                        onClick={() => setSelectedProductDetail({ product: m, req })}
-                                        style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: 'var(--surface2)' }}
-                                        title="Xem chi tiết thông số kỹ thuật và đơn giá gốc niêm yết"
-                                      >
-                                        <span>🔍</span>
-                                        <span>Xem thông số & giá gốc</span>
-                                      </button>
-
-                                      <button
-                                        className="btn sm primary"
-                                        onClick={() => handleCopyImage(getProductImage(m), `prod_${m.id}_${idx}`)}
+                                    {/* Expandable alternative models */}
+                                    {isExpanded && candidates.length > 0 && (
+                                      <div
                                         style={{
-                                          background: copiedImgKey === `prod_${m.id}_${idx}` ? 'var(--success)' : undefined
+                                          marginTop: 10,
+                                          padding: '12px 14px',
+                                          background: 'var(--surface)',
+                                          borderRadius: 'var(--radius-sm)',
+                                          border: '1px dashed var(--primary)'
                                         }}
                                       >
-                                        📋 {copiedImgKey === `prod_${m.id}_${idx}` ? 'Đã copy!' : 'Sao chép ảnh Zalo'}
-                                      </button>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span>🔄</span>
+                                            <span>Các model T&T khác cùng đáp ứng yêu cầu (Bấm chọn để xuất Excel & Báo giá):</span>
+                                          </div>
+                                          <span className="badge badge-gray" style={{ fontSize: 10 }}>{candidates.length} phương án</span>
+                                        </div>
 
-                                      <button
-                                        className="btn sm"
-                                        onClick={() => downloadImage(getProductImage(m), `${m.name}.jpg`)}
-                                      >
-                                        Tải ảnh
-                                      </button>
-                                    </div>
-                                  </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                          {candidates.map((cand, cIdx) => {
+                                            const prod = cand.product || cand
+                                            const candAcc = cand.accuracy ?? prod.accuracy ?? 0
+                                            const isSelected = (m?.id && prod?.id) ? (m.id === prod.id) : (m?.name === prod?.name)
+
+                                            const handlePick = () => {
+                                              const normalized = {
+                                                ...prod,
+                                                image: prod.image || prod.resolvedImage || (prod.isSubmersible ? '/pump_submersible.jpg' : '/pump_vertical_cdlf.jpg'),
+                                                accuracy: candAcc,
+                                                isHighMatch: cand.isHighMatch,
+                                                reason: cand.reason,
+                                                calcHead: prod.calcHead,
+                                                calcFlow: prod.calcFlow,
+                                                calcPower: prod.calcPower,
+                                                calcVoltage: prod.calcVoltage
+                                              }
+                                              setSelectedModels(prev => ({ ...prev, [itemKey]: normalized }))
+                                              toast(`✅ Đã chọn model: ${prod.name}`, 'success')
+                                            }
+
+                                            return (
+                                              <div
+                                                key={prod.id || cIdx}
+                                                onClick={handlePick}
+                                                style={{
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'space-between',
+                                                  padding: '10px 12px',
+                                                  borderRadius: 8,
+                                                  border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border)',
+                                                  background: isSelected ? 'rgba(8, 120, 217, 0.08)' : 'var(--surface2)',
+                                                  cursor: 'pointer',
+                                                  gap: 12,
+                                                  flexWrap: 'wrap',
+                                                  transition: 'all 0.15s ease'
+                                                }}
+                                              >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 220, flex: 1 }}>
+                                                  <div style={{
+                                                    width: 18,
+                                                    height: 18,
+                                                    borderRadius: '50%',
+                                                    border: isSelected ? '5px solid var(--primary)' : '2px solid var(--border2)',
+                                                    background: '#fff',
+                                                    flexShrink: 0
+                                                  }} />
+
+                                                  <img
+                                                    src={getProductImage(prod)}
+                                                    alt={prod.name}
+                                                    onError={(e) => {
+                                                      e.target.onerror = null
+                                                      e.target.src = prod.isSubmersible ? '/pump_submersible.jpg' : '/pump_vertical_cdlf.jpg'
+                                                    }}
+                                                    style={{
+                                                      width: 44,
+                                                      height: 44,
+                                                      objectFit: 'contain',
+                                                      background: '#fff',
+                                                      borderRadius: 6,
+                                                      border: '1px solid var(--border)',
+                                                      flexShrink: 0
+                                                    }}
+                                                  />
+
+                                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                      <span style={{ fontWeight: isSelected ? 700 : 600, fontSize: 13, color: isSelected ? 'var(--primary)' : 'var(--text)' }}>
+                                                        {prod.name}
+                                                      </span>
+                                                      <span className={`badge ${candAcc >= 90 ? 'badge-green' : 'badge-amber'}`} style={{ fontSize: 10, fontWeight: 700 }}>
+                                                        Khớp {candAcc}%
+                                                      </span>
+                                                      {cIdx === 0 && (
+                                                        <span className="badge badge-blue" style={{ fontSize: 9 }}>Gợi ý số 1</span>
+                                                      )}
+                                                    </div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                                                      {prod.calcPower ? `P: ${prod.calcPower}kW | ` : ''}Hmax: {prod.calcHead || '...'}m | Qmax: {prod.calcFlow || '...'}m³/h | {prod.calcVoltage || '380V'}
+                                                    </div>
+                                                  </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                                  <button
+                                                    type="button"
+                                                    className={`btn sm ${isSelected ? 'primary' : ''}`}
+                                                    style={{ fontSize: 11, fontWeight: 600 }}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation()
+                                                      handlePick()
+                                                    }}
+                                                  >
+                                                    {isSelected ? '✓ Đang chọn xuất' : 'Chọn model này'}
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            )
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
                                 ) : (
                                   <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic', padding: 8 }}>
                                     Đang rà soát model chuyên dụng từ catalogue kho...
